@@ -1,0 +1,35 @@
+/**
+ *  SQL Yoga library for LiveCode
+ *  Copyright (c) 2009-2014 Blue Mango Multimedia, LLC
+ *  
+ *  This program is free software; you can redistribute it and/or modify 
+ *  it under the terms of the GNU Affero General Public License as 
+ *  published by the Free Software Foundation, either version 3 of the 
+ *  License, or (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  GNU Affero General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Affero General Public License 
+ *  along with this program.  If not, see <http://www.gnu.org/licenses>.
+ *  
+ *  You can be released from the requirements of the license by purchasing a 
+ *  commercial license. Buying such a license is mandatory as soon as you develop 
+ *  commercial activities involving the SQL Yoga Library without disclosing the 
+ *  source code of your own applications. These activities include: offering paid 
+ *  services to customers as an ASP, using SQL Yoga in a web application, 
+ *  shipping SQL Yoga Library with a closed source product.
+ *  
+ *  If you want to contribute to the SQL Yoga codebase and want your changes to be 
+ *  accepted into the main trunc, you will have to accept our open source contribution 
+ *  agreement as found here: http://www.bluemangolearning.com/download/opensource/osca.pdf
+ *  
+ *  For more information, please contact Blue Mango Multimedia, LLC at this address:
+ *  support@bluemangolearning.com
+ */
+
+on linkClicked pLinkText
+    launch url pLinkText
+end linkClicked

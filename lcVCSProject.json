@@ -1,0 +1,21 @@
+{
+  "build path": "",
+  "name": "SQL Yoga",
+  "plugins": [
+    "cRevGeneral",
+    "cREVGeneralAll",
+    "cREVGeometry",
+    "cREVGeometryCache",
+    "cRevStandaloneSettings",
+    "cREVTable",
+    "dataviewProps",
+    "dgProps",
+    "GLX2",
+    "LicenseHeader",
+    "uSelectedChunk"
+  ],
+  "resource paths": "",
+  "stackFiles": [
+    "sql_yoga.livecode"
+  ]
+}
