@@ -101,6 +101,7 @@
     "minWidth": "32",
     "name": "libSQLYoga",
     "resizable": "true",
+    "scalefactor": "1",
     "shadow": "true",
     "shadowColor": "",
     "shadowOffset": "4",

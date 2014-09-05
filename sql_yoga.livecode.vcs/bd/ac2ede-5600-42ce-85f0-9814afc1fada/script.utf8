@@ -3995,6 +3995,7 @@ end dbconn_get
 *
 * <pre>## SQLite Example
 * dbconn_set "file", thePathToDatabaseFile
+* dbconn_setVendor "sqlite", "options", "binary,extensions"
 * 
 * ## MySQL Example
 * dbconn_set "host", "localhost"
@@ -4126,6 +4127,10 @@ end dbconn_set
 * \param pValue Value to set property to.
 * \param [pConnName] The name of a Database Connection. The default is the "default connection" for the Database Object.
 * \param [pDBKey] Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
+*
+* <b>SQLite</b>
+*
+* <b>options</b>:
 *
 * <b>Valentina</b>
 *
@@ -4420,8 +4425,8 @@ command dbconn_connect
    set the wholeMatches to true
    ## todo: add valentina check. I don't see a call to verify that a connection is a valid ref to a valentina db though
    if theConnectionID <= 0 \
-          or (sDbsA[ theKeyA ]["adaptor"] is not "valentina" and theConnectionID is not among the items of revOpenDatabases() ) \
-          then
+         or (sDbsA[ theKeyA ]["adaptor"] is not "valentina" and theConnectionID is not among the items of revOpenDatabases() ) \
+         then
       
       ## Cleanup!
       ## Move any props that are no temp over to temporary area.
@@ -4455,9 +4460,9 @@ command dbconn_connect
                put sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["cache size"] into theCacheSize
                if not _IsPositiveInteger(theCacheSize) then put 3 * 1024 * 1024 into theCacheSize
                get Valentina_Init(theCacheSize, \
-                      sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["mac serial number"], \
-                      sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["win serial number"], \
-                      sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["unix serial number"])
+                     sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["mac serial number"], \
+                     sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["win serial number"], \
+                     sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["unix serial number"])
                get Valentina_DebugLevel(sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["debug level"])
                get Valentina_FlushEachLog( sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["flush each log"] )
                
@@ -4469,9 +4474,9 @@ command dbconn_connect
                
                if there is not a file theDatabasePath then	# create database if it doesn't exist
                   get VDatabase_Create(theConnectionID, theDatabasePath, \
-                         sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["mode"], \
-                         sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["segment size"], \
-                         sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["os encoding"])
+                        sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["mode"], \
+                        sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["segment size"], \
+                        sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["os encoding"])
                else
                   get VDatabase_Open(theConnectionID, theDatabasePath)
                end if
@@ -4492,10 +4497,10 @@ command dbconn_connect
                end if
                
                put VConnection_Constructor( sConnectionsA[ theTempKeyA ]["host"], \
-                      sConnectionsA[ theTempKeyA ]["username"], \
-                      sConnectionsA[ theTempKeyA ]["password"], \
-                      thePort, \
-                      sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["timeout"]) into theClientConnID
+                     sConnectionsA[ theTempKeyA ]["username"], \
+                     sConnectionsA[ theTempKeyA ]["password"], \
+                     thePort, \
+                     sConnectionsA[ theTempKeyA ]["vendor"]["valentina"]["timeout"]) into theClientConnID
                
                if VConnection_Open( theClientConnID ) contains "error" then
                   put Valentina_ErrString() into theError
@@ -4534,42 +4539,48 @@ command dbconn_connect
             break
          case "sqlite"
             -- case "sqlite3"
-            put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
-                   sConnectionsA[ theTempKeyA ]["database name"],,,) into theConnectionID
+            if sConnectionsA[ theTempKeyA ]["vendor"]["sqlite"]["options"] is not empty then
+               put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
+                     sConnectionsA[ theTempKeyA ]["database name"], \
+                     sConnectionsA[ theTempKeyA ]["vendor"]["sqlite"]["options"]) into theConnectionID
+            else
+               put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
+                     sConnectionsA[ theTempKeyA ]["database name"],,,) into theConnectionID
+            end if
             break
          case "mysql"
             put sConnectionsA[ theTempKeyA ]["host"] into theHost
             if sConnectionsA[ theTempKeyA ]["port"] is not empty then \
-                   put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
+                  put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
             put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
-                   theHost, \
-                   sConnectionsA[ theTempKeyA ]["database name"], \
-                   sConnectionsA[ theTempKeyA ]["username"], \
-                   sConnectionsA[ theTempKeyA ]["password"], \
-                   sDbsA[ theKeyA ]["use ssl"],,,) into theConnectionID
+                  theHost, \
+                  sConnectionsA[ theTempKeyA ]["database name"], \
+                  sConnectionsA[ theTempKeyA ]["username"], \
+                  sConnectionsA[ theTempKeyA ]["password"], \
+                  sDbsA[ theKeyA ]["use ssl"],,,) into theConnectionID
             break
          case "odbc"
             put sConnectionsA[ theTempKeyA ]["host"] into theHost
             if sConnectionsA[ theTempKeyA ]["port"] is not empty then \
-                   put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
+                  put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
             ## cursor type is "static", "emulated static", or "forward only"
             put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
-                   theHost, \
-                   sConnectionsA[ theTempKeyA ]["database name"], \
-                   sConnectionsA[ theTempKeyA ]["username"], \
-                   sConnectionsA[ theTempKeyA ]["password"], \
-                   sConnectionsA[ theTempKeyA ]["vendor"][ "odbc" ]["cursor type"],,,) into theConnectionID
+                  theHost, \
+                  sConnectionsA[ theTempKeyA ]["database name"], \
+                  sConnectionsA[ theTempKeyA ]["username"], \
+                  sConnectionsA[ theTempKeyA ]["password"], \
+                  sConnectionsA[ theTempKeyA ]["vendor"][ "odbc" ]["cursor type"],,,) into theConnectionID
             break
          default        
             put sConnectionsA[ theTempKeyA ]["host"] into theHost
             if sConnectionsA[ theTempKeyA ]["port"] is not empty then \
-                   put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
+                  put ":" & sConnectionsA[ theTempKeyA ]["port"] after theHost
             put revOpenDatabase(sDbsA[ theKeyA ]["adaptor"], \
-                   theHost, \
-                   sConnectionsA[ theTempKeyA ]["database name"], \
-                   sConnectionsA[ theTempKeyA ]["username"], \
-                   sConnectionsA[ theTempKeyA ]["password"], \
-                   ,,,) into theConnectionID
+                  theHost, \
+                  sConnectionsA[ theTempKeyA ]["database name"], \
+                  sConnectionsA[ theTempKeyA ]["username"], \
+                  sConnectionsA[ theTempKeyA ]["password"], \
+                  ,,,) into theConnectionID
             break
       end SWITCH
       
@@ -4601,7 +4612,7 @@ command dbconn_connect
    
    ## Read in schema if we don't have it
    if _IsPositiveInteger(theConnectionID) and sDbsA[ pConnectionA["database"] ]["schema"]["tables"] is not an array \
-          and pConnectionA["import schema"] is not false then
+         and pConnectionA["import schema"] is not false then
       dbsynch_schemaWithDatabase pConnectionA
       put the result into theError
    end if
@@ -4629,74 +4640,74 @@ end dbconn_connect
 * \return Error message
 */
 command dbconn_disconnect
-    -----
-    local theConnectionID
-    local theCursor, theCursors
-    local theError
-    local theKeyA
-    -----
-    put param(2) into pKey
-    _ValidateKey pKey
-    -- try
-    put _CreateConnectionArray(param(1), pKey) into pConnectionA
-    -- catch e
-    -- ## in case no connection exists
-    -- end try
-    
-    -- if pConnectionA is an array then
-    put _KeyArrayForConnection(pConnectionA) into theKeyA
-    put _KeyArrayForTempConnection(pConnectionA) into theTempKeyA
-    put sConnectionsA[ theTempKeyA ]["connection id"] into theConnectionID
-    -- end if
-     
-    if theConnectionID > 0 then
-        set the wholeMatches to true
-        
-        if sDbsA[ theKeyA ]["type"] is "valentina" then
-            if sConnectionsA[ theTempKeyA ]["connection id"] > 0 then
-                if VDatabase_IsOpen( sConnectionsA[ theTempKeyA ]["connection id"] ) then
-                    get VDatabase_Flush ( sConnectionsA[ theTempKeyA ]["connection id"] )
-                    get VDatabase_Close( sConnectionsA[ theTempKeyA ]["connection id"] )
-                end if
-                get VDatabase_Destructor( sConnectionsA[ theTempKeyA ]["connection id"] )
+   -----
+   local theConnectionID
+   local theCursor, theCursors
+   local theError
+   local theKeyA
+   -----
+   put param(2) into pKey
+   _ValidateKey pKey
+   -- try
+   put _CreateConnectionArray(param(1), pKey) into pConnectionA
+   -- catch e
+   -- ## in case no connection exists
+   -- end try
+   
+   -- if pConnectionA is an array then
+   put _KeyArrayForConnection(pConnectionA) into theKeyA
+   put _KeyArrayForTempConnection(pConnectionA) into theTempKeyA
+   put sConnectionsA[ theTempKeyA ]["connection id"] into theConnectionID
+   -- end if
+   
+   if theConnectionID > 0 then
+      set the wholeMatches to true
+      
+      if sDbsA[ theKeyA ]["type"] is "valentina" then
+         if sConnectionsA[ theTempKeyA ]["connection id"] > 0 then
+            if VDatabase_IsOpen( sConnectionsA[ theTempKeyA ]["connection id"] ) then
+               get VDatabase_Flush ( sConnectionsA[ theTempKeyA ]["connection id"] )
+               get VDatabase_Close( sConnectionsA[ theTempKeyA ]["connection id"] )
             end if
-             
-            ## close connection for client/server connection
-            if sConnectionsA[ theTempKeyA ]["valentina client connection id"] > 0 then
-                get VConnection_Close( sConnectionsA[ theTempKeyA ]["valentina client connection id"] )
-                get Valentina_ShutdownClient()
-            else
-                get Valentina_Shutdown()
-            end if  
-             
-            put 0 into sConnectionsA[ theTempKeyA ]["valentina client connection id"]
-             
-        else if theConnectionID is among the items of revOpenDatabases() then
-            put revDatabaseCursors(theConnectionID) into theCursors
-            repeat for each item theCursor in theCursors
-                revCloseCursor theCursor
-            end repeat
-             
-            ## Safety net
-            ## Note: need to think about this before uncommenting
-            -- if sConnectionsA[ theTempKeyA ]["transaction in process"] then
-            -- dbconn_commitTransaction empty, pConnectionA -- note that we don't pass in any params here
-            -- end if
-             
-            revCloseDatabase theConnectionID
-            put the result into theError
-        end if
-        
-        put 0 into sConnectionsA[ theTempKeyA ]["connection id"]
-        put 0 into sConnectionsA[ theTempKeyA ]["open transactions"]
-    end if
-     
-    if theError begins with "revdberr," then
-        delete char 1 to length("revdberr,") of theError
-    end if
-    
-    _dbconnSetLastError pConnectionA, theError
-    return theError
+            get VDatabase_Destructor( sConnectionsA[ theTempKeyA ]["connection id"] )
+         end if
+         
+         ## close connection for client/server connection
+         if sConnectionsA[ theTempKeyA ]["valentina client connection id"] > 0 then
+            get VConnection_Close( sConnectionsA[ theTempKeyA ]["valentina client connection id"] )
+            get Valentina_ShutdownClient()
+         else
+            get Valentina_Shutdown()
+         end if  
+         
+         put 0 into sConnectionsA[ theTempKeyA ]["valentina client connection id"]
+         
+      else if theConnectionID is among the items of revOpenDatabases() then
+         put revDatabaseCursors(theConnectionID) into theCursors
+         repeat for each item theCursor in theCursors
+            revCloseCursor theCursor
+         end repeat
+         
+         ## Safety net
+         ## Note: need to think about this before uncommenting
+         -- if sConnectionsA[ theTempKeyA ]["transaction in process"] then
+         -- dbconn_commitTransaction empty, pConnectionA -- note that we don't pass in any params here
+         -- end if
+         
+         revCloseDatabase theConnectionID
+         put the result into theError
+      end if
+      
+      put 0 into sConnectionsA[ theTempKeyA ]["connection id"]
+      put 0 into sConnectionsA[ theTempKeyA ]["open transactions"]
+   end if
+   
+   if theError begins with "revdberr," then
+      delete char 1 to length("revdberr,") of theError
+   end if
+   
+   _dbconnSetLastError pConnectionA, theError
+   return theError
 end dbconn_disconnect
 
 
@@ -4712,7 +4723,7 @@ end dbconn_disconnect
 *
 * This command will try to reconnect to the database 1 time when certain error messages are returned from the RevDB driver.
 * For MySQL this occurs when the error is 'MySQL server has gone away'. For SQLite this occurs \
-        * when the driver returns an error with 'the database file is locked' or 'some kind of disk i/o error occurred'.
+      * when the driver returns an error with 'the database file is locked' or 'some kind of disk i/o error occurred'.
 *
 * \package Database Connection
 *
