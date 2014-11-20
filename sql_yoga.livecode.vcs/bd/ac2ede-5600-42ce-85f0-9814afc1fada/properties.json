@@ -47,13 +47,13 @@
       }
     },
     "uRIP": {
-      "buildNumber": "4",
-      "copyright": "Copyright 2009-2012 Blue Mango Learning Systems",
+      "buildNumber": "1",
+      "copyright": "Copyright 2009-2014 Blue Mango Learning Systems",
       "creator": "Blue Mango Learning Systems",
       "description": "Database objects library",
       "homeURL": "http://www.bluemangolearning.com/revolution",
       "name": "SQL Yoga",
-      "version": "1.1.0"
+      "version": "1.1.1"
     }
   },
   "properties": {
@@ -70,7 +70,7 @@
     "cantAbort": "false",
     "cantDelete": "false",
     "cantModify": "false",
-    "decorations": "default",
+    "decorations": "title,menu,minimize,maximize,close",
     "destroyStack": "false",
     "destroyWindow": "false",
     "dynamicPaths": "false",

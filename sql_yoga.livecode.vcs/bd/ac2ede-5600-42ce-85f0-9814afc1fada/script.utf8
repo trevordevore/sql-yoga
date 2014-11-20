@@ -4130,6 +4130,8 @@ end dbconn_set
 *
 * <b>SQLite</b>
 *
+* See revOpenDatabase documentation for a description of each of these properties.
+*
 * <b>options</b>:
 *
 * <b>Valentina</b>
