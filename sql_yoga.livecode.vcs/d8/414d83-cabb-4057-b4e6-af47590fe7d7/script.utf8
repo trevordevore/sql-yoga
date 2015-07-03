@@ -2796,7 +2796,10 @@ private command _valentina_dbTableFields pConnectionA, pTable
       delete the last char of theA["field order"]
       
       ## Default to Valentina special key
-      if theA["primary key"] is empty then put "RecID" into theA["primary key"]
+      if theA["primary key"] is empty then
+         put "RecID" into theA["primary key"]
+         put "RecID" into item (the number of items of theA["field order"] + 1) of theA["field order"]
+      end if
    end if
    
    if theError is empty then
