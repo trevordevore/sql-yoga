@@ -682,12 +682,10 @@ command dbsynch_dbTableCreateSQL pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theCreateTableSQL
+    return theCreateTableSQL for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end dbsynch_dbTableCreateSQL
 
 
@@ -771,12 +769,10 @@ private command _sqlite_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _sqlite_dbTableFields
 
 
@@ -814,12 +810,10 @@ private command _sqlite_dbTableRelationships pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _sqlite_dbTableRelationships
 
 
@@ -888,12 +882,10 @@ private command _sqlite_dbTableIndexes pConnectionA, pTable, @pFieldsA
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _sqlite_dbTableIndexes
 
 
@@ -1299,9 +1291,11 @@ command _sqlite_createSQLFromDB pTable, pCreateAs, pExcludeFields, pConnectionA
     put ")" after theSQL
   end if
 
-  if theError is not empty then put empty into theSQL
-  _SetValueOfItInCaller theSQL
-  return theSQL
+  if theError is empty then
+    return theSQL for value
+  else
+    return theError for error
+  end if
 end _sqlite_createSQLFromDB
 
 
@@ -1328,9 +1322,11 @@ private command _getAllDefinitionsFromCreateSQL pSQL
     if theError is not empty then exit repeat
   end repeat
 
-  if theError is not empty then put empty into theDefsA
-  _SetValueOfItInCaller theDefsA
-  return theError
+  if theError is empty then
+    return theDefsA for value
+  else
+    return theError for error
+  end if
 end _getAllDefinitionsFromCreateSQL
 
 
@@ -1769,12 +1765,10 @@ private command _mysql_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _mysql_dbTableFields
 
 
@@ -1815,12 +1809,10 @@ private command _mysql_dbTableRelationships pConnectionA, pTable
   -- end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _mysql_dbTableRelationships
 
 
@@ -1868,12 +1860,10 @@ private command _mysql_dbTableIndexes pConnectionA, pTable, @pFieldsA
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _mysql_dbTableIndexes
 
 
@@ -2581,12 +2571,10 @@ private command _postgresql_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _postgresql_dbTableFields
 
 
@@ -2634,12 +2622,10 @@ private command _postgresql_dbTableIndexes pConnectionA, pTable, @pFieldsA
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _postgresql_dbTableIndexes
 
 
@@ -2774,12 +2760,10 @@ private command _valentina_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _valentina_dbTableFields
 
 
@@ -2827,12 +2811,10 @@ private command _valentina_dbTableIndexes pConnectionA, pTable, @pFieldsA
   -- end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _valentina_dbTableIndexes
 
 
@@ -2917,12 +2899,10 @@ private command _filemaker_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _filemaker_dbTableFields
 
 
@@ -2971,12 +2951,10 @@ private command _filemaker_dbTableIndexes pConnectionA, pTable, @pFieldsA
   -- end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _filemaker_dbTableIndexes
 
 
@@ -3154,12 +3132,10 @@ private command _sqlserver_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _sqlserver_dbTableFields
 
 
@@ -3208,12 +3184,10 @@ private command _sqlserver_dbTableIndexes pConnectionA, pTable, @pFieldsA
   -- end if
 
   if theError is empty then
-    _SetValueOfItInCaller theA
+    return theA for value
   else
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end _sqlserver_dbTableIndexes
 
 
@@ -3516,41 +3490,3 @@ private function _ErrorMsg pMsg, pError
     return empty
   end if
 end _ErrorMsg
-
-private command _SetValueOfItInCaller pValue
-  global gTempStorageForHandlerLocalVar
-
-  ## Store value in global
-  put pValue into gTempStorageForHandlerLocalVar
-
-  ## Store current debugcontext (debugger uses this)
-  put the debugcontext into theOrigContext
-
-  ## the executionContexts is the list of handlers in the chain.
-  ## This handler would be line -1.
-  ## The handler that called this handler is -2.
-  ## The handler that you want to set "it" in is -3
-  put line -3 of the executionContexts into theContext
-
-  ## Account for behaviors in the context. Use repeat loop in case
-  ## stack name has comma in it
-  repeat for each item theItem in theContext
-    add 1 to i
-    if theItem is an integer then
-      exit repeat
-    end if
-  end repeat
-  delete item i + 1 to -1 of theContext
-
-  set the debugcontext to theContext
-
-  ## Make the global gTempStorageForHandlerLocalVar available within context of handler we
-  ## want to set "it" in. Then set it to the global var
-  debugDo "global gTempStorageForHandlerLocalVar;put gTempStorageForHandlerLocalVar into it"
-
-  ## restore debugcontext
-  set the debugcontext to theOrigContext
-
-  ## cleanup
-  delete global gTempStorageForHandlerLocalVar
-end _SetValueOfItInCaller

@@ -199,6 +199,8 @@ end sqlyoga_addToArray
 * \return empty
 */
 command sqlyoga_arrayPush @pArrayA, pValue
+  local theIndex
+
   put the number of elements of pArrayA + 1 into theIndex
   put pValue into pArrayA[theIndex]
   return empty
@@ -213,6 +215,8 @@ end sqlyoga_arrayPush
 * \return empty
 */
 function sqlyoga_getDatabases
+  local theDatabases
+
   put the keys of sDbsA into theDatabases
   sort theDatabases
   return theDatabases
@@ -310,6 +314,8 @@ end sqlyoga_escapeString
 
 
 function sqlyoga_lastInsertIDQuery pDbType
+  local theDo, theSQL
+
   replace space with empty in pDbType
   put "put _" & pDbType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
   do theDO
@@ -320,6 +326,8 @@ end sqlyoga_lastInsertIDQuery
 --> String Parsers (Private)
 
 private function _StripDBObjectQuotes pString
+  local theCharsToStrip
+
   put quote & "'" & "[" & "]" into theCharsToStrip
   repeat until char 1 of pString is not in theCharsToStrip
     delete char 1 of pString
@@ -337,6 +345,7 @@ private function _ParseSelectClause pString
   local ignoringInput
   local theAsOffset
   local theChar, theCharNo
+  local theStartEscapeChars, theEndEscapeChars
   local theCharsFollowingOperators
   local theCharsPrecedingOperators
   local theEscapeChars
@@ -419,6 +428,8 @@ end _ParseSelectClause
 
 
 private command _ProcessSelectClauseChunk @pFieldA, pString, pAsOffset
+  local theAs, theValue, theNextIndex
+
   ## Process chunk
   if pAsOffset > 0 then
     put char (pAsOffset + 4) to -1 of pString into theAs
@@ -438,7 +449,7 @@ end _ProcessSelectClauseChunk
 private function _ConvertSelectClauseToSelectClauseFieldIndex pKey, pSelectClause, pTables
   -----
   local i
-  local theFieldName
+  local theTable, theTables, theFieldName, theFieldNames
   local theFieldsA
   local theNextIndex
   local theSelectClauseA
@@ -593,6 +604,8 @@ end _ParseUserSearchString
 
 private command _ProcessWordInUserSearchString @pWord, @pSearchA, @pNextOperator, pDefaultOperator
   if pWord is not empty then
+    local theSearchIndex
+
     put the number of elements of pSearchA + 1 into theSearchIndex
 
     put pWord into pSearchA[theSearchIndex]["string"]
@@ -616,6 +629,8 @@ private function _FindFirstInstanceOfFieldInTables pKey, pTables, pFieldName
     else
       ## maybe an alias?
       if tableobjects_tableExists(theTable, pKey) then
+        local theTableA, theRealTable
+
         put tableobjects_getTable(theTable, pKey) into theTableA
         if tableobj_get(theTableA, "type") is "alias" then
           put tableobj_get(theTableA, "alias for table") into theRealTable
@@ -695,6 +710,8 @@ private function _TranslateConditions pString
 
     ## Process char
     if not ignoringInput then
+      local thePrecedingChar, theCharFollowingExpr
+
       ## Look for english expressions.
       ## Only start looking if previous char is space
       put char theCharNo to (theCharNo + (theLongestExpr - 1)) of pString into theSubstr
@@ -721,6 +738,8 @@ private function _TranslateConditions pString
       end if
 
       put theChar after theString
+
+      local terminationMatch
 
       ## Look for match in string with (...)AND/(...)OR
       ## Make sure AND/OR falls outside range of theExpression though
@@ -755,6 +774,8 @@ end _TranslateConditions
 
 
 private command _ProcessEnglishOperatorChunk @pClause, pString, pOperatorA
+  local theValueA, theCharsToSkip
+
   ## Get portion of string appearing after expression
   put pOperatorA["end"] + 1 into theValueA["start"]
   put the number of chars of pString into theValueA["end"]
@@ -890,6 +911,8 @@ end _ConvertEnglishOperatorToSQLExpressionInString
 
 
 private function _AddWildcardToSearchString pValue, pAddPrefix, pAddSuffix
+  local theStartCharNo, theEndCharNo
+
   put offset("'", pValue) into theStartCharNo
   if theStartCharNo > 0 then
     put offset("'", pValue, theStartCharNo) into theEndCharNo
@@ -918,7 +941,8 @@ end _AddWildcardToSearchString
 * Assumes the cursor is not at the end.
 */
 private command _CursorRowToArray @pQueryA, pFields, @pArray, pDynamicKeyA
-  local theValue
+  local theValue, theNextKeyIndex, i
+  local theFldRef
 
   -- pFields should be the fields as returned by revDatabaseColumnNames. The names
   -- need to match up with the revDB index since we access by index below.
@@ -975,6 +999,8 @@ private command _CursorRowToArray @pQueryA, pFields, @pArray, pDynamicKeyA
   --> todo: Apply encodings
 
   --> Callbacks baby!
+  local theMessage, theObject
+
   repeat for each line theCallback in pQueryA["callbacks"]["retrieve"]["after"]
     put item 1 of theCallback into theMessage
     put item 2 to -1 of theCallback into theObject
@@ -1022,6 +1048,8 @@ private function _QueryTableHierarchyStructure @pQueryA, pCursorFields
 
   ## Fill in root table
   if theTableA is an array then
+    local theJoinsA
+
     put tableobj_get(theTableA, "primary key") into theHierarchyA[theRootTable]["unique fields"]
 
     ## Now fill in joins tables in hierarchal structure
@@ -1038,6 +1066,8 @@ private function _QueryTableHierarchyStructure @pQueryA, pCursorFields
   ## Put fields into each table entry in hierarchy array. Then build rest of array.
   ## This allows us to properly store the 'unique fields' since we know if the table field
   ## prefixes the reference or not.
+  local theTables
+
   put sqlquery_get(pQueryA, "tables") into theTables
   set the itemDelimiter to "."
 
@@ -1087,7 +1117,7 @@ end _QueryTableHierarchyStructure
 
 private command _HierarchalCursorToArray @pQueryA, @pOutArray
   -----
-  local theCursorFields
+  local theCursorFields, theType, theRowA
   local theError
   local theHierarchyA
   local theRootTable
@@ -1166,7 +1196,7 @@ end _HierarchalCursorToArray
 ## We have to use "do" to dynamically build up the multi-dimensional element reference
 private command _ConvertRowTableFieldsToArray pKey, @pRowA, pTable, @pOutArray, @pTableHierarchyA, pDynamicKeyA
   -----
-  local theColumn
+  local usingAnArray, theColumn
   local theCurrentParentUniqueKey
   local theField
   local theIndex
@@ -1359,6 +1389,9 @@ end _ConvertQueryJoinToFlatHierarchy
 
 ## Returns the dynamic key array of table in a joins array. Empty if not found
 private function _FindTableInQueryJoins pJoinsA, pTable, pDynamicKeyA
+  local theTargetIndex, theCount, theFoundKeyA
+  local theNextIndex
+
   if pDynamicKeyA is not an array then
     put 1 into theTargetIndex
     put the number of elements of pJoinsA into theCount
@@ -1395,7 +1428,7 @@ private command _TablesInQueryJoin @pTablesA, pJoinsA, pDynamicKeyA
   local i
   local theCount
   local theNextIndex
-  local theTargetIndex
+  local theTargetIndex, theArrayIndex
   -----
   if pDynamicKeyA is not an array then
     put 1 into theTargetIndex
@@ -1433,16 +1466,16 @@ end _TablesInQueryJoin
 
 private command _JoinClauseFromQueryJoin @pClause, @pRelationshipOrderBy, pKeyOrConnection, pLeftTable, pLeftTableAs, pJoinsA
   ## Join it baby!
-  __JoinClauseFromQueryJoin pClause, pRelationshipOrderBy, pKeyOrConnection, pLeftTable, pLeftTableAs, pJoinsA, pDynamicKeyA
+  __JoinClauseFromQueryJoin pClause, pRelationshipOrderBy, pKeyOrConnection, pLeftTable, pLeftTableAs, pJoinsA
   delete the last char of pClause
 end _JoinClauseFromQueryJoin
 
 
 private command __JoinClauseFromQueryJoin @pClause, @pRelationshipOrderBy, pKeyOrConnection, pLeftTable, pLeftTableAs, pJoinsA, pDynamicKeyA
   -----
-  local i
+  local theDbKey, i
   local theCount
-  local theLeftTableAs, theLeftTableIndex
+  local theTable, theTableName, theLeftTable, theLeftTableAs, theLeftTableIndex, theOrderBy
   local theNextIndex
   local theRelationA
   local theTableIndex
@@ -1536,6 +1569,7 @@ private command _RemoveDuplicateJoins pJoinsA, @pFilteredJoinsA, pDynamicKeyA, @
   ## table.as, table.index, relationships index uniquely identify a join
   ## Perform lookup in pKeyArraysForTablesA - if we find it then append any "related table joins" to
   ## existing array. Otherwise just create it and store the key
+  local theNextDynamicIndex, theNextFilterIndex, theId
 
   put the number of elements of pDynamicKeyA + 1 into theNextDynamicIndex
   put the number of elements of pFilteredJoinsA[ pDynamicKeyA ] into theNextFilterIndex
@@ -1569,7 +1603,8 @@ end _RemoveDuplicateJoins
 
 private function _SelectClauseFromTables pConnectionA, pTablesA, pPrependTableName, pSelectColumnNamesAs
   -----
-  local theClause
+  local theEQsA, theQsA
+  local theTableA, theClause
   local theField, theFields
   local theTable
   -----
@@ -1633,7 +1668,7 @@ end _SelectClauseFromTables
 ## Now we set select clause as a string.
 private function _SelectClauseFromSelect pKey, pSelectA, pTableIndexesA, pPrependTableName, pSelectColumnNamesAs
   -----
-  local i,theKey
+  local i,theIndex, theKey
   local theClause
   local theFieldA, theFieldName
   local theTable, theTableA, theTableIndex
@@ -1687,6 +1722,8 @@ end _SelectClauseFromSelect
 
 
 private function _SelectClauseFromVirtual pVirtualFields
+  local theClause
+
   repeat with i = 1 to the number of elements of pVirtualFields
     put pVirtualFields[i]["value"] after theClause
     if pVirtualFields[i]["as"] is not empty then
@@ -1896,6 +1933,8 @@ private function _StringToJoins pRootTableA, pString
       put _FindRelationshipBetweenTables(pRootTableA, theToTableA) into theRelationsA
 
       ## Add to join
+      local theRelationshipType, theCrossRefTable, theToTable
+
       put empty into theJoinDynamicKeyA
       repeat with i = 1 to the number of elements of theRelationsA
         ## is relationship already in JOIN?
@@ -1944,6 +1983,8 @@ private function _StringToJoins pRootTableA, pString
         ## go ahead and update the as and join type.
         ## Otherwise there is nothing to do.
         if i is the number of elements of theRelationsA then
+          local theTempDynamicKeyA
+
           put theAs into theJoinsA[ theJoinDynamicKeyA ]["table"]["as"]
           put theJoinType into theJoinsA[ theJoinDynamicKeyA ]["join type"]
 
@@ -2021,7 +2062,7 @@ end _DynamicKeyForRelationshipInJoin
 
 private command _VerifyTableJoins pParentTableA, @pJoinsA, pDynamicKeyA
   -----
-  local i
+  local i, theCharNo, theAs
   local theChildTableA
   local theCount
   local theError
@@ -2068,6 +2109,8 @@ private command _VerifyTableJoins pParentTableA, @pJoinsA, pDynamicKeyA
 
     ## Cache relationship
     if pJoinsA[pDynamicKeyA]["relationship index"] is empty then
+      local theDudA
+
       put empty into theDudA ## since we are in repeat loop we need to reset relationships searched each time
       put _FindImmediateRelationBetweenTables(pParentTableA, theChildTableA, theDudA) into theRelationA
 
@@ -5390,16 +5433,10 @@ command dbconn_executeWBindings pSQL, @pBindingsA
 
   --> CHECK FOR ERRORS
   if theAffectedRows is not an integer then
-    ## NEW THROW BEHAVIOR
     _ThrowError "sqlyoga_executesql_err", theAffectedRows && "(" & pSQL & ")"
-    -- throw "sqlyoga_executesql_err," & theAffectedRows && "(" & pSQL & ")"
-
-    -- _SetValueOfItInCaller empty
-    -- return theAffectedRows
-  else
-    _SetValueOfItInCaller theAffectedRows
-    return empty
   end if
+
+  return theAffectedRows for value
 end dbconn_executeWBindings
 
 
@@ -5632,7 +5669,6 @@ end _KeyArrayForScope
 command tblscope_createObject pTableA, pName
   -----
   local theA
-  local theError
   local theKeyA
   local theNextIndex
   -----
@@ -5655,10 +5691,8 @@ command tblscope_createObject pTableA, pName
     put pTableA["database"] into theA["database"]
     put pTableA["name"] into theA["table"]
     put pName into theA["name"]
-    _SetValueOfItInCaller theA
+    return theA for value
   end if
-
-  return theError
 end tblscope_createObject
 
 
@@ -6114,9 +6148,12 @@ command tableobj_createObject pName, pType
   put kTableReference into theA["type"]
   put pKey into theA["database"]
   put theNextIndex into theA["name"]
-  _SetValueOfItInCaller theA
 
-  return theError
+  if theError is not empty then
+    return theError for error
+  else
+    return theA for value
+  end if
 end tableobj_createObject
 
 
@@ -6718,9 +6755,12 @@ command tblrelation_createObject pName, pDBKey
   put kRelationshipReference into theA["type"]
   put pDBKey into theA["database"]
   put theNextIndex into theA["index"]
-  _SetValueOfItInCaller theA
 
-  return theError
+  if theError is not empty then
+    return theError for error
+  else
+    return theA for value
+  end if
 end tblrelation_createObject
 
 
@@ -7327,9 +7367,12 @@ command dbindex_create pTableA, pName
   put pTableA["database"] into theA["database"]
   put pTableA["index"] into theA["table"]
   put theNextIndex into theA["index"]
-  _SetValueOfItInCaller theA
 
-  return theError
+  if theError is not empty then
+    return theError for error
+  else
+    return theA for value
+  end if
 end dbindex_create
 
 
@@ -7474,7 +7517,6 @@ command sqlquerytmpl_createObject pName
 
   if pName is among the keys of sDbsA[pKey]["query templates"] then
     put "query template '" & pName & "' already exists in database object '" & pKey & "'" into theError
-    _SetValueOfItInCaller empty
   else
     repeat for each item theProp in sSQLQuerySetProps
       put empty into theA[theProp]
@@ -7490,10 +7532,13 @@ command sqlquerytmpl_createObject pName
     put kQueryTemplateReference into theA["type"]
     put pKey into theA["database"]
     put pName into theA["name"]
-    _SetValueOfItInCaller theA
   end if
 
-  return theError
+  if theError is not empty then
+    return theError for error
+  else
+    return theA for value
+  end if
 end sqlquerytmpl_createObject
 
 
@@ -8649,27 +8694,18 @@ command sqlquery_create pTable, pParamsA
   put 0 into theAffectedRows
 
   if theError is empty then
-    try
-      ## Perform the update
-      put false into updateRecordAfterUpdate
-      _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, empty
-      put the result into theError
-      put it into theAffectedRows
-    catch e
-      put e into theError
-      put true into rethrowTheError
-    end try
+    ## Perform the update
+    put false into updateRecordAfterUpdate
+    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, empty
+    put the result into theError
+    put it into theAffectedRows
   end if
 
-  if theError is empty then
-    _SetValueOfItInCaller theAffectedRows
+  if theError is not empty then
+    return theError for error
   else
-    _SetValueOfItInCaller empty
-
-    if rethrowTheError then throw theError
+    return theAffectedRows for value
   end if
-
-  return theError
 end sqlquery_create
 
 
@@ -8807,27 +8843,18 @@ command sqlquery_update pTable, pConditions, pParamsA
   put 0 into theAffectedRows
 
   if theError is empty then
-    try
-      ## Perform the update
-      put false into updateRecordAfterUpdate
-      _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, empty
-      put the result into theError
-      put it into theAffectedRows
-    catch e
-      put e into theError
-      put true into rethrowTheError
-    end try
+    ## Perform the update
+    put false into updateRecordAfterUpdate
+    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, empty
+    put the result into theError
+    put it into theAffectedRows
   end if
 
-  if theError is empty then
-    _SetValueOfItInCaller theAffectedRows
+  if theError is not empty then
+    return theError for error
   else
-    _SetValueOfItInCaller empty
-
-    if rethrowTheError then throw theError
+    return theAffectedRows for value
   end if
-
-  return theError
 end sqlquery_update
 
 
@@ -8864,13 +8891,11 @@ command sqlquery_retrieve @pQueryA
 
   if theError is empty then
     put it into pQueryA["cursor id"]
-    _SetValueOfItInCaller it
+    return it for value
   else
     put 0 into pQueryA["cursor id"]
-    _SetValueOfItInCaller empty
+    return theError for error
   end if
-
-  return theError
 end sqlquery_retrieve
 
 
@@ -9082,16 +9107,12 @@ command sqlquery_delete @pQueryA
 
   if theError is empty then
     dbconn_commitTransaction theTransA, theConnectionA
-    _SetValueOfItInCaller theAffectedRows
+    return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, theConnectionA
-    _SetValueOfItInCaller empty
-
-    put theError
     if rethrowTheError then throw theError
+    else return theError for error
   end if
-
-  return theError
 end sqlquery_delete
 
 
@@ -10470,15 +10491,12 @@ command sqlrecord_update @pRecordsA
 
   if theError is empty then
     dbconn_commitTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller theAffectedRows
+    return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller empty
-
     if rethrowTheError then throw theError
+    else return theError for error
   end if
-
-  return theError
 end sqlrecord_update
 
 
@@ -10687,13 +10705,11 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, @pTablesA, @pRecord
     end repeat
   end if
 
-  if theError is empty then
-    _SetValueOfItInCaller theAffectedRows
+  if theError is not empty then
+    return theError for error
   else
-    _SetValueOfItInCaller empty
+    return theAffectedRows for value
   end if
-
-  return theError
 end _UpdateRecordInTable
 
 
@@ -11048,15 +11064,12 @@ command sqlrecord_delete @pRecordsA
 
   if theError is empty then
     dbconn_commitTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller theAffectedRows
+    return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller empty
-
     if rethrowTheError then throw theError
+    else return theError for error
   end if
-
-  return theError
 end sqlrecord_delete pRecordsA
 
 
@@ -11163,15 +11176,12 @@ command sqlrecord_create @pRecordsA
 
   if theError is empty then
     dbconn_commitTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller theAffectedRows
+    return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, pConnectionA
-    _SetValueOfItInCaller empty
-
     if rethrowTheError then throw theError
+    else return theError for error
   end if
-
-  return theError
 end sqlrecord_create
 
 
@@ -11360,9 +11370,11 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, @pTablesA, @pReco
     end if
   end if
 
-  ## report affected rows either way. Error could have occurred when fetching updated record
-  _SetValueOfItInCaller theAffectedRows
-  return theError
+  if theError is not empty then
+    return theError for error
+  else
+    return theAffectedRows for value
+  end if
 end _InsertRecordIntoTable
 
 
