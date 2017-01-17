@@ -41,7 +41,7 @@ script "libSQLYogaSchema"
 * \package Database Schema
 */
 command dbschema_migrateToVersion pVersion, pConnectionA
-  local theError, theContainer, theVersions
+  local theError, theContainer, theVersions, theSQL
 
   put dbobject_createConnectionArray(pConnectionA, param(3)) into pConnectionA
   put dbobject_get("schema migrations", pConnectionA["database"]) into theContainer
@@ -78,6 +78,8 @@ command dbschema_migrateToVersion pVersion, pConnectionA
   end if
 
   if theError is empty then
+    local theBindingsA, theInstalledVersion
+
     put format("SELECT version FROM %sschema%s", theQuotesA["left"], theQuotesA["right"]) into theSQL
     put empty into theBindingsA
     dbconn_retrieveQueryAsData theSQL, theBindingsA, theInstalledVersion, tab, cr, pConnectionA
@@ -85,6 +87,8 @@ command dbschema_migrateToVersion pVersion, pConnectionA
   end if
 
   if theError is empty then
+    local theControlName, theVersion, theLastInstalledVersion
+
     repeat for each line theControlName in theVersions
       put word 2 of theControlName into theVersion
       if theVersion > pVersion then exit repeat
@@ -123,12 +127,13 @@ command dbschema_migrateToVersion pVersion, pConnectionA
   end if
 
   if theError is empty then
+    local theType
+
     ## Let db clean up
     put dbconn_get("type", pConnectionA) into theType
 
     replace space with empty in theType
-    put "_" & theType & "_afterMigration pConnectionA" into theDo
-    do theDo
+    dispatch ("_" & theType & "_afterMigration") with pConnectionA
     put the result into theError
   end if
 
@@ -137,7 +142,7 @@ end dbschema_migrateToVersion
 
 ## Creates a table in the database
 command dbschema_createTable pName, pTableA, pConnectionA
-  local theError
+  local theError, theType, theEncoding
 
   -- pTableA["primary key"]
   -- pTableA["fields"]
@@ -162,12 +167,13 @@ command dbschema_createTable pName, pTableA, pConnectionA
 
   if theError is empty then
     replace space with empty in theType
-    put "_" & theType & "_dbCreateTable pName, pTableA, pConnectionA" into theDo
-    do theDo
+    dispatch ("_" & theType & "_dbCreateTable") with pName, pTableA, pConnectionA
     put _ErrorMsg("unable to create table '" & pName & "'", the result) into theError
   end if
 
   if theError is empty then
+    local theIndexA
+
     repeat with i = 1 to the number of elements of pTableA["indexes"]
       put pTableA["indexes"][i] into theIndexA
       dbschema_createIndex theIndexA["name"], theIndexA, pConnectionA
@@ -186,19 +192,20 @@ command dbschema_deleteTable pName
 end dbschema_deleteTable
 
 
-command dbschema_createFields pTable, pFieldsA, pConnectionA
-  local theError
+command dbschema_createFields pTable, pFieldsA, pConnection, pDBKey
+  local theError, theConnectionA
+  local theType, theEncoding
 
   -- name
   -- type
   -- length
   -- accepts null
   -- default value
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
-  put dbconn_get("type", pConnectionA) into theType
+  put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
+  put dbconn_get("type", theConnectionA) into theType
 
   ## Get effective encoding
-  put dbobject_get("encoding", pConnectionA["database"]) into theEncoding
+  put dbobject_get("encoding", theConnectionA["database"]) into theEncoding
 
   if theError is empty then
     ## fill in encoding for fields
@@ -211,8 +218,7 @@ command dbschema_createFields pTable, pFieldsA, pConnectionA
 
   if theError is empty then
     replace space with empty in theType
-    put "_" & theType & "_dbCreateFields pTable, pFieldsA, pConnectionA" into theDo
-    do theDo
+    dispatch ("_" & theType & "_dbCreateFields") with pTable, pFieldsA, theConnectionA
     put _ErrorMsg("unable to add fields", the result) into theError
   end if
 
@@ -220,53 +226,65 @@ command dbschema_createFields pTable, pFieldsA, pConnectionA
 end dbschema_createFields
 
 
-command dbschema_deleteFields pTable, pFields, pConnectionA
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
-  put dbconn_get("type", pConnectionA) into theType
+command dbschema_deleteFields pTable, pFields, pConnection, pDBKey
+  local theError, theConnectionA, theType
+
+  put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
+  put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbDeleteFields pTable, pFields, pConnectionA" into theDo
-  do theDo
+  dispatch ("_" & theType & "_dbDeleteFields") with pTable, pFields, theConnectionA
   put the result into theError
+
+  return theError
 end dbschema_deleteFields
 
 
-command dbschema_createIndex pName, pIndexA, pConnectionA
+command dbschema_createIndex pName, pIndexA, pConnection, pDBKey
+  local theError, theConnectionA, theType
+
   -- table
   -- type (unique, simple, fulltext, spatial)
   -- length
   -- fields[1].."name", "length", "sort order", "collation"
   -- indexing method (btree, hash, rtree)
 
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
-  put dbconn_get("type", pConnectionA) into theType
+  put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
+  put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbCreateTableIndexes pName, pIndexA, pConnectionA" into theDo
-  do theDo
+  dispatch ("_" & theType & "_dbCreateTableIndexes") with pName, pIndexA, theConnectionA
   put the result into theError
+
+  return theError
 end dbschema_createIndex
 
 
-command dbschema_deleteIndex pIndexName, pTableName, pConnectionA
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
-  put dbconn_get("type", pConnectionA) into theType
+command dbschema_deleteIndex pIndexName, pTableName, pConnection, pDBKey
+  local theError, theConnectionA, theType
+
+  put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
+  put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbDeleteIndex pIndexName, pTableName, pConnectionA" into theDo
-  do theDo
+  dispatch ("_" & theType & "_dbDeleteIndex") with pIndexName, pTableName, theConnectionA
   put the result into theError
+
+  return theError
 end dbschema_deleteIndex
 
 
-command dbschema_createTriggers pConnectionA
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
-  put dbconn_get("type", pConnectionA) into theType
+command dbschema_createTriggers pConnection, pDBKey
+  local theError, theConnectionA, theType
+
+  put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
+  put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbCreateForeignKeyConstraints pConnectionA" into theDo
-  do theDo
+  dispatch ("_" & theType & "_dbCreateForeignKeyConstraints") with theConnectionA
   put the result into theError
+
+  return theError
 end dbschema_createTriggers
 
 
@@ -280,7 +298,7 @@ command dbsynch_databaseWithSchema pConnectionA
   local theConnectionID
   local theDatabaseTables
   local theDBType
-  local theDo,theSQL
+  local theSQL
   local theError
   local theTable, theTableA
   local theTablesA
@@ -304,30 +322,10 @@ command dbsynch_databaseWithSchema pConnectionA
     replace space with empty in theDBType
 
     put revDatabaseTableNames(theConnectionID) into theDatabaseTables
-    if item 1 of theTables is "revdberr" then
-      put _ErrorMsg("failed to retrieve database table names", item 2 to -1 of theTables) into theError
+    if item 1 of theDatabaseTables is "revdberr" then
+      put _ErrorMsg("failed to retrieve database table names", item 2 to -1 of theDatabaseTables) into theError
     end if
   end if
-
-  ## DROP TABLES NOT IN SCHEMA
-  ## NOTE: We can't do this. There may be temp tables that should not go away. At least we have
-  ## to prompt the user or something.
-  -- if theError is empty then
-  -- put dbobject_getProp(theDatabaseObj, "table names") into theSchemaTables
-  -- put "put _" & theDBType & "_systemTables() into theSystemTables" into theDo
-  -- do theDo
-  --
-  -- repeat for each line theTable in theDatabaseTables
-  -- -- if lineoffset(theTable, theSchemaTables) is 0 and lineoffset(theTable, theSystemTables) is 0 then
-  -- if lineoffset(theTable, theSystemTables) is 0 then
-  -- dbsynch_dbDropTable pConnectionObject, theTable
-  -- put the result into theError
-  -- if theError is not empty then
-  -- exit repeat
-  -- end if
-  -- end if
-  -- end repeat
-  -- end if
 
   ## CREATE OR ALTER TABLES THAT EXIST IN SCHEMA
   if theError is empty then
@@ -356,8 +354,7 @@ command dbsynch_databaseWithSchema pConnectionA
   if theError is empty then
     repeat with i = 1 to the number of elements of theTablesA
       put theTablesA[i] into theTableA
-      put "_" & theDBType & "_dbCreateForeignKeyConstraints pConnectionA, theTableA" into theDo
-      do theDo
+      dispatch ("_" & theDBType & "_dbCreateForeignKeyConstraints") with pConnectionA, theTableA
       put the result into theError
 
       if theError is not empty then exit repeat
@@ -377,6 +374,8 @@ command dbsynch_databaseWithSchema pConnectionA
 
     if theError is empty then
       ## sync version
+      local theBindingsA
+
       put "SELECT * FROM schema" into theSQL
       dbconn_retrieveRecordsAsText theSQL, theBindingsA, theRecords,, pConnectionA
       put the result into theError
@@ -426,6 +425,7 @@ command dbsynch_schemaWithDatabase pConnectionA
 
   if theError is empty then
     ## get tables in database
+    local theTableCount, theTableRef
 
     if dbconn_get("type", pConnectionA) is "valentina" then
       put VDatabase_TableCount( theConnectionID ) into theTableCount
@@ -480,7 +480,7 @@ end dbsynch_dbDropTable
 command dbsynch_dbCreateTable pConnectionA, pTableA
   -----
   local theDBType
-  local theDo,theSQL
+  local theSQL
   local theError
   local theTable
   -----
@@ -504,8 +504,7 @@ command dbsynch_dbCreateTable pConnectionA, pTableA
 
   ## INDEXES
   if theError is empty then
-    put "_" & theDBType & "_dbCreateTableIndexes pConnectionA, pTableA" into theDo
-    do theDo
+    dispatch ("_" & theDBType & "_dbCreateTableIndexes") with pConnectionA, pTableA
     put the result into theError
   end if
 
@@ -516,13 +515,11 @@ end dbsynch_dbCreateTable
 command dbsynch_dbAlterTable pConnectionA, pTableA
   -----
   local theDBType
-  local theDO
   local theError
   -----
   put dbconn_get("type", pConnectionA) into theDBType
   replace space with empty in theDBType
-  put "_" & theDBType & "_dbAlterTable pConnectionA, pTableA" into theDO
-  do theDo
+  dispatch ("_" & theDBType & "_dbAlterTable") with pConnectionA, pTableA
   put the result into theError
 
   return theError
@@ -532,21 +529,21 @@ end dbsynch_dbAlterTable
 function dbsynch_createTableSQL pConnectionA, pTableA
   -----
   local theDBType
-  local theDo
+  local theSQL
   -----
   put dbconn_get("type", pConnectionA) into theDBType
   replace space with empty in theDBType
   ## CREATE TABLE
-  put "put _" & theDBType & "_dbCreateTableSQL(pConnectionA, pTableA) into theSQL" into theDo
-  do theDo
+  dispatch function ("_" & theDBType & "_dbCreateTableSQL") with pConnectionA, pTableA
+  put the result into theSQL
   return theSQL
 end dbsynch_createTableSQL
 
 
 command dbsynch_schemaImportTable pConnectionA, pTable
   -----
-  local i,theDo
-  local theDBType
+  local i
+  local theDBType, theSystemTables
   local theError
   local theField, theFieldA, theFields, theFieldsA, theIndexFields
   local theIndex, theIndexA, theIndexName
@@ -561,8 +558,8 @@ command dbsynch_schemaImportTable pConnectionA, pTable
   ## FILTER OUT DB CREATED TABLES
   set the wholeMatches to true
 
-  put "put _" & theDBType & "_systemTables() into theSystemTables" into theDo
-  do theDo
+  dispatch function ("_" & theDBType & "_systemTables")
+  put the result into theSystemTables
 
   if pTable is among the lines of theSystemTables then
     return empty
@@ -579,15 +576,13 @@ command dbsynch_schemaImportTable pConnectionA, pTable
   --> theArrayA["fields"][index]["unique"]
   --> theArrayA["fields"][index]["accepts null"]
   if theError is empty then
-    put "_" & theDBType & "_dbTableFields pConnectionA, pTable" into theDo
-    do theDo
+    dispatch ("_" & theDBType & "_dbTableFields") with pConnectionA, pTable
     put the result into theError
     put it into theTableA
   end if
 
   if theError is empty then
-    put "_" & theDBType & "_dbTableIndexes pConnectionA, pTable, theFieldsA " into theDo
-    do theDo
+    dispatch ("_" & theDBType & "_dbTableIndexes") with pConnectionA, pTable, theFieldsA
     put it into theIndexesA
   end if
 
@@ -619,19 +614,21 @@ end dbsynch_schemaImportTable
 
 -- splits a field type into type and length
 -- values come out in parameters
-command dbsynch_splitFieldType pFieldType, @pType, @pLength, @pSigned
-  put empty into pType
-  put empty into pLength
-  put empty into pSigned
+command dbsynch_splitFieldType pFieldType, @rType, @rLength, @rSigned
+  local theOffset
+
+  put empty into rType
+  put empty into rLength
+  put empty into rSigned
 
   put offset("(", pFieldType) into theOffset
   if theOffset > 0 then
-    put char 1 to theOffset - 1 of pFieldType into pType
-    put char theOffset + 1 to offset(")", pFieldType) - 1 of pFieldType into pLength
+    put char 1 to theOffset - 1 of pFieldType into rType
+    put char theOffset + 1 to offset(")", pFieldType) - 1 of pFieldType into rLength
   else
-    put word 1 of pFieldType into pType
+    put word 1 of pFieldType into rType
   end if
-  put word 2 of pFieldType is "signed" into pSigned
+  put word 2 of pFieldType is "signed" into rSigned
 
   return empty
 end dbsynch_splitFieldType
@@ -741,6 +738,7 @@ private command _sqlite_dbTableFields pConnectionA, pTable
       end if
 
       ## Note: default value is wrapped in '' if a string. Or it could be something like CURRENT_DATE if it is a sqlite function.
+      local theType, theLength, isSigned
 
       dbsynch_splitFieldType revDatabaseColumnNamed(theCursor, "Type"), theType, theLength, isSigned
 
@@ -777,6 +775,9 @@ end _sqlite_dbTableFields
 
 
 private command _sqlite_dbTableRelationships pConnectionA, pTable
+  local theError, theConnectionID, theQuotesA, leftQ, rightQ
+  local theSQL, theCursor
+
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQuotesA
   put theQuotesA["left"] into leftQ
@@ -791,6 +792,8 @@ private command _sqlite_dbTableRelationships pConnectionA, pTable
 
   if theError is empty then
     if not revQueryIsAtEnd(theCursor) then
+      local theIndex, theReferencedTable, theSourceColumns, theReferencedColumns, theA
+
       repeat forever
         add 1 to theIndex
 
@@ -817,7 +820,7 @@ private command _sqlite_dbTableRelationships pConnectionA, pTable
 end _sqlite_dbTableRelationships
 
 
-private command _sqlite_dbTableIndexes pConnectionA, pTable, @pFieldsA
+private command _sqlite_dbTableIndexes pConnectionA, pTable, pFieldsA
   -----
   local leftQ,rightQ
   local theA,theSQL
@@ -890,6 +893,8 @@ end _sqlite_dbTableIndexes
 
 
 private function _sqlite_getFieldSQLType pFieldA
+  local theType, theLimit, thePrecision, theScale, theSQLType
+
   put pFieldA["type"] into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
@@ -942,6 +947,7 @@ end _sqlite_getFieldSQLType
 
 private command _sqlite_dbCreateTable pName, pTableA, pConnectionA
   local theError
+  local theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -979,6 +985,8 @@ end _sqlite_dbCreateTable
 
 -- pTableA["@primary key is taken care of"] can be modified
 function _sqlite_getColumnDefSQL @pTableA, theFieldA
+  local theQsA, theSQLType, theSQL
+
   put quote into theQsA["left"]
   put quote into theQsA["right"]
   put _sqlite_getFieldSQLType(theFieldA) into theSQLType
@@ -1009,7 +1017,7 @@ end _sqlite_getColumnDefSQL
 
 private function _sqlite_ForeignKeySQL pForeignKeysA, pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -1037,7 +1045,7 @@ end _sqlite_ForeignKeySQL
 
 
 private command _sqlite_dbCreateFields pTable, pFieldsA, pConnectionA
-  local theError
+  local theError, theQsA, theTableA, theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -1059,6 +1067,8 @@ end _sqlite_dbCreateFields
 
 
 private command _sqlite_afterMigration pConnectionA
+  local theError
+
   dbconn_executeSQL "VACUUM", pConnectionA
   put _ErrorMsg("creating new table", the result) into theError
 
@@ -1067,9 +1077,10 @@ end _sqlite_afterMigration
 
 
 private command _sqlite_dbDeleteFields pTable, pFields, pConnectionA
-  local theError
-  local theOldCreateSQL
-  local theTriggersA, theIndexesA
+  local theError, theQsA
+  local theOldCreateSQL, theTempTable
+  local theTriggersA, theIndexesA, theOldFields, theNewFields, theItemNo
+  local theSQL, theBindingsA, theCreateTableSQL
 
   -- CREATE TABLE
   -- INSERT INTO new table (select from old table)
@@ -1123,12 +1134,17 @@ private command _sqlite_dbDeleteFields pTable, pFields, pConnectionA
 
   ## 3) Create new table
   if theError is empty then
+    local theDefsA
+
     _getAllDefinitionsFromCreateSQL theCreateTableSQL
     put the result into theError
   end if
 
   if theError is empty then
     put it into theDefsA
+
+    local theColumnName, theCharNo, theCharNo2
+
     repeat with i = the number of elements of theDefsA down to 1
       put empty into theColumnName
 
@@ -1218,7 +1234,7 @@ end _sqlite_dbDeleteFields
 
 command _sqlite_createSQLFromDB pTable, pCreateAs, pExcludeFields, pConnectionA
   local theSQL, theError
-  local theTrailer
+  local theTrailer, theQsA, theCreateSQL, theCreateTableSQL
   local theForeignKeysA, theTableA
 
   if pCreateAs is empty then put pTable into pCreateAs
@@ -1300,7 +1316,7 @@ end _sqlite_createSQLFromDB
 
 
 private command _getAllDefinitionsFromCreateSQL pSQL
-  local theError, theDefsA
+  local theError, theDefsA, theDefinition, theDefStartCharNo, theDefEndCharNo, theLastCharNo
   local i = 0
 
   repeat forever
@@ -1330,8 +1346,8 @@ private command _getAllDefinitionsFromCreateSQL pSQL
 end _getAllDefinitionsFromCreateSQL
 
 
-private command _extractDefinitionFromCreateSQL pSQL, pDefNum, @pOutCreateDef, @pOutStartDefCharNo, @pOutEndDefCharNo, @pOutClosingCharNo
-  local theError, theCreateDef
+private command _extractDefinitionFromCreateSQL pSQL, pDefNum, @rCreateDef, @rStartDefCharNo, @rEndDefCharNo, @rClosingCharNo
+  local theError, theRootSearchCharNo, theCreateDef
 
   put offset("(", pSQL) into theRootSearchCharNo
   if theRootSearchCharNo is 0 then put "invalid sql statement: missing " & quote & "(" & quote into theError
@@ -1340,8 +1356,8 @@ private command _extractDefinitionFromCreateSQL pSQL, pDefNum, @pOutCreateDef, @
     add 1 to theRootSearchCharNo
     repeat pDefNum times
       ## root char no will be updated each time
-      put _findNextCreateDef(pSQL, theRootSearchCharNo, pOutStartDefCharNo, pOutEndDefCharNo) into pOutCreateDef
-      put theRootSearchCharNo into pOutClosingCharNo
+      put _findNextCreateDef(pSQL, theRootSearchCharNo, rStartDefCharNo, rEndDefCharNo) into rCreateDef
+      put theRootSearchCharNo into rClosingCharNo
       add 1 to theRootSearchCharNo
     end repeat
   end if
@@ -1350,28 +1366,29 @@ private command _extractDefinitionFromCreateSQL pSQL, pDefNum, @pOutCreateDef, @
 end _extractDefinitionFromCreateSQL
 
 
-private function _findNextCreateDef pSQL, @pRootSearchCharNo, @pStartCharNo, @pOutEndCharNo
-  local theCreateDef
+private function _findNextCreateDef pSQL, @xRootSearchCharNo, @rStartCharNo, @rEndCharNo
+  local theCreateDef, theChar, inQuotedSeq, theSeqQuote
+  local theLastMatchedParenCharNo
 
-  put 0 into pStartCharNo
-  put 0 into pOutEndCharNo
+  put 0 into rStartCharNo
+  put 0 into rEndCharNo
 
   ## find actual starting char
-  repeat with i = pRootSearchCharNo to the number of chars of pSQL
+  repeat with i = xRootSearchCharNo to the number of chars of pSQL
     if word 1 to -1 of (char i of pSQL) is not empty then
-      put i into pStartCharNo
-      put i into pRootSearchCharNo
+      put i into rStartCharNo
+      put i into xRootSearchCharNo
       exit repeat
     end if
   end repeat
 
-  repeat with i = pRootSearchCharNo to the number of chars of pSQL
+  repeat with i = xRootSearchCharNo to the number of chars of pSQL
     put char i of pSQL into theChar
 
     if not inQuotedSeq then
       if theChar is "," or theChar is ")" then
         ## all done
-        put i into pRootSearchCharNo
+        put i into xRootSearchCharNo
         subtract 1 from i
         exit repeat
       else
@@ -1399,15 +1416,15 @@ private function _findNextCreateDef pSQL, @pRootSearchCharNo, @pStartCharNo, @pO
     end if
   end repeat
 
-  if pStartCharNo > 0 then
+  if rStartCharNo > 0 then
     repeat with i = i down to 1
       if char i of pSQL is not empty then
-        put i into pOutEndCharNo
+        put i into rEndCharNo
         exit repeat
       end if
     end repeat
 
-    put char pStartCharNo to pOutEndCharNo of pSQL into theCreateDef
+    put char rStartCharNo to rEndCharNo of pSQL into theCreateDef
   end if
 
   return theCreateDef
@@ -1423,7 +1440,7 @@ private command _sqlite_dbAlterTable pConnectionA, pTableA
   local theFieldsThatLiveAnotherDay
   local theNewCreateSQL, theNewFields
   local theOldFields, theOldCreateSQL
-  local theTable
+  local theTable, theBindingsA
   local theTempName
   -----
   put dbconn_get("connection id", pConnectionA) into theConnID
@@ -1463,11 +1480,6 @@ private command _sqlite_dbAlterTable pConnectionA, pTableA
 
     dbconn_executeSQL theSQL, pConnectionA
     put _ErrorMsg("alter table '" & theTable & "'", the result) into theError
-
-    if theError is not empty then
-      -- put theSQL
-      put _ErrorMsg(pMsg, pError)
-    end if
   end if
 
   if theError is empty then
@@ -1481,6 +1493,8 @@ end _sqlite_dbAlterTable
 
 
 private command _sqlite_dbCreateTableIndexes pName, pIndexA, pConnectionA
+  local theQsA, theSQL, theError
+
   put dbconn_get("quotes", pConnectionA) into theQsA
 
   if pIndexA["type"] is "unique" then
@@ -1509,7 +1523,7 @@ end _sqlite_dbCreateTableIndexes
 
 
 private command _sqlite_dbDeleteIndex pIndexName, pTableName, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -1517,7 +1531,7 @@ private command _sqlite_dbDeleteIndex pIndexName, pTableName, pConnectionA
   put theQsA["left"] & pIndexName & theQsA["right"] after theSQL
 
   dbconn_executeSQL theSQL, pConnectionA
-  put _ErrorMsg("unable to drop index '" & pName & "'", the result) into theError
+  put _ErrorMsg("unable to drop index '" & pTableName & "'", the result) into theError
 
   return theError
 end _sqlite_dbDeleteIndex
@@ -1549,7 +1563,11 @@ end _sqlite_TriggerWhereConditionFromMultipleFields
 
 private command _sqlite_dbCreateForeignKeyConstraints pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA, theTablesA, theTableName, theDeleteStatements
+  local theRelationsA, theR, theType, theUpdateAction, theDeleteAction
+  local theLeftTable, theRightTable, theCrossRefTable
+  local theTableKeyFields, theCrossRefKeyFields, theWhereCondition
+  local theRightKeyFields, theLeftKeyFields
 
   #########
   ## STEP 1: CREATE delete_ TRIGGERS FOR many-to-many, one-to-one and one-to-many
@@ -1687,8 +1705,8 @@ end _sqlite_dbCreateForeignKeyConstraints
 
 
 private command _mysql_dbTableFields pConnectionA, pTable
-  local theArrayA,theConnectionID,theCursor,theField
-  local thePrimaryKeys,theQuotes,theSQL
+  local theError, theArrayA, theConnectionID, theCursor, theField
+  local thePrimaryKeys, theSQL, theQs, theA
 
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQs
@@ -1747,6 +1765,8 @@ private command _mysql_dbTableFields pConnectionA, pTable
         put empty into theA["fields"][theField]["length"]
         put false into theA["fields"][theField]["signed"]
       else
+        local theType, theLength, isSigned
+
         dbsynch_splitFieldType revDatabaseColumnNamed(theCursor, "Type"), theType, theLength, isSigned
         put theType into theA["fields"][theField]["type"]
         put theLength into theA["fields"][theField]["length"]
@@ -1776,7 +1796,7 @@ private command _mysql_dbTableRelationships pConnectionA, pTable
   -----
   local theConnectionID
   local theQs
-  local theError
+  local theError, theA
   -----
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQs
@@ -1816,9 +1836,9 @@ private command _mysql_dbTableRelationships pConnectionA, pTable
 end _mysql_dbTableRelationships
 
 
-private command _mysql_dbTableIndexes pConnectionA, pTable, @pFieldsA
-  local theArrayA,theCollation,theConnectionID
-  local theCursor,theIndexName,theSQL
+private command _mysql_dbTableIndexes pConnectionA, pTable, pFieldsA
+  local theError, theArrayA, theCollation, theConnectionID
+  local theCursor, theIndexName, theSQL, theQs, theA
 
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQs
@@ -1868,6 +1888,8 @@ end _mysql_dbTableIndexes
 
 
 private function _mysql_getFieldSQLType pFieldA
+  local theType, theLimit, thePrecision, theScale, theSQLType
+
   -- boolean, decimal, integer, timestamp, date, date time, binary, sequence, list, text
   put pFieldA["type"] into theType
   put pFieldA["length"] into theLimit
@@ -1938,7 +1960,7 @@ end _mysql_systemTables
 
 
 private command _mysql_dbCreateTable pName, pTableA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -1986,27 +2008,29 @@ end _mysql_dbCreateTable
 
 
 -- pTableA["@primary key is taken care of"] can be modified
-function _mysql_getColumnDefSQL @pTableA, theFieldA
+function _mysql_getColumnDefSQL @pTableA, pFieldA
+  local theQsA, theSQLType, theSQL
+
   put "`" into theQsA["left"]
   put "`" into theQsA["right"]
-  put _mysql_getFieldSQLType(theFieldA) into theSQLType
+  put _mysql_getFieldSQLType(pFieldA) into theSQLType
 
   ## Name
-  put theQsA["left"] & theFieldA["name"] & theQsA["right"] & space into theSQL
+  put theQsA["left"] & pFieldA["name"] & theQsA["right"] & space into theSQL
 
-  if theFieldA["type"] is "sequence" \
-        and (pTableA["primary key"] is theFieldA["name"] or pTableA["primary key"] is empty) then
+  if pFieldA["type"] is "sequence" \
+        and (pTableA["primary key"] is pFieldA["name"] or pTableA["primary key"] is empty) then
     put "INT(11) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY " after theSQL
-    put theFieldA["name"] into pTableA["primary key"]
+    put pFieldA["name"] into pTableA["primary key"]
     put true into pTableA["@primary key is taken care of"]
   else
     put theSQLType & space after theSQL
 
-    if "default" is among the keys of theFieldA then
-      put "DEFAULT " & theFieldA["default"] & " " after theSQL
+    if "default" is among the keys of pFieldA then
+      put "DEFAULT " & pFieldA["default"] & " " after theSQL
     end if
 
-    if theFieldA["accepts null"] is false then
+    if pFieldA["accepts null"] is false then
       put "NOT NULL " after theSQL
     end if
   end if
@@ -2017,7 +2041,7 @@ end _mysql_getColumnDefSQL
 
 private function _mysql_ForeignKeySQL pForeignKeysA, pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2054,7 +2078,8 @@ end _mysql_afterMigration
 
 
 private command _mysql_dbCreateFields pTable, pFieldsA, pConnectionA
-  local theError
+  local theError, theQsA, theTableA
+  local theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2076,7 +2101,7 @@ end _mysql_dbCreateFields
 
 
 private command _mysql_dbDeleteFields pTable, pFields, pConnectionA
-  local theError
+  local theError, theQsA, theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2102,7 +2127,7 @@ end _mysql_dbAlterTable
 
 
 private command _mysql_dbCreateTableIndexes pName, pIndexA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL, theLimit
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2150,7 +2175,7 @@ end _mysql_dbCreateTableIndexes
 
 
 private command _mysql_dbDeleteIndex pIndexName, pTableName, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2158,7 +2183,7 @@ private command _mysql_dbDeleteIndex pIndexName, pTableName, pConnectionA
   put theQsA["left"] & pIndexName & theQsA["right"] && "ON" && theQsA["left"] & pTableName & theQsA["right"] after theSQL
 
   dbconn_executeSQL theSQL, pConnectionA
-  put _ErrorMsg("unable to drop index '" & pName & "'", the result) into theError
+  put _ErrorMsg("unable to drop index '" & pTableName & "'", the result) into theError
 
   return theError
 end _mysql_dbDeleteIndex
@@ -2173,6 +2198,8 @@ end _mysql_dbCreateForeignKeyConstraints
 
 
 private function _postgresql_getFieldSQLType pFieldA
+  local theType, theLimit, thePrecision, theScale, theSQLType
+
   put pFieldA["type"] into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
@@ -2229,7 +2256,7 @@ end _postgresql_systemTables
 
 
 private command _postgresql_dbCreateTable pName, pTableA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2266,33 +2293,35 @@ end _postgresql_dbCreateTable
 
 
 -- pTableA["@primary key is taken care of"] can be modified
-function _postgresql_getColumnDefSQL @pTableA, theFieldA
+function _postgresql_getColumnDefSQL @pTableA, pFieldA
+  local theQsA, theSQL, theSQLType
+
   put quote into theQsA["left"]
   put quote into theQsA["right"]
-  put _postgresql_getFieldSQLType(theFieldA) into theSQLType
+  put _postgresql_getFieldSQLType(pFieldA) into theSQLType
 
   ## Name
-  put theQsA["left"] & theFieldA["name"] & theQsA["right"] & space into theSQL
+  put theQsA["left"] & pFieldA["name"] & theQsA["right"] & space into theSQL
 
-  if theFieldA["type"] is "sequence" \
-        and (pTableA["primary key"] is theFieldA["name"] or pTableA["primary key"] is empty) then
+  if pFieldA["type"] is "sequence" \
+        and (pTableA["primary key"] is pFieldA["name"] or pTableA["primary key"] is empty) then
     put "SERIAL PRIMARY KEY " after theSQL
-    put theFieldA["name"] into pTableA["primary key"]
+    put pFieldA["name"] into pTableA["primary key"]
     put true into pTableA["@primary key is taken care of"]
   else
     put theSQLType & space after theSQL
 
-    if "default" is among the keys of theFieldA then
-      switch theFieldA["type"]
+    if "default" is among the keys of pFieldA then
+      switch pFieldA["type"]
         case "boolean"
-          if theFieldA["default"] is among the items of "0,false" then put "FALSE" into theFieldA["default"]
-          else if theFieldA["default"] is among the items of "1,true" then put "TRUE" into theFieldA["default"]
+          if pFieldA["default"] is among the items of "0,false" then put "FALSE" into pFieldA["default"]
+          else if pFieldA["default"] is among the items of "1,true" then put "TRUE" into pFieldA["default"]
           break
       end switch
-      put "DEFAULT " & theFieldA["default"] & " " after theSQL
+      put "DEFAULT " & pFieldA["default"] & " " after theSQL
     end if
 
-    if theFieldA["accepts null"] is false then
+    if pFieldA["accepts null"] is false then
       put "NOT NULL " after theSQL
     end if
   end if
@@ -2303,7 +2332,7 @@ end _postgresql_getColumnDefSQL
 
 private function _postgresql_ForeignKeySQL pForeignKeysA, pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2336,7 +2365,7 @@ end _postgresql_afterMigration
 
 
 private command _postgresql_dbCreateFields pTable, pFieldsA, pConnectionA
-  local theError
+  local theError, theQsA, theTableA, theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2358,7 +2387,7 @@ end _postgresql_dbCreateFields
 
 
 private command _postgresql_dbDeleteFields pTable, pFields, pConnectionA
-  local theError
+  local theError, theQsA, theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2382,7 +2411,7 @@ end _postgresql_dbAlterTable
 
 
 private command _postgresql_dbCreateTableIndexes pName, pIndexA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL, theLimit
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2420,7 +2449,7 @@ end _postgresql_dbCreateTableIndexes
 
 
 private command _postgresql_dbDeleteIndex pIndexName, pTableName, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2428,7 +2457,7 @@ private command _postgresql_dbDeleteIndex pIndexName, pTableName, pConnectionA
   put theQsA["left"] & pIndexName & theQsA["right"] after theSQL
 
   dbconn_executeSQL theSQL, pConnectionA
-  put _ErrorMsg("unable to drop index '" & pName & "'", the result) into theError
+  put _ErrorMsg("unable to drop index '" & pTableName & "'", the result) into theError
 
   return theError
 end _postgresql_dbDeleteIndex
@@ -2441,7 +2470,7 @@ end _postgresql_dbCreateForeignKeyConstraints
 
 private function _postgresql_ForeignKeySQL pForeignKeysA, pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -2465,9 +2494,9 @@ end _postgresql_ForeignKeySQL
 
 
 private command _postgresql_dbTableFields pConnectionA, pTable
-  local theArrayA,theConnectionID,theCursor,theField
-  local thePrimaryKeys,theQuotes,theSQL,theEncoding
-  local theError
+  local theArrayA, theConnectionID, theCursor, theField
+  local thePrimaryKeys, theQuotes, theSQL, theEncoding
+  local theError, theQs
 
   set the wholeMatches to true
 
@@ -2518,6 +2547,8 @@ private command _postgresql_dbTableFields pConnectionA, pTable
   end if
 
   if theError is empty then
+    local theA, theChar
+
     repeat forever
       put revDatabaseColumnNamed(theCursor, "column_name") into theField
 
@@ -2579,8 +2610,8 @@ end _postgresql_dbTableFields
 
 
 private command _postgresql_dbTableIndexes pConnectionA, pTable, @pFieldsA
-  local theArrayA,theCollation,theConnectionID
-  local theCursor,theIndexName,theSQL
+  local theError, theArrayA, theCollation, theConnectionID, theQs
+  local theCursor, theIndexName, theSQL
 
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQs
@@ -2593,6 +2624,8 @@ private command _postgresql_dbTableIndexes pConnectionA, pTable, @pFieldsA
   end if
 
   if theError is empty then
+    local theA
+
     if not revdb_iseof(theCursor) then
       repeat forever
         put revDatabaseColumnNamed(theCursor, "Key_name") into theIndexName
@@ -2640,6 +2673,8 @@ end _postgresql_systemTables
 
 
 private function _valentina_getFieldSQLType pFieldA
+  local theType, theLimit, thePrecision, theScale, theSQLType
+
   put pFieldA["type"] into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
@@ -2687,8 +2722,8 @@ end _valentina_getFieldSQLType
 
 
 private command _valentina_dbTableFields pConnectionA, pTable
-  local theArrayA,theConnectionID,theCursor,theField
-  local thePrimaryKeys,theQuotes,theSQL,theError
+  local theError, theQs, theA, theConnectionID, theCursor, theField
+  local thePrimaryKeys, theQuotes, theSQL, theRowsA
 
   put dbconn_get("connection id", pConnectionA) into theConnectionID
   put dbconn_get("quotes", pConnectionA) into theQs
@@ -2767,9 +2802,8 @@ private command _valentina_dbTableFields pConnectionA, pTable
 end _valentina_dbTableFields
 
 
-private command _valentina_dbTableIndexes pConnectionA, pTable, @pFieldsA
-  local theArrayA,theCollation,theConnectionID
-  local theCursor,theIndexName,theSQL
+private command _valentina_dbTableIndexes pConnectionA, pTable, pFieldsA
+  local theA, theError
 
   -- put dbconn_get("connection id", pConnectionA) into theConnectionID
   -- put dbconn_get("quotes", pConnectionA) into theQs
@@ -2832,8 +2866,8 @@ end _filemaker_getFieldSQLType
 
 
 private command _filemaker_dbTableFields pConnectionA, pTable
-  local theArrayA,theConnectionID,theCursor,theField
-  local thePrimaryKeys,theQuotes,theSQL
+  local theConnectionID, theQs, theSQL, theRowsA, theError
+  local thePrimaryKeys, theField, theA
 
   set the wholeMatches to true
 
@@ -2906,10 +2940,8 @@ private command _filemaker_dbTableFields pConnectionA, pTable
 end _filemaker_dbTableFields
 
 
-private command _filemaker_dbTableIndexes pConnectionA, pTable, @pFieldsA
-  local theArrayA,theCollation,theConnectionID
-  local theCursor,theIndexName,theSQL
-  local theError
+private command _filemaker_dbTableIndexes pConnectionA, pTable, pFieldsA
+  local theA, theError
 
   -- put dbconn_get("connection id", pConnectionA) into theConnectionID
   -- put dbconn_get("quotes", pConnectionA) into theQs
@@ -2970,6 +3002,8 @@ end _filemaker_systemTables
 
 
 private function _sqlserver_getFieldSQLType pFieldA, pConnectionA
+  local theType, theLimit, thePrecision, theScale, theEncoding, theSQLType
+
   put pFieldA["type"] into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
@@ -3062,8 +3096,8 @@ end _sqlserver_getFieldSQLType
 
 
 private command _sqlserver_dbTableFields pConnectionA, pTable
-  local theArrayA,theConnectionID,theCursor,theField
-  local thePrimaryKeys,theQuotes,theSQL
+  local theConnectionID, theQs, theSQL, theRowsA, theError
+  local thePrimaryKeys, theField, theA
 
   set the wholeMatches to true
 
@@ -3139,10 +3173,8 @@ private command _sqlserver_dbTableFields pConnectionA, pTable
 end _sqlserver_dbTableFields
 
 
-private command _sqlserver_dbTableIndexes pConnectionA, pTable, @pFieldsA
-  local theArrayA,theCollation,theConnectionID
-  local theCursor,theIndexName,theSQL
-  local theError
+private command _sqlserver_dbTableIndexes pConnectionA, pTable, pFieldsA
+  local theA, theError
 
   -- put dbconn_get("connection id", pConnectionA) into theConnectionID
   -- put dbconn_get("quotes", pConnectionA) into theQs
@@ -3200,7 +3232,7 @@ end _sqlserver_systemTables
 
 
 private command _sqlserver_dbCreateTable pName, pTableA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -3238,6 +3270,8 @@ end _sqlserver_dbCreateTable
 
 -- pTableA["@primary key is taken care of"] can be modified
 function _sqlserver_getColumnDefSQL @pTableA, theFieldA, pConnectionA
+  local theQsA, theSQLType, theSQL
+
   put quote into theQsA["left"]
   put quote into theQsA["right"]
   put _sqlserver_getFieldSQLType(theFieldA, pConnectionA) into theSQLType
@@ -3274,7 +3308,7 @@ end _sqlserver_getColumnDefSQL
 
 private function _sqlserver_ForeignKeySQL pForeignKeysA, pConnectionA
   local theError
-  local theSQL
+  local theSQL, theQsA
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -3307,7 +3341,7 @@ end _sqlserver_afterMigration
 
 
 private command _sqlserver_dbCreateFields pTable, pFieldsA, pConnectionA
-  local theError
+  local theError, theQsA, theTableA, theBaseSQL, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -3334,7 +3368,7 @@ end _sqlserver_dbAlterTable
 
 
 private command _sqlserver_dbCreateTableIndexes pName, pIndexA, pConnectionA
-  local theError
+  local theError, theQsA, theSQL, theLimit
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -3372,7 +3406,7 @@ end _sqlserver_dbCreateTableIndexes
 
 
 private command _sqlserver_dbDeleteIndex pIndexName, pTableName, pConnectionA
-  local theError
+  local theError, theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -3380,7 +3414,7 @@ private command _sqlserver_dbDeleteIndex pIndexName, pTableName, pConnectionA
   put theQsA["left"] & pTableName & theQsA["right"] & "." & theQsA["left"] & pIndexName & theQsA["right"] after theSQL
 
   dbconn_executeSQL theSQL, pConnectionA
-  put _ErrorMsg("unable to drop index '" & pName & "'", the result) into theError
+  put _ErrorMsg("unable to drop index '" & pTableName & "'", the result) into theError
 
   return theError
 end _sqlserver_dbDeleteIndex
@@ -3391,7 +3425,7 @@ end _sqlserver_dbDeleteIndex
 
 ## duplicate of function in libSQLYoga
 private function _valentinaErrorSchema pConnID
-  local theError
+  local theError, theErrNum
   put VDatabase_ErrNumber( pConnID ) into theErrNum
   if theErrNum > 0 then
     put VDatabase_ErrString( pConnID ) into theError
