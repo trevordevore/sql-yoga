@@ -99,18 +99,12 @@ end sqlyoga_version
 on libraryStack
   if the target is not me then pass libraryStack
 
-  if there is a stack "libSQLYogaSchema" then
-    start using stack "libSQLYogaSchema"
-  end if
 end libraryStack
 
 
 on releaseStack
   if the target is not me then pass releaseStack
 
-  if there is a stack "libSQLYogaSchema" then
-    stop using stack "libSQLYogaSchema"
-  end if
 end releaseStack
 
 
