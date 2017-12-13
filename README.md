@@ -3,7 +3,7 @@ sql-yoga
 
 SQL Yoga database library for LiveCode
 
-This repository hosts the source code for the SQL Yoga library for LiveCode. The source is managed using lcVCS <https://github.com/montegoulding/lcVCS>. Information on lcVCS can be found in the LiveCode forums: <http://forums.runrev.com/viewforum.php?f=77>.
+This repository hosts the source code for the SQL Yoga library for LiveCode. 
 
 ##Contributing to the project
 
