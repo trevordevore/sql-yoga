@@ -6,7 +6,6 @@ constant kExpirationDate = ""
 
 --> Defines (old)
 
--- put the cErrorsList of card 1 of stack "revErrorDisplay"
 constant kErrInvalidArray = 422
 constant kErrInvalidBoolean = 452
 constant kErrInvalidNumber = 453
@@ -73,8 +72,6 @@ constant kBoolFalseValues = "false,0,n,no,f"
 constant kDontQuoteTypes = "decimal,integer,sequence"
 
 constant kTempConnProps = "username,password,log file,log field,last executed sql,version,database name,host,port"
-
-local sIsRegistered = "true"
 
 local sDefaultDBKey = "default"
 
@@ -11994,41 +11991,3 @@ function printCharXTimes pChar, pTimes
   end repeat
   return theStr
 end printCharXTimes
-
-
---> Licensing
-
-
-/**
-* \brief [DEPRECATED] Unlocks the SQL Yoga library for use in your application.
-*
-* \param pUserString Your email address.
-* \param pRegistrationKey Your registration key.
-*
-* SQL Yoga requires you to unlock the library each session. What this means is that after you \
-      * start using libSQLYoga you should call sqlyoga_register to unlock all of the features.
-*
-* <pre>sqlyoga_register "myemail@myemail.com", MY_SQLYOGA_REGISTRATION_KEY</pre>
-*
-* \package
-*
-* \return Error message
-*/
-command sqlyoga_register pUserString, pRegistrationKey
-  return empty
-end sqlyoga_register
-
-
-/**
-* \brief [DEPRECATED] Returns a boolean value indicating whether or not SQL Yoga has been registered with a valid registration key.
-*
-* \return true/false
-*/
-function sqlyoga_isRegistered
-  return sIsRegistered
-end sqlyoga_isRegistered
-
-
-function sqlyoga_daysLeftInTrial
-  return 0
-end sqlyoga_daysLeftInTrial
