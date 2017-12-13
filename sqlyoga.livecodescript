@@ -31,6 +31,8 @@ script "libSQLYoga"
 *  support@bluemangolearning.com
 */
 
+constant kVersion = "1.5.0"
+constant kBuildNumber = "2"
 constant kBuildProfile = "development"
 constant kExpirationDate = ""
 
@@ -120,7 +122,7 @@ local sDefaultDBKey = "default"
 * \return String
 */
 function sqlyoga_version
-  return the uRIP["version"] of me && "build" && the uRIP["buildnumber"] of me
+  return kVersion && "build" && kBuildNumber
 end sqlyoga_version
 
 
