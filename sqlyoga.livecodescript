@@ -5027,7 +5027,7 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
       ## Generate adaptor specific SQL
       put sDbsA[ theKeyA ]["type"] into theType
       replace space with empty in theType
-      dispatch function ("_" & theType & "_beginTransactionSQL") with pConnectionA, pParamsA
+      dispatch function ("_" & theType & "_beginTransactionSQL") with theConnectionA, pParamsA
       put the result into theSQL
       if it is not "handled" then
         put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
@@ -5089,7 +5089,7 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
 
       put sDbsA[ theKeyA ]["type"] into theType
       replace space with empty in theType
-      dispatch function ("_" & theType & "_commitTransactionSQL") with pConnectionA, pParamsA
+      dispatch function ("_" & theType & "_commitTransactionSQL") with theConnectionA, pParamsA
       put the result into theSQL
       if it is not "handled" then
         put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
@@ -5149,7 +5149,7 @@ command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
 
     put sDbsA[ theKeyA ]["type"] into theType
     replace space with empty in theType
-    dispatch function ("_" & theType & "_rollbackTransactionSQL") with pConnectionA, pParamsA
+    dispatch function ("_" & theType & "_rollbackTransactionSQL") with theConnectionA, pParamsA
     put the result into theSQL
     if it is not "handled" then
       put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
