@@ -4312,6 +4312,8 @@ command dbconn_lastInsertedID pConnName, pDBKey
     put VDatabase_LastInsertedRecID(theConnectionID) into theID
     put _valentinaError(theConnectionID) into theError
   else
+    local theSQL
+
     ## Generate adaptor specific SQL
     if theError is empty then
       local theType
@@ -4327,8 +4329,6 @@ command dbconn_lastInsertedID pConnName, pDBKey
     end if
 
     if theError is empty then
-      local theSQL
-
       dbconn_set "last executed sql", theSQL, theConnectionA
 
       repeat with queryAttempts = 1 to 2
@@ -5024,6 +5024,8 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
     else if sDbsA[ theKeyA ]["adaptor"] is "odbc" then
 
     else
+      local theSQL
+
       ## Generate adaptor specific SQL
       put sDbsA[ theKeyA ]["type"] into theType
       replace space with empty in theType
@@ -5034,8 +5036,6 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
       end if
 
       if theError is empty then
-        local theSQL
-
         try
           dbconn_executeSQL theSQL, theConnectionA
           put the result into theError
@@ -5085,7 +5085,7 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
 
     else
       ## Generate adaptor specific SQL
-      local theType
+      local theType, theSQL
 
       put sDbsA[ theKeyA ]["type"] into theType
       replace space with empty in theType
@@ -5096,8 +5096,6 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
       end if
 
       if theError is empty then
-        local theSQL
-
         try
           dbconn_executeSQL theSQL, theConnectionA
           put the result into theError
@@ -5145,7 +5143,7 @@ command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
 
   else
     ## Generate adaptor specific SQL
-    local theType
+    local theType, theSQL
 
     put sDbsA[ theKeyA ]["type"] into theType
     replace space with empty in theType
@@ -5156,8 +5154,6 @@ command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
     end if
 
     if theError is empty then
-      local theSQL
-
       try
         dbconn_executeSQL theSQL, theConnectionA
         put the result into theError
