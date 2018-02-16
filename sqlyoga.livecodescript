@@ -2981,6 +2981,7 @@ end dbobject_createFromObject
 command dbobject_createFromFile pFile, pDBKey
   local theError
 
+  put param(2) into pDBKey
   _ValidateKey pDBKey
 
   open file pFile for binary read
@@ -2989,33 +2990,10 @@ command dbobject_createFromFile pFile, pDBKey
   if theError is empty then
     read from file pFile until end
     put the result into theError
-    if theError is "eof" then put empty into theError
 
     if theError is empty and it is not empty then
-      local tDBA, tConnectionsA, tKey
-
-      put _yamlFileToArray(pFile) into tDBA
-
-      put tDBA["connections"] into tConnectionsA
-
-      delete local tDBA["connections"]
-
-      dbobject_createFromArray tDBA, pDBKey
+      dbobject_createFromArray arrayDecode(it), pDBKey
       put the result into theError
-    end if
-
-    # Set up connections
-    if theError is empty then
-      repeat for each key tKey in tConnectionsA
-        dbconn_createObject tKey, tConnectionsA[tKey]["type"]
-
-        if tConnectionsA[tKey]["file"] is not empty then
-          put resolveFilenameReference(tConnectionsA[tKey]["file"], _parentFolder(pFile)) into tConnectionsA[tKey]["file"]
-          dbconn_set "file", tConnectionsA[tKey]["file"]
-        else if tConnectionsA[tKey]["database name"] is not empty then
-          dbconn_set "database name", tConnectionsA[tKey]["database name"]
-        end if
-      end repeat
     end if
 
     close file pFile
@@ -3027,6 +3005,43 @@ command dbobject_createFromFile pFile, pDBKey
 
   return theError
 end dbobject_createFromFile
+
+
+command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
+  local theError, tDBA, tConnectionsA, tKey
+
+  YAMLToArray textDecode(pYAML, "utf8")
+  if the result is empty then
+    put it into tDBA
+  else
+    put the result into theError
+  end if
+
+  if theError is empty then
+    put tDBA["connections"] into tConnectionsA
+
+    delete local tDBA["connections"]
+
+    dbobject_createFromArray tDBA, pDBKey
+    put the result into theError
+  end if
+
+  # Set up connections
+  if theError is empty then
+    repeat for each key tKey in tConnectionsA
+      dbconn_createObject tKey, tConnectionsA[tKey]["type"]
+
+      if tConnectionsA[tKey]["file"] is not empty then
+        put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
+        dbconn_set "file", tConnectionsA[tKey]["file"]
+      else if tConnectionsA[tKey]["database name"] is not empty then
+        dbconn_set "database name", tConnectionsA[tKey]["database name"]
+      end if
+    end repeat
+  end if
+
+  return theError
+end dbobject_createFromYAML
 
 
 /**
@@ -3095,12 +3110,12 @@ command dbobject_save pDBKey
 
     case "file"
       put sDbsA[pDBKey]["storage"]["resource"] into theFile
-      open file theFile for "utf8" text write
+      open file theFile for binary write
       put the result into theError
 
       if theError is empty then
         if sDbsA[pDBKey] is an array then
-          write _dbobjectAsYAML(pDBKey) to file theFile
+          write arrayEncode(sDbsA[pDBKey]) to file theFile
         else
           write empty to file theFile
         end if
@@ -3108,42 +3123,12 @@ command dbobject_save pDBKey
 
         close file theFile
       end if
+
       break
   end switch
 
   return theError
 end dbobject_save
-
-
-private command _dbobjectAsYAML pDBKey
-  local tStr
-
-  repeat for each key tKey in sDbsA[pDBKey]
-    put _outputKeyAsYAML(sDbsA[pDBKey][tKey], tKey) & cr after tStr
-  end repeat
-
-  return tStr
-end _dbobjectAsYAML
-
-
-private command _outputKeyAsYAML pArrayA, pKey, pLevel
-  local tKey, tStr, i
-
-  if pArrayA[pKey] is an array then
-    repeat for each key tKey in pArrayA[pKey]
-      return _outputKeyAsYAML(pArrayA[pKey][tKey], pLevel+1)
-    end repeat
-  else
-    repeat with i = 1 to pLevel-1
-      put space & space after tStr
-    end repeat
-    put pKey & ": " after tStr
-    put quote & pArrayA[pKey] & quote & cr after tStr
-  end if
-  delete the last char of tStr
-
-  return tStr
-end _outputKeyAsYAML
 
 
 /**
@@ -12047,12 +12032,6 @@ function printCharXTimes pChar, pTimes
 end printCharXTimes
 
 
-private function _parentFolder pFilename
-  set the itemDelimiter to "/"
-  return item 1 to -2 of pFilename
-end _parentFolder
-
-
 private function resolveFilenameReference pFilename, pRootFolder
   repeat while the last char of pFilename is "/"
     delete the last char of pFilename
@@ -12103,6 +12082,37 @@ private function resolveRelativeFilenameReference pFilename, pRootFolder
 
   return pRootFolder & "/" & pFilename for value
 end resolveRelativeFilenameReference
+
+
+private command _dbobjectAsYAML pDBKey
+  local tStr
+
+  repeat for each key tKey in sDbsA[pDBKey]
+    put _outputKeyAsYAML(sDbsA[pDBKey][tKey], tKey) & cr after tStr
+  end repeat
+
+  return tStr
+end _dbobjectAsYAML
+
+
+private command _outputKeyAsYAML pArrayA, pKey, pLevel
+  local tKey, tStr, i
+
+  if pArrayA[pKey] is an array then
+    repeat for each key tKey in pArrayA[pKey]
+      return _outputKeyAsYAML(pArrayA[pKey][tKey], pLevel+1)
+    end repeat
+  else
+    repeat with i = 1 to pLevel-1
+      put space & space after tStr
+    end repeat
+    put pKey & ": " after tStr
+    put quote & pArrayA[pKey] & quote & cr after tStr
+  end if
+  delete the last char of tStr
+
+  return tStr
+end _outputKeyAsYAML
 
 
 /**
