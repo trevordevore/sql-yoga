@@ -2989,10 +2989,33 @@ command dbobject_createFromFile pFile, pDBKey
   if theError is empty then
     read from file pFile until end
     put the result into theError
+    if theError is "eof" then put empty into theError
 
     if theError is empty and it is not empty then
-      dbobject_createFromArray _yamlFileToArray(pFile), pDBKey
+      local tDBA, tConnectionsA, tKey
+
+      put _yamlFileToArray(pFile) into tDBA
+
+      put tDBA["connections"] into tConnectionsA
+
+      delete local tDBA["connections"]
+
+      dbobject_createFromArray tDBA, pDBKey
       put the result into theError
+    end if
+
+    # Set up connections
+    if theError is empty then
+      repeat for each key tKey in tConnectionsA
+        dbconn_createObject tKey, tConnectionsA[tKey]["type"]
+
+        if tConnectionsA[tKey]["file"] is not empty then
+          put resolveFilenameReference(tConnectionsA[tKey]["file"], _parentFolder(pFile)) into tConnectionsA[tKey]["file"]
+          dbconn_set "file", tConnectionsA[tKey]["file"]
+        else if tConnectionsA[tKey]["database name"] is not empty then
+          dbconn_set "database name", tConnectionsA[tKey]["database name"]
+        end if
+      end repeat
     end if
 
     close file pFile
@@ -3648,6 +3671,11 @@ function dbconn_exists pConnName, pDBKey
   end try
   return true
 end dbconn_exists
+
+
+function dbconn_getArrays
+  return sConnectionsA
+end dbconn_getArrays
 
 
 /**
@@ -12019,6 +12047,64 @@ function printCharXTimes pChar, pTimes
 end printCharXTimes
 
 
+private function _parentFolder pFilename
+  set the itemDelimiter to "/"
+  return item 1 to -2 of pFilename
+end _parentFolder
+
+
+private function resolveFilenameReference pFilename, pRootFolder
+  repeat while the last char of pFilename is "/"
+    delete the last char of pFilename
+  end repeat
+
+  if isFilenameRelative(pFilename) then
+    put normalizeRelativeFilename(pFilename) into pFilename
+
+    if pFilename begins with "../" then
+      return resolveRelativeFilenameReference(pFilename, pRootFolder) for value
+    else
+      return pRootFolder & "/" & pFilename for value
+    end if
+  else
+    return pFilename for value
+  end if
+end resolveFilenameReference
+
+
+private function isFilenameRelative pFilename
+  set the itemDelimiter to "/"
+  -- [[ is for variables
+  return not ((the platform is "win32" and item 1 of pFilename contains ":") or pFilename begins with "/" or pFilename begins with "[[")
+end isFilenameRelative
+
+
+private function normalizeRelativeFilename pFilename
+  if char 1 of pFilename is "/" then
+    delete char 1 of pFilename
+  else if char 1 to 2 of pFilename is "./" then
+    delete char 1 to 2 of pFilename
+  end if
+  return pFilename for value
+end normalizeRelativeFilename
+
+
+private function resolveRelativeFilenameReference pFilename, pRootFolder
+  set the itemDelimiter to "/"
+
+  repeat while pFilename begins with "../"
+    if pRootFolder is empty then
+      return "relative path is too deep for root folder" for error
+    else
+      delete the last item of pRootFolder
+      delete char 1 to 3 of pFilename
+    end if
+  end repeat
+
+  return pRootFolder & "/" & pFilename for value
+end resolveRelativeFilenameReference
+
+
 /**
 Summary: Converts a YAML file to an array.
 */
@@ -12039,6 +12125,29 @@ private function _yamlFileToArray pFilename
     return tError for error
   end if
 end _yamlFileToArray
+
+
+private function readFileContents pFilename
+  local tError
+
+  open file pFilename for read
+  put the result into tError
+
+  if tError is empty then
+    read from file pFilename until eof
+    if the result is not "eof" then
+      put the result into tError
+    end if
+
+    close file pFilename
+  end if
+
+  if tError is empty then
+    return it for value
+  else
+    return tError && "(" & pFilename & ")" for error
+  end if
+end readFileContents
 
 
 ## Monte's YAMLToArray command
