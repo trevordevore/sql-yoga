@@ -2,6 +2,6 @@ libraries:
   - filename: sqlyoga.livecodescript
   - filename: sqlyoga_schema.livecodescript
 register components:
-  - key: database schemas
+  - key: sql yoga|configuration
     kind: files
     callback stackfile: sqlyoga_levure_callbacks.livecodescript
