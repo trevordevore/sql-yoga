@@ -3042,7 +3042,7 @@ command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
   # Set up connections
   if theError is empty then
     repeat for each key tKey in tConnectionsA
-      dbconn_createObject tKey, tConnectionsA[tKey]["type"]
+      dbconn_createObject tKey, tConnectionsA[tKey]["adaptor"], tConnectionsA[tKey]["type"], pDBKey
 
       if tConnectionsA[tKey]["file"] is not empty then
         put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
@@ -3056,12 +3056,12 @@ command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
   # Set up scopes and relationships
   if theError is empty then
     repeat with i = 1 to the number of elements of tRelationshipsA
-      tblrelation_createObject tRelationshipsA[i]["name"]
+      tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
 
       repeat for each item tKey in "left table,right table,cross-reference table"
         if tRelationshipsA[i][tKey] is not empty \
               and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
-          tableobj_createObject tRelationshipsA[i][tKey]
+          tableobj_createObject tRelationshipsA[i][tKey], "table", pDBKey
         end if
       end repeat
 
@@ -3082,13 +3082,13 @@ command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
 
     repeat for each key tTable in tScopesA
       if not tableobjects_tableExists(tTable, pDBKey) then
-        tableobj_createObject tTable
+        tableobj_createObject tTable, "table", pDBKey
       end if
 
-      tblscope_createObject tTable, tScopesA[tTable]["name"]
-      put it into tScopeA
-
       repeat with i = 1 to the number of elements of tScopesA[tTable]
+        tblscope_createObject tTable, tScopesA[tTable][i]["name"], pDBKey
+        put it into tScopeA
+
         if "joins" is among the keys of tScopesA[tTable][i] then
           put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
         end if
