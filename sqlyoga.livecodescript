@@ -5813,14 +5813,16 @@ end _KeyArrayForScope
 *
 * \return Error message return in 'the result'. Scope reference array returned in 'it'.
 */
-command tblscope_createObject pTableA, pName
+command tblscope_createObject pTableA, pName, pDBKey
   -----
   local theA
   local theKeyA
   local theNextIndex
   -----
-  put _CreateTableArray(pTableA, param(3)) into pTableA
+  put _CreateTableArray(pTableA, pDBKey) into pTableA
   put _KeyArrayForTable(pTableA) into theKeyA
+
+  if pName is empty then _ThrowError kErrObjectNameTaken, "scope name cannot be empty"
 
   if pName is among the keys of sDbsA[ theKeyA ]["scopes"] then
     _ThrowError kErrObjectNameTaken, "scope '" & pName & "' already exists for table '" & tableobj_get(pTableA, "name") & "'"
