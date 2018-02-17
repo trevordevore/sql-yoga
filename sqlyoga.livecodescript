@@ -3008,7 +3008,8 @@ end dbobject_createFromFile
 
 
 command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
-  local theError, tDBA, tConnectionsA, tKey
+  local theError, tDBA, tConnectionsA, tRelationshipsA, tScopesA
+  local tKey, tTable, tField, i
 
   YAMLToArray textDecode(pYAML, "utf8")
   if the result is empty then
@@ -3019,8 +3020,20 @@ command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
 
   if theError is empty then
     put tDBA["connections"] into tConnectionsA
+    put tDBA["relationships"] into tRelationshipsA
+    put tDBA["scopes"] into tScopesA
 
     delete local tDBA["connections"]
+    delete local tDBA["relationships"]
+    delete local tDBA["scopes"]
+
+    # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
+    repeat for each key tTable in tDBA["schema"]["tables"]
+      repeat for each key tField in tDBA["schema"]["tables"][tTable]["fields"]
+        put tField into tDBA["schema"]["tables"][tTable]["fields"][tField]["name"]
+      end repeat
+    end repeat
+
 
     dbobject_createFromArray tDBA, pDBKey
     put the result into theError
@@ -3037,6 +3050,53 @@ command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
       else if tConnectionsA[tKey]["database name"] is not empty then
         dbconn_set "database name", tConnectionsA[tKey]["database name"]
       end if
+    end repeat
+  end if
+
+  # Set up scopes and relationships
+  if theError is empty then
+    repeat with i = 1 to the number of elements of tRelationshipsA
+      tblrelation_createObject tRelationshipsA[i]["name"]
+
+      repeat for each item tKey in "left table,right table,cross-reference table"
+        if tRelationshipsA[i][tKey] is not empty \
+              and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
+          tableobj_createObject tRelationshipsA[i][tKey]
+        end if
+      end repeat
+
+      repeat for each item tKey in "type,left table,left table key," & \
+            "right table,right table key,order by,delete action,update action"
+        tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
+      end repeat
+
+      if tRelationshipsA[i]["type"] is "many-to-many" then
+        repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
+              "cross-reference table key for right table"
+          tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
+        end repeat
+      end if
+    end repeat
+
+    local tScopeA
+
+    repeat for each key tTable in tScopesA
+      if not tableobjects_tableExists(tTable, pDBKey) then
+        tableobj_createObject tTable
+      end if
+
+      tblscope_createObject tTable, tScopesA[tTable]["name"]
+      put it into tScopeA
+
+      repeat with i = 1 to the number of elements of tScopesA[tTable]
+        if "joins" is among the keys of tScopesA[tTable][i] then
+          put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
+        end if
+
+        repeat for each item tKey in "related table joins,conditions"
+          tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
+        end repeat
+      end repeat
     end repeat
   end if
 
