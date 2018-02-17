@@ -4713,11 +4713,12 @@ command dbconn_connect pConnName, pDBKey
 
     ## Get DB engine version
     if theError is empty then
-      local theVersion
+      local theVersion, theDo
 
       put dbconn_get("type", theConnectionA) into theType
       replace space with empty in theType
-      dispatch function ("_" & theType & "_version") with theConnectionID
+      put "put _" & theType & "_version(" & theConnectionID & ") into theVersion" into theDo
+      do theDo
       put the result into theVersion
       dbconn_set "version", theVersion, theConnectionA
     end if
@@ -5083,7 +5084,7 @@ end dbconn_executeSQL
 */
 command dbconn_beginTransaction pParamsA, pConnName, pDBKey
   -----
-  local i, theDo,theConnectionA
+  local i, theConnectionA
   local theKeyA, theType, theError
   -----
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
@@ -5097,16 +5098,17 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
     else if sDbsA[ theKeyA ]["adaptor"] is "odbc" then
 
     else
-      local theSQL
+      local theSQL, theDO
 
       ## Generate adaptor specific SQL
-      put sDbsA[ theKeyA ]["type"] into theType
-      replace space with empty in theType
-      dispatch function ("_" & theType & "_beginTransactionSQL") with theConnectionA, pParamsA
-      put the result into theSQL
-      if it is not "handled" then
+      try
+        put sDbsA[ theKeyA ]["type"] into theType
+        replace space with empty in theType
+        put "put _" & theType & "_beginTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
+        do theDO
+      catch e
         put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
-      end if
+      end try
 
       if theError is empty then
         try
@@ -5160,13 +5162,14 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
       ## Generate adaptor specific SQL
       local theType, theSQL
 
-      put sDbsA[ theKeyA ]["type"] into theType
-      replace space with empty in theType
-      dispatch function ("_" & theType & "_commitTransactionSQL") with theConnectionA, pParamsA
-      put the result into theSQL
-      if it is not "handled" then
+      try
+        put sDbsA[ theKeyA ]["type"] into theType
+        replace space with empty in theType
+        put "put _" & theType & "_commitTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
+        do theDO
+      catch e
         put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
-      end if
+      end try
 
       if theError is empty then
         try
@@ -5203,10 +5206,9 @@ end dbconn_commitTransaction
 * \seealso dbconn_beginTransaction
 */
 command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
-  -----
-  local i,theDo,theError,theConnectionA
+  local i, theDo, theError, theConnectionA
   local theKeyA
-  -----
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
@@ -5218,13 +5220,14 @@ command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
     ## Generate adaptor specific SQL
     local theType, theSQL
 
-    put sDbsA[ theKeyA ]["type"] into theType
-    replace space with empty in theType
-    dispatch function ("_" & theType & "_rollbackTransactionSQL") with theConnectionA, pParamsA
-    put the result into theSQL
-    if it is not "handled" then
+    try
+      put sDbsA[ theKeyA ]["type"] into theType
+      replace space with empty in theType
+      put "put _" & theType & "_rollbackTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
+      do theDO
+    catch e
       put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
-    end if
+    end try
 
     if theError is empty then
       try
@@ -5245,22 +5248,22 @@ end dbconn_rollbackTransaction
 
 
 private function _getBooleanValue pValue, pConnName, pDBKey
-  -----
-  local i,theDo,theError, theConnectionA, theKeyA
-  -----
+  local i, theDo, theError, theConnectionA, theKeyA
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
   ## Generate adaptor specific SQL
   local theType
 
-  put sDbsA[ theKeyA ]["type"] into theType
-  replace space with empty in theType
-  dispatch function("_" & theType & "_getBooleanValue") with pValue
-    put the result into pValue
-  if it is not "handled" then
+  try
+    put sDbsA[ theKeyA ]["type"] into theType
+    replace space with empty in theType
+    put "put _" & theType & "_getBooleanValue(pValue) into pValue" into theDo
+    do theDO
+  catch e
     throw param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
-  end if
+  end try
 
   return pValue
 end _getBooleanValue

@@ -95,13 +95,14 @@ command dbschema_migrateToVersion pVersion, pConnectionA
   end if
 
   if theError is empty then
-    local theType
+    local theType, theDo
 
     ## Let db clean up
     put dbconn_get("type", pConnectionA) into theType
 
     replace space with empty in theType
-    dispatch ("_" & theType & "_afterMigration") with pConnectionA
+    put "_" & theType & "_afterMigration pConnectionA" into theDo
+    do theDo
     put the result into theError
   end if
 
@@ -134,9 +135,12 @@ command dbschema_createTable pName, pTableA, pConnectionA
   end if
 
   if theError is empty then
+    local theDo
+
     replace space with empty in theType
-    dispatch ("_" & theType & "_dbCreateTable") with pName, pTableA, pConnectionA
-    put _ErrorMsg("unable to create table '" & pName & "'", the result) into theError
+    put "_" & theType & "_dbCreateTable pName, pTableA, pConnectionA" into theDo
+     do theDo
+     put _ErrorMsg("unable to create table '" & pName & "'", the result) into theError
   end if
 
   if theError is empty then
@@ -185,8 +189,11 @@ command dbschema_createFields pTable, pFieldsA, pConnection, pDBKey
   end if
 
   if theError is empty then
+    local theDo
+
     replace space with empty in theType
-    dispatch ("_" & theType & "_dbCreateFields") with pTable, pFieldsA, theConnectionA
+    put "_" & theType & "_dbCreateFields pTable, pFieldsA, pConnectionA" into theDo
+    do theDo
     put _ErrorMsg("unable to add fields", the result) into theError
   end if
 
@@ -195,13 +202,14 @@ end dbschema_createFields
 
 
 command dbschema_deleteFields pTable, pFields, pConnection, pDBKey
-  local theError, theConnectionA, theType
+  local theError, theConnectionA, theType, theDo
 
   put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  dispatch ("_" & theType & "_dbDeleteFields") with pTable, pFields, theConnectionA
+  put "_" & theType & "_dbDeleteFields pTable, pFields, pConnectionA" into theDo
+  do theDo
   put the result into theError
 
   return theError
@@ -209,7 +217,7 @@ end dbschema_deleteFields
 
 
 command dbschema_createIndex pName, pIndexA, pConnection, pDBKey
-  local theError, theConnectionA, theType
+  local theError, theConnectionA, theType, theDo
 
   -- table
   -- type (unique, simple, fulltext, spatial)
@@ -221,7 +229,8 @@ command dbschema_createIndex pName, pIndexA, pConnection, pDBKey
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  dispatch ("_" & theType & "_dbCreateTableIndexes") with pName, pIndexA, theConnectionA
+  put "_" & theType & "_dbCreateTableIndexes pName, pIndexA, pConnectionA" into theDo
+  do theDo
   put the result into theError
 
   return theError
@@ -229,13 +238,14 @@ end dbschema_createIndex
 
 
 command dbschema_deleteIndex pIndexName, pTableName, pConnection, pDBKey
-  local theError, theConnectionA, theType
+  local theError, theConnectionA, theType, theDo
 
   put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  dispatch ("_" & theType & "_dbDeleteIndex") with pIndexName, pTableName, theConnectionA
+  put "_" & theType & "_dbDeleteIndex pIndexName, pTableName, pConnectionA" into theDo
+  do theDo
   put the result into theError
 
   return theError
@@ -243,13 +253,14 @@ end dbschema_deleteIndex
 
 
 command dbschema_createTriggers pConnection, pDBKey
-  local theError, theConnectionA, theType
+  local theError, theConnectionA, theType, theDo
 
   put dbobject_createConnectionArray(pConnection, pDBKey) into theConnectionA
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  dispatch ("_" & theType & "_dbCreateForeignKeyConstraints") with theConnectionA
+  put "_" & theType & "_dbCreateForeignKeyConstraints pConnectionA" into theDo
+  do theDo
   put the result into theError
 
   return theError
@@ -320,9 +331,12 @@ command dbsynch_databaseWithSchema pConnectionA
 
   ## ANY REMAINING FOREIGN KEY OPERATIONS (ACTUAL FOREIGN KEYS THROUGH ALTERTABLE, CREATE TRIGGERS, ETC.)
   if theError is empty then
+    local theDo
+
     repeat with i = 1 to the number of elements of theTablesA
-      put theTablesA[i] into theTableA
-      dispatch ("_" & theDBType & "_dbCreateForeignKeyConstraints") with pConnectionA, theTableA
+       put theTablesA[i] into theTableA
+      put "_" & theDBType & "_dbCreateForeignKeyConstraints pConnectionA, theTableA" into theDo
+      do theDo
       put the result into theError
 
       if theError is not empty then exit repeat
@@ -472,7 +486,10 @@ command dbsynch_dbCreateTable pConnectionA, pTableA
 
   ## INDEXES
   if theError is empty then
-    dispatch ("_" & theDBType & "_dbCreateTableIndexes") with pConnectionA, pTableA
+    local theDo
+
+    put "_" & theDBType & "_dbCreateTableIndexes pConnectionA, pTableA" into theDo
+    do theDo
     put the result into theError
   end if
 
@@ -481,13 +498,13 @@ end dbsynch_dbCreateTable
 
 
 command dbsynch_dbAlterTable pConnectionA, pTableA
-  -----
-  local theDBType
+  local theDBType, theDO
   local theError
-  -----
+
   put dbconn_get("type", pConnectionA) into theDBType
   replace space with empty in theDBType
-  dispatch ("_" & theDBType & "_dbAlterTable") with pConnectionA, pTableA
+  put "_" & theDBType & "_dbAlterTable pConnectionA, pTableA" into theDO
+  do theDo
   put the result into theError
 
   return theError
@@ -495,14 +512,14 @@ end dbsynch_dbAlterTable
 
 
 function dbsynch_createTableSQL pConnectionA, pTableA
-  -----
-  local theDBType
+  local theDBType, theDo
   local theSQL
-  -----
+
   put dbconn_get("type", pConnectionA) into theDBType
   replace space with empty in theDBType
   ## CREATE TABLE
-  dispatch function ("_" & theDBType & "_dbCreateTableSQL") with pConnectionA, pTableA
+  put "put _" & theDBType & "_dbCreateTableSQL(pConnectionA, pTableA) into theSQL" into theDo
+  do theDo
   put the result into theSQL
   return theSQL
 end dbsynch_createTableSQL
@@ -511,7 +528,7 @@ end dbsynch_createTableSQL
 command dbsynch_schemaImportTable pConnectionA, pTable
   -----
   local i
-  local theDBType, theSystemTables
+  local theDBType, theSystemTables, theDo
   local theError
   local theField, theFieldA, theFields, theFieldsA, theIndexFields
   local theIndex, theIndexA, theIndexName
@@ -526,7 +543,8 @@ command dbsynch_schemaImportTable pConnectionA, pTable
   ## FILTER OUT DB CREATED TABLES
   set the wholeMatches to true
 
-  dispatch function ("_" & theDBType & "_systemTables")
+  put "put _" & theDBType & "_systemTables() into theSystemTables" into theDo
+  do theDo
   put the result into theSystemTables
 
   if pTable is among the lines of theSystemTables then
@@ -544,13 +562,15 @@ command dbsynch_schemaImportTable pConnectionA, pTable
   --> theArrayA["fields"][index]["unique"]
   --> theArrayA["fields"][index]["accepts null"]
   if theError is empty then
-    dispatch ("_" & theDBType & "_dbTableFields") with pConnectionA, pTable
+    put "_" & theDBType & "_dbTableFields pConnectionA, pTable" into theDo
+    do theDo
     put the result into theError
     put it into theTableA
   end if
 
   if theError is empty then
-    dispatch ("_" & theDBType & "_dbTableIndexes") with pConnectionA, pTable, theFieldsA
+    put "_" & theDBType & "_dbTableIndexes pConnectionA, pTable, theFieldsA " into theDo
+    do theDo
     put it into theIndexesA
   end if
 
