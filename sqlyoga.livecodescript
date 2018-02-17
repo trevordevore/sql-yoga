@@ -278,8 +278,8 @@ function sqlyoga_lastInsertIDQuery pDbType, pConnectionA
   local theDo, theSQL
 
   replace space with empty in pDbType
-  dispatch function ("_" & pDbType & "_lastInsertIDSQL") with pConnectionA
-  put the result into theSQL
+  put "put _" & pDbType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
+  do theDO
   return theSQL
 end sqlyoga_lastInsertIDQuery
 
@@ -4365,12 +4365,11 @@ end dbconn_escapeString
 * \return integer
 */
 command dbconn_lastInsertedID pConnName, pDBKey
-  -----
   local theConnectionA, theConnectionID
-  local theDo,theID
+  local theDo, theID
   local theError
   local theKeyA
-  -----
+
   _ValidateKey pDBKey
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
 
@@ -4391,11 +4390,11 @@ command dbconn_lastInsertedID pConnName, pDBKey
     if theError is empty then
       local theType
 
-      try
+       try
         put sDbsA[ theKeyA ]["type"] into theType
         replace space with empty in theType
-        dispatch function ("_" & theType & "_lastInsertIDSQL") with theConnectionA
-        put the result into theSQL
+        put "put _" & theType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
+        do theDO
       catch e
         _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
       end try
@@ -4453,23 +4452,23 @@ end dbconn_lastInsertedID
 * \return string
 */
 function dbconn_getBooleanValue pBoolean, pConnName, pDBKey
-  -----
-  local i,theDo,theError,theBoolean
+  local i, theDo, theError, theBoolean
   local theConnectionA, theKeyA, theType
-  -----
+
   _ValidateKey pDBKey
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
   ## Generate adaptor specific SQL
-  put sDbsA[ theKeyA ]["type"] into theType
-  replace space with empty in theType
-  put pBoolean is among the items of kBoolTrueValues into pBoolean
-  dispatch fuction ("_" & theType & "_getBooleanValue") with pBoolean
-  put the result into theBoolean
-  if it is not "handled" then
+  try
+    put sDbsA[ theKeyA ]["type"] into theType
+    replace space with empty in theType
+    put pBoolean is among the items of kBoolTrueValues into pBoolean
+    put "put _" & theType & "_getBooleanValue(pBoolean, pConnectionA, pParamsA) into theBoolean" into theDo
+    do theDO
+  catch e
     _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
-  end if
+  end try
 
   return theBoolean
 end dbconn_getBooleanValue
