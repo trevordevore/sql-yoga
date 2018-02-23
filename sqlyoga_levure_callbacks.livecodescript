@@ -17,8 +17,9 @@ command loadRegisteredKeyFile @xFileA
   end if
 
   if tError is empty then
-    put YAMLToArray(textDecode(tDataA, "utf8")) into tDataA
+    YAMLToArray textDecode(tData, "utf8")
     put the result into tError
+    put it into tDataA
   end if
 
   if tError is empty then
