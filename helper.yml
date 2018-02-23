@@ -1,6 +1,9 @@
 libraries:
   - filename: sqlyoga.livecodescript
   - filename: sqlyoga_schema.livecodescript
+frontscripts:
+  - filename: sqlyoga_development.livecodescript
+    distribute: false
 register components:
   - key: sql yoga|configuration
     kind: files
