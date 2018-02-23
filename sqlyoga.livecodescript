@@ -3317,11 +3317,6 @@ function dbobject_get pProperty, pDBKey
       return _ArrayOfDBSubKeys(pDBKey, "query templates", kQueryTemplateReference)
       break
 
-      -- case "schema migrations"
-      -- ## Return an array of references
-      -- return _ArrayOfDBSubKeys(pDBKey, "schema migrations", kSchemaMigrationReference)
-      -- break
-
     case "default connection"
       return sDbsA[pDBKey][pProperty]
       break
@@ -9929,7 +9924,7 @@ function sqlrecord_createObject pTable, pConnName, pDBKey
     ## on then it doesn't matter
     if theTableA["fields"][theField]["meta type"] is "boolean" then
       ## Translate to LiveCode true/false
-      put  theA[theField] is among the items of "true,1,yes,t" into theA[theField]
+      put theA[theField] is among the items of "true,1,yes,t" into theA[theField]
     end if
 
     put theField & comma after theA["@passthru"]
