@@ -2934,6 +2934,155 @@ end _InternetTimeStampGMTOffset
 
 
 /**
+Summary: Initializes a database object using a configuration array.
+
+pDbA: The configuration array.
+pRootFolder: Folder used to resolve relative filenames in pDbA.
+[pDBKey]: Key to assign to the new database object.
+
+Description:
+
+`dbobject_initialize` allows a developer to create a new database object with schema, connections,
+migrations, query templates, table objects, scopes, and relationships defined in an array
+format. This handler will parse that format and make the necessary API calls to create objects.
+This array format allows a database object to be defined in a markup such as YAML.
+
+pDBA array keys:
+
+```
+conections:
+  default connection:
+  connections:
+    CONNECTION_NAME:
+      adaptor:
+      type:
+      file:
+      quote identifiers:
+relationships:
+  - name:
+    type:
+    order by:
+    left table:
+    left table key:
+    cross-reference table:
+    cross-reference table key for left table:
+    cross-reference table key for right table:
+    right table:
+    right table key:
+scopes:
+  TABLE_NAME:
+    - name:
+      related table joins:
+      conditions:
+schema:
+  tables:
+    TABLE_NAME:
+      primary key:
+      field order:
+      fields:
+        FIELD_NAME:
+          accepts null:
+          default value:
+            primary key:
+            limit:
+            unique:
+            signed:
+            meta type:
+            type:
+```
+
+Returns: Error message
+*/
+command dbobject_initialize pDbA, pRootFolder, pDBKey
+  local theError, tConnectionsA, tRelationshipsA, tScopesA
+  local tKey, tTable, tField, i
+
+  if theError is empty then
+    put pDbA["connections"] into tConnectionsA
+    put pDbA["relationships"] into tRelationshipsA
+    put pDbA["scopes"] into tScopesA
+
+    delete local pDbA["connections"]
+    delete local pDbA["relationships"]
+    delete local pDbA["scopes"]
+
+    # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
+    repeat for each key tTable in pDbA["schema"]["tables"]
+      repeat for each key tField in pDbA["schema"]["tables"][tTable]["fields"]
+        put tField into pDbA["schema"]["tables"][tTable]["fields"][tField]["name"]
+      end repeat
+    end repeat
+
+    dbobject_createFromArray pDbA, pDBKey
+    put the result into theError
+  end if
+
+  # Set up connections
+  if theError is empty then
+    repeat for each key tKey in tConnectionsA
+      dbconn_createObject tKey, tConnectionsA[tKey]["adaptor"], tConnectionsA[tKey]["type"], pDBKey
+
+      if tConnectionsA[tKey]["file"] is not empty then
+        put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
+        dbconn_set "file", tConnectionsA[tKey]["file"]
+      else if tConnectionsA[tKey]["database name"] is not empty then
+        dbconn_set "database name", tConnectionsA[tKey]["database name"]
+      end if
+    end repeat
+  end if
+
+  # Set up scopes and relationships
+  if theError is empty then
+    repeat with i = 1 to the number of elements of tRelationshipsA
+      tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
+
+      repeat for each item tKey in "left table,right table,cross-reference table"
+        if tRelationshipsA[i][tKey] is not empty \
+              and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
+          tableobj_createObject tRelationshipsA[i][tKey], "table", pDBKey
+        end if
+      end repeat
+
+      repeat for each item tKey in "type,left table,left table key," & \
+            "right table,right table key,order by,delete action,update action"
+        tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
+      end repeat
+
+      if tRelationshipsA[i]["type"] is "many-to-many" then
+        repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
+              "cross-reference table key for right table"
+          tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
+        end repeat
+      end if
+    end repeat
+
+    local tScopeA
+
+    repeat for each key tTable in tScopesA
+      if not tableobjects_tableExists(tTable, pDBKey) then
+        tableobj_createObject tTable, "table", pDBKey
+      end if
+
+      repeat with i = 1 to the number of elements of tScopesA[tTable]
+        tblscope_createObject tTable, tScopesA[tTable][i]["name"], pDBKey
+        put it into tScopeA
+
+        if "joins" is among the keys of tScopesA[tTable][i] then
+          put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
+        end if
+
+        repeat for each item tKey in "related table joins,conditions"
+          tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
+        end repeat
+      end repeat
+    end repeat
+  end if
+
+  return theError
+end dbobject_initialize
+
+
+/**
 * \brief Creates a Database Object from an object that you have previously stored a Database Object in using dbobject_save.
 *
 * \param pObjectID The id of the LiveCode object that the Database Object was stored in.
@@ -3005,103 +3154,6 @@ command dbobject_createFromFile pFile, pDBKey
 
   return theError
 end dbobject_createFromFile
-
-
-command dbobject_createFromYAML pYAML, pRootFolder, pDBKey
-  local theError, tDBA, tConnectionsA, tRelationshipsA, tScopesA
-  local tKey, tTable, tField, i
-
-  YAMLToArray textDecode(pYAML, "utf8")
-  if the result is empty then
-    put it into tDBA
-  else
-    put the result into theError
-  end if
-
-  if theError is empty then
-    put tDBA["connections"] into tConnectionsA
-    put tDBA["relationships"] into tRelationshipsA
-    put tDBA["scopes"] into tScopesA
-
-    delete local tDBA["connections"]
-    delete local tDBA["relationships"]
-    delete local tDBA["scopes"]
-
-    # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
-    repeat for each key tTable in tDBA["schema"]["tables"]
-      repeat for each key tField in tDBA["schema"]["tables"][tTable]["fields"]
-        put tField into tDBA["schema"]["tables"][tTable]["fields"][tField]["name"]
-      end repeat
-    end repeat
-
-
-    dbobject_createFromArray tDBA, pDBKey
-    put the result into theError
-  end if
-
-  # Set up connections
-  if theError is empty then
-    repeat for each key tKey in tConnectionsA
-      dbconn_createObject tKey, tConnectionsA[tKey]["adaptor"], tConnectionsA[tKey]["type"], pDBKey
-
-      if tConnectionsA[tKey]["file"] is not empty then
-        put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
-        dbconn_set "file", tConnectionsA[tKey]["file"]
-      else if tConnectionsA[tKey]["database name"] is not empty then
-        dbconn_set "database name", tConnectionsA[tKey]["database name"]
-      end if
-    end repeat
-  end if
-
-  # Set up scopes and relationships
-  if theError is empty then
-    repeat with i = 1 to the number of elements of tRelationshipsA
-      tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
-
-      repeat for each item tKey in "left table,right table,cross-reference table"
-        if tRelationshipsA[i][tKey] is not empty \
-              and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
-          tableobj_createObject tRelationshipsA[i][tKey], "table", pDBKey
-        end if
-      end repeat
-
-      repeat for each item tKey in "type,left table,left table key," & \
-            "right table,right table key,order by,delete action,update action"
-        tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
-      end repeat
-
-      if tRelationshipsA[i]["type"] is "many-to-many" then
-        repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
-              "cross-reference table key for right table"
-          tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
-        end repeat
-      end if
-    end repeat
-
-    local tScopeA
-
-    repeat for each key tTable in tScopesA
-      if not tableobjects_tableExists(tTable, pDBKey) then
-        tableobj_createObject tTable, "table", pDBKey
-      end if
-
-      repeat with i = 1 to the number of elements of tScopesA[tTable]
-        tblscope_createObject tTable, tScopesA[tTable][i]["name"], pDBKey
-        put it into tScopeA
-
-        if "joins" is among the keys of tScopesA[tTable][i] then
-          put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
-        end if
-
-        repeat for each item tKey in "related table joins,conditions"
-          tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
-        end repeat
-      end repeat
-    end repeat
-  end if
-
-  return theError
-end dbobject_createFromYAML
 
 
 /**

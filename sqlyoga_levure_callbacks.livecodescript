@@ -1,6 +1,6 @@
 script "SQLYoga Levure Callbacks"
 command loadRegisteredKeyFile @xFileA
-  local tDBObjectA, i, tData, tError
+  local tDBObjectA, i, tData, tDataA, tError
 
   if there is a folder xFileA["filename"] then
     repeat for each line tFile in files(xFileA["filename"])
@@ -17,7 +17,12 @@ command loadRegisteredKeyFile @xFileA
   end if
 
   if tError is empty then
-    dbobject_createFromYAML tData, levureAppFolder(), xFileA["database key"]
+    put YAMLToArray(textDecode(tDataA, "utf8")) into tDataA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    dbobject_initialize tDataA, levureAppFolder(), xFileA["database key"]
     put the result into tError
   end if
 
