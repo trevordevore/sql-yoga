@@ -3174,11 +3174,12 @@ command dbobject_createFromArray pArray, pDBKey
   _ValidateKey pDBKey
   _ValidateDatabaseArray pArray
 
-  ## todo: if db key already exists then shut down any open connections, etc.
-  ## Move over deprecated tables behavior property
   if pArray is not an array then
     _ThrowError kErrInvalidArray, "invalid array"
   end if
+
+  _ResetDatabaseKey pDBKey
+
   put pArray into sDbsA[pDBKey]
 
   if sDbsA[ pDBKey ]["tables behavior"] is not empty then
@@ -3188,6 +3189,21 @@ command dbobject_createFromArray pArray, pDBKey
 
   return theError
 end dbobject_createFromArray
+
+
+private command _ResetDatabaseKey pDBKey
+  local theKey
+
+  ## If db key already exists then disconnect
+  ## todo: Move over deprecated tables behavior property
+  if dbobject_exists(pDBKey) then
+    repeat for each line theKey in dbobject_get("connections", pDBKey)
+      if dbconn_get("connection id", theKey, pDBKey) > 0 then
+        dbconn_disconnect theKey, pDBKey
+      end if
+    end repeat
+  end if
+end _ResetDatabaseKey
 
 
 /**
