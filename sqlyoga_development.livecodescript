@@ -4,6 +4,20 @@ command sqlyogadev_reloadConfigFiles
 end sqlyogadev_reloadConfigFiles
 
 
+command sqlyogadev_enableLogging pBoolean, pConnectionName, pDBKey
+  if pBoolean then
+    dbconn_set "log callback", "sqlyogadev_loggingCallback", pConnectionName, pDBKey
+  else
+    dbconn_set "log callback", "", pConnectionName, pDBKey
+  end if
+end sqlyogadev_enableLogging
+
+
+command sqlyogadev_loggingCallback pSQL, pConnectionName, pDBKey
+  loggerLogMsg "sqlyoga:" && pSQL
+end sqlyogadev_loggingCallback
+
+
 command sqlyogadev_runMigrations pDBKey
   local tError, tConfigA, i, tMigrateFolder
 
