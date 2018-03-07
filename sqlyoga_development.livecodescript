@@ -14,7 +14,7 @@ end sqlyogadev_enableLogging
 
 
 command sqlyogadev_loggingCallback pSQL, pConnectionName, pDBKey
-  loggerLogMsg "sqlyoga:" && pSQL
+  loggerLogMsg "sqlYoga:" && pSQL
 end sqlyogadev_loggingCallback
 
 
@@ -57,7 +57,6 @@ command _runMigrations pMigrationFolder, pConnectionA, pDBKey
     put the result into tError
 
     if tError is empty then
-      # TODO: Field types aren't being filled in based on meta type in yaml.
       dbmigrate_processMigrationArray tMigrateA, pConnectionA, pDBKey
       put the result into tError
     end if
