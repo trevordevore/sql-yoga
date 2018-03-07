@@ -1,5 +1,18 @@
 script "libSQLYogaSchema"
---> DB schema Modification
+command dbmigrate_processMigrationArray pMigrationA, pConnectionA, pDBKey
+  local tError, tTableA
+
+  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
+
+  repeat for each element tTableA in pMigrationA["migration"]["create tables"]
+    dbschema_createTable tTableA["name"], tTableA, pConnectionA, pDBKey
+    put the result into tError
+
+    if tError is not empty then exit repeat
+  end repeat
+
+  return tError for error
+end dbmigrate_processMigrationArray
 
 /**
 * brief Updates the physical database schema to the schema version specified.
@@ -8,10 +21,10 @@ script "libSQLYogaSchema"
 *
 * \package Database Schema
 */
-command dbschema_migrateToVersion pVersion, pConnectionA
+command dbschema_migrateToVersion pVersion, pConnectionA, pDBKey
   local theError, theContainer, theVersions, theSQL
 
-  put dbobject_createConnectionArray(pConnectionA, param(3)) into pConnectionA
+  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
   put dbobject_get("schema migrations", pConnectionA["database"]) into theContainer
 
   repeat with i = 1 to the number of controls of theContainer
@@ -110,14 +123,14 @@ command dbschema_migrateToVersion pVersion, pConnectionA
 end dbschema_migrateToVersion
 
 ## Creates a table in the database
-command dbschema_createTable pName, pTableA, pConnectionA
+command dbschema_createTable pName, pTableA, pConnectionA, pDBKey
   local theError, theType, theEncoding
 
   -- pTableA["primary key"]
   -- pTableA["fields"]
   -- pTableA["foreign keys"]
   -- pTableA["indexes"]
-  put dbobject_createConnectionArray(pConnectionA, param(4)) into pConnectionA
+  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
   put dbconn_get("type", pConnectionA) into theType
 
   ## Get effective encoding
@@ -126,10 +139,14 @@ command dbschema_createTable pName, pTableA, pConnectionA
   put theEncoding into pTableA["encoding"]
 
   if theError is empty then
-    ## fill in encoding for fields
+    ## fill in encoding and check for primary key field
     repeat for each key theKey in pTableA["fields"]
       if pTableA["fields"][theKey]["encoding"] is empty then
         put theEncoding into pTableA["fields"][theKey]["encoding"]
+      end if
+
+      if pTableA["primary key"] is empty and pTableA["fields"][theKey]["name"] is "id" then
+        put "id" into pTableA["primary key"]
       end if
     end repeat
   end if
