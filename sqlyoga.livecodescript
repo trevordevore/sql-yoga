@@ -71,7 +71,7 @@ constant kBoolFalseValues = "false,0,n,no,f"
 
 constant kDontQuoteTypes = "decimal,integer,sequence"
 
-constant kTempConnProps = "username,password,log file,log field,last executed sql,version,database name,host,port"
+constant kTempConnProps = "username,password,log file,log field,log callback,last executed sql,version,database name,host,port"
 
 local sDefaultDBKey = "default"
 
@@ -4281,6 +4281,13 @@ command dbconn_set pProp, pValue, pConnName, pDBKey
               cr to file sConnectionsA[ theTempKeyA ]["log file"]
         close file sConnectionsA[ theTempKeyA ]["log file"]
       end if
+    end if
+
+    if sConnectionsA[ theTempKeyA ]["log callback"] is not empty then
+      dispatch sConnectionsA[ theTempKeyA ]["log callback"] \
+            with sConnectionsA[ theTempKeyA ]["last executed sql"], \
+            theConnectionA["name"], \
+            theConnectionA["database"]
     end if
   end if
 
