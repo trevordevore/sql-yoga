@@ -250,7 +250,7 @@ command dbschema_createIndex pName, pIndexA, pConnection, pDBKey
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbCreateTableIndexes pName, pIndexA, pConnectionA" into theDo
+  put "_" & theType & "_dbCreateTableIndexes pName, pIndexA, theConnectionA" into theDo
   do theDo
   put the result into theError
 
@@ -280,7 +280,7 @@ command dbschema_createTriggers pConnection, pDBKey
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbCreateForeignKeyConstraints pConnectionA" into theDo
+  put "_" & theType & "_dbCreateForeignKeyConstraints theConnectionA" into theDo
   do theDo
   put the result into theError
 
