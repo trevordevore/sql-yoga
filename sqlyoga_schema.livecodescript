@@ -354,14 +354,9 @@ command dbsynch_databaseWithSchema pConnectionA
   if theError is empty then
     local theDo
 
-    repeat with i = 1 to the number of elements of theTablesA
-       put theTablesA[i] into theTableA
-      put "_" & theDBType & "_dbCreateForeignKeyConstraints pConnectionA, theTableA" into theDo
-      do theDo
-      put the result into theError
-
-      if theError is not empty then exit repeat
-    end repeat
+    put "_" & theDBType & "_dbCreateForeignKeyConstraints pConnectionA" into theDo
+    do theDo
+    put the result into theError
   end if
 
   if theError is empty then
