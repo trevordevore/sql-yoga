@@ -2994,17 +2994,19 @@ schema:
 Returns: Error message
 */
 command dbobject_initialize pDbA, pRootFolder, pDBKey
-  local theError, tConnectionsA, tRelationshipsA, tScopesA
+  local theError, tConnectionsA, tRelationshipsA, tScopesA, tTablesA
   local tKey, tTable, tField, i
 
   if theError is empty then
     put pDbA["connections"] into tConnectionsA
     put pDbA["relationships"] into tRelationshipsA
     put pDbA["scopes"] into tScopesA
+    put pDbA["tables"] into tTablesA
 
     delete local pDbA["connections"]
     delete local pDbA["relationships"]
     delete local pDbA["scopes"]
+    delete local pDbA["tables"]
 
     # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
     repeat for each key tTable in pDbA["schema"]["tables"]
@@ -3031,8 +3033,23 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
     end repeat
   end if
 
-  # Set up scopes and relationships
+  # Set up tables, scopes, and relationships
   if theError is empty then
+    repeat with i = 1 to the number of elements of tTablesA
+      if not tableobjects_tableExists(tTablesA[i]["name"], pDBKey) then
+        tableobj_createObject tTablesA[i]["name"], "table", pDBKey
+      end if
+
+      repeat for each item tKey in "type,after retrieve listeners,before create listeners," & \
+            "after create listeners,before update listeners,after update listeners," & \
+            "before delete listeners,after delete listeners," & \
+            "name,alias for table,conditions,primary key"
+        if tKey is among the keys of tTablesA[i] then
+          tableobj_set tTablesA[i]["name"], tKey, tTablesA[i][tKey], pDBKey
+        end if
+      end repeat
+    end repeat
+
     repeat with i = 1 to the number of elements of tRelationshipsA
       tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
 
