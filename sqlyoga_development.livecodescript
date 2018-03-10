@@ -1,7 +1,29 @@
 script "SQL Yoga Development Tools"
 command sqlyogadev_reloadConfigFiles
   levureReloadRegisteredKey "sql yoga|configuration"
+
+  return empty
 end sqlyogadev_reloadConfigFiles
+
+
+command sqlyogadev_createTriggers
+  local theError
+
+  dbconn_connect
+  if theError is empty then
+    dbconn_beginTransaction
+    put the result into theError
+  end if
+  dbschema_createTriggers # default connection
+  put the result into theError
+  if theError is empty then
+    dbconn_commitTransaction
+  else
+    dbconn_rollbackTransaction
+  end if
+
+  return theError
+end sqlyogadev_createTriggers
 
 
 command sqlyogadev_enableLogging pBoolean, pConnectionName, pDBKey
