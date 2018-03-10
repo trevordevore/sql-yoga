@@ -2193,7 +2193,7 @@ private command _mysql_dbDeleteIndex pIndexName, pTableName, pConnectionA
 end _mysql_dbDeleteIndex
 
 
-private command _mysql_dbCreateForeignKeyConstraints pConnectionA, pTableA
+private command _mysql_dbCreateForeignKeyConstraints pConnectionA
 
 end _mysql_dbCreateForeignKeyConstraints
 
@@ -2467,7 +2467,7 @@ private command _postgresql_dbDeleteIndex pIndexName, pTableName, pConnectionA
 end _postgresql_dbDeleteIndex
 
 
-private command _postgresql_dbCreateForeignKeyConstraints pConnectionA, pTableA
+private command _postgresql_dbCreateForeignKeyConstraints pConnectionA
 
 end _postgresql_dbCreateForeignKeyConstraints
 
