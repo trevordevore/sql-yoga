@@ -61,6 +61,8 @@ command sqlyogadev_runMigrations pDBKey
     end if
   end repeat
 
+  dbsynch_schemaWithDatabase empty, pDBKey
+
   return tError
 end sqlyogadev_runMigrations
 
