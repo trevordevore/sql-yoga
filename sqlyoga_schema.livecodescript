@@ -292,7 +292,7 @@ end dbschema_createTriggers
 
 # Makes any changes necessary to database to put it in synch with the current schema.
 # No data will be lost.
-command dbsynch_databaseWithSchema pConnectionA
+command dbsynch_databaseWithSchema pConnectionA, pDBKey
   -----
   local i,theDBKey
   local theConnectionID
@@ -305,6 +305,8 @@ command dbsynch_databaseWithSchema pConnectionA
   local theVersion
   local theRecords
   -----
+  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
+
   set the wholeMatches to true
   dbconn_connect pConnectionA
   put _ErrorMsg("unable to connect to database", the result) into theError
@@ -404,7 +406,7 @@ end dbsynch_databaseWithSchema
 
 
 # Puts active schema in synch with database
-command dbsynch_schemaWithDatabase pConnectionA
+command dbsynch_schemaWithDatabase pConnectionA, pDBKey
   -----
   local theConnectionID
   local theError
@@ -412,6 +414,8 @@ command dbsynch_schemaWithDatabase pConnectionA
   local theTable, theTableA
   local theTables
   -----
+  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
+
   set the wholeMatches to true
 
   put dbconn_get("connection id", pConnectionA) into theConnectionID
