@@ -165,6 +165,10 @@ command dbschema_createTable pName, pTableA, pConnectionA, pDBKey
 
     repeat with i = 1 to the number of elements of pTableA["indexes"]
       put pTableA["indexes"][i] into theIndexA
+      if theIndexA["table"] is empty then
+        put pName into theIndexA["table"]
+      end if
+
       dbschema_createIndex theIndexA["name"], theIndexA, pConnectionA
       put the result into theError
 
