@@ -953,6 +953,25 @@ private function _sqlite_getFieldSQLType pFieldA
 end _sqlite_getFieldSQLType
 
 
+private function _sqlite_getFieldCollateType pFieldA
+  local tCollation
+
+  if pFieldA["charset"] is not empty then
+    if pFieldA["charset"] is "binary" then
+      put "BINARY" into tCollation
+    else
+      put "NOCASE" into tCollation
+    end if
+  else
+    if pFieldA["type"] is "text" then
+      put "NOCASE" into tCollation
+    end if
+  end if
+
+  return tCollation
+end _sqlite_getFieldCollateType
+
+
 private command _sqlite_dbCreateTable pName, pTableA, pConnectionA
   local theError
   local theQsA, theSQL
@@ -993,11 +1012,12 @@ end _sqlite_dbCreateTable
 
 -- pTableA["@primary key is taken care of"] can be modified
 function _sqlite_getColumnDefSQL @pTableA, theFieldA
-  local theQsA, theSQLType, theSQL
+  local theQsA, theSQLType, theCollation, theSQL
 
   put quote into theQsA["left"]
   put quote into theQsA["right"]
   put _sqlite_getFieldSQLType(theFieldA) into theSQLType
+  put _sqlite_getFieldCollateType(theFieldA) into theCollation
 
   ## Name
   put theQsA["left"] & theFieldA["name"] & theQsA["right"] & space into theSQL
@@ -1012,6 +1032,10 @@ function _sqlite_getColumnDefSQL @pTableA, theFieldA
 
     if "default" is among the keys of theFieldA then
       put "DEFAULT " & theFieldA["default"] & " " after theSQL
+    end if
+
+    if theCollation is not empty then
+      put "COLLATE" && theCollation & " " after theSQL
     end if
 
     if theFieldA["accepts null"] is false then
