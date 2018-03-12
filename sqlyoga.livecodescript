@@ -9181,7 +9181,7 @@ command sqlquery_update pTable, pConditions, pParamsA
     local updateRecordAfterUpdate
 
     put false into updateRecordAfterUpdate
-    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, empty
+    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate
     put the result into theError
     put it into theAffectedRows
   end if
@@ -10773,7 +10773,7 @@ end _RetrieveRecordsRelatedtoRecord
 * </pre>
 *
 * Update callbacks in your Table Object definitions will be called and \
-      * broadcasts will be sent to listeners during this operation.
+      * broadcasts will be sent to callbacks during this operation.
 *
 * \package SQL Record
 *
@@ -10787,7 +10787,6 @@ command sqlrecord_update @xRecordsA
   local theConnectionA
   local theAffectedRows
   local theError
-  local theKeyA
   local theTablesIndexA
   local rethrowTheError
   -----
@@ -10832,7 +10831,7 @@ command sqlrecord_update @xRecordsA
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterUpdate, empty
+        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterUpdate
         put the result into theError
         put it into theAffectedRows
       else
@@ -10841,8 +10840,7 @@ command sqlrecord_update @xRecordsA
           if "@table" is not among the keys of xRecordsA[i] then
             put kInvalidType && "record" into theError
           else
-            put i into theKeyA[1]
-            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterUpdate, theKeyA
+            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], updateRecordAfterUpdate
             put the result into theError
 
             if theError is empty then
@@ -10870,7 +10868,7 @@ command sqlrecord_update @xRecordsA
 end sqlrecord_update
 
 
-private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordsA, pUpdateRecordAfterUpdate, pDynamicKeyA
+private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterUpdate
   -----
   local i,theSQL, theType, isBoolean
   local theAffectedRows
@@ -10886,23 +10884,14 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
   local theTablesIndexA
   local theUpdateClause
   local theWhere
-
   -----
+
+  put xRecordA["@table"] into theTable
+
   ## VALIDATION CALLBACKS
-  ## Todo: Update once we can pass arrays by reference
-  if pDynamicKeyA is an array then
-    get xRecordsA[pDynamicKeyA]
-    dispatch "tableobj.validate." & xRecordsA[pDynamicKeyA]["@table"] with it
-    if it is "handled" then
-      put the result into theError
-      put it into xRecordsA[pDynamicKeyA]
-    end if
-    put the keys of xRecordsA[pDynamicKeyA] into theFields
-  else
-    dispatch "tableobj.validate." & xRecordsA["@table"] with xRecordsA
-    put the result into theError
-    put the keys of xRecordsA into theFields
-  end if
+  dispatch "tableobj.validate." & theTable with xRecordA
+  put the result into theError
+  put the keys of xRecordA into theFields
 
   ## Validation error, prefix with something
   if theError is not empty then
@@ -10912,18 +10901,17 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
   if theError is empty then
     filter theFields without "@*"
 
-    put the number of elements of pDynamicKeyA + 1 into theNextKeyIndex
-
-    put "@table" into pDynamicKeyA[theNextKeyIndex]
-    put xRecordsA[pDynamicKeyA] into theTable
-
     ## Error checking
-    delete local pDynamicKeyA[theNextKeyIndex]
     if the number of items of pTablesA[ theTable ]["primary key"] < 1 \
-          and ("@where" is not among the keys of xRecordsA[pDynamicKeyA] and "@where" is not among the keys of xRecordsA) then
+          and "@where" is not among the keys of xRecordA then
       _ThrowError kErrInvalidProperty, "cannot update table '" & theTable & "' as no primary key is defined"
       -- put "cannot update table '" & theTable & "' as no primary key is defined" into theError
     end if
+  end if
+
+  if theError is empty then
+    _dispatchTableObjectEventListener theTable, pConnectionA, "before update callback", xRecordA
+    put the result into theError
   end if
 
   if theError is empty then
@@ -10933,17 +10921,14 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
     ## WHERE clause
     put dbconn_get("type", pConnectionA) into theType
     repeat for each item theField in pTablesA[ theTable ]["primary key"]
-      put theField into pDynamicKeyA[theNextKeyIndex]
-
       put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
 
       ## Strings like '01' are reported as integers so make sure and check defined type.
-      -- if xRecordsA[pDynamicKeyA] is not an integer then
       if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is not among the items of kDontQuoteTypes then
-        put pQuotesA["left"] & theField & pQuotesA["right"] & " = '" & _EscapeDbString(theType, xRecordsA[pDynamicKeyA]) & "' AND " after theWhere
+        put pQuotesA["left"] & theField & pQuotesA["right"] & " = '" & _EscapeDbString(theType, xRecordA[theField]) & "' AND " after theWhere
       else
-        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordsA[pDynamicKeyA], pConnectionA) & " AND " after theWhere
-        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordsA[pDynamicKeyA] & " AND " after theWhere
+        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & " AND " after theWhere
+        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & " AND " after theWhere
       end if
 
       put theField & comma after thePrimaryKeys
@@ -10952,27 +10937,21 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
     delete the last char of thePrimaryKeys
 
     ## sqlquery_update passes in a WHERE clause as it can be more complex
-    ## Oh, pass by ref, where art thou?
-    delete local pDynamicKeyA[theNextKeyIndex]
-    if ("@where" is among the keys of xRecordsA) or ("@where" is among the keys of xRecordsA[pDynamicKeyA]) then
-      put "@where" into pDynamicKeyA[theNextKeyIndex]
-      put xRecordsA[pDynamicKeyA] into theWhere
+    if "@where" is among the keys of xRecordA then
+      put xRecordA["@where"] into theWhere
     end if
 
     local thePassThruFields, theMetaType, theConnType
     local theFieldIndex
 
-    put "@passthru" into pDynamicKeyA[theNextKeyIndex]
-    put xRecordsA[pDynamicKeyA] into thePassThruFields
+    put xRecordA["@passthru"] into thePassThruFields
     set the wholeMatches to true
 
     ## UPDATE clause
     repeat for each line theField in theFields
-      put theField into pDynamicKeyA[theNextKeyIndex]
-
       if theField is among the items of thePrimaryKeys then next repeat
       if theField is not among the items of pTablesA[ theTable ]["fields"] then
-        if xRecordsA[ pDynamicKeyA ] is an array then
+        if xRecordA[ theField ] is an array then
           ## This is a list of fields that are possible related record arrays.
           ## After we finish updating this record we need to find the
           ## relationship between the two, add the forign key field value
@@ -10986,22 +10965,22 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
       put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
       put dbconn_get("type", pConnectionA) into theConnType
 
-      if xRecordsA[pDynamicKeyA] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordsA[pDynamicKeyA] is empty) then
+      if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
         ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
         put pQuotesA["left"] & theField & pQuotesA["right"] & " = NULL" & comma after theUpdateClause
       else if theField is among the items of thePassThruFields then
         ## some fields just pass through values to the db
-        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordsA[pDynamicKeyA], pConnectionA) & "," after theUpdateClause
-        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordsA[pDynamicKeyA] & comma after theUpdateClause
+        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & "," after theUpdateClause
+        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & comma after theUpdateClause
       else
         add 1 to theFieldIndex
         put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & ":" & theFieldIndex & comma after theUpdateClause
 
         if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
-          put xRecordsA[pDynamicKeyA] into theBindingsA["*b" & theFieldIndex]
+          put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
         else
-          if isBoolean then put _getBooleanValue(xRecordsA[pDynamicKeyA], pConnectionA) into theBindingsA[theFieldIndex]
-          else put xRecordsA[pDynamicKeyA] into theBindingsA[theFieldIndex]
+          if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
+          else put xRecordA[theField] into theBindingsA[theFieldIndex]
         end if
       end if
     end repeat
@@ -11021,28 +11000,16 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
   if theError is empty \
         and pUpdateRecordAfterUpdate \
         and pTablesA[ theTable ]["primary key"] is not empty then
-    put empty into theRecordKeysA
-    put "@table" into pDynamicKeyA[theNextKeyIndex]
-    put xRecordsA[pDynamicKeyA] into theRecordKeysA["@table"]
-
-    ## If we could pass subkeys by reference then we wouldn't do this.
-    ## But xRecordsA[i] could be big so why copy all the data when passing to the function?
-    repeat for each item theField in thePrimaryKeys
-      put theField into pDynamicKeyA[theNextKeyIndex]
-      put xRecordsA[pDynamicKeyA] into theRecordKeysA[theField]
-    end repeat
-
     local theOutRecordA
 
-    _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, theRecordKeysA, pTablesA[ theTable ]["primary key"]
+    _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
     put the result into theError
 
     if theError is empty then
       ## Update record one field at a time so we don't overwrite any related tables
 
       repeat for each key theField in theOutRecordA
-        put theField into pDynamicKeyA[theNextKeyIndex]
-        put theOutRecordA[theField] into xRecordsA[pDynamicKeyA]
+        put theOutRecordA[theField] into xRecordA[theField]
       end repeat
     end if
   end if
@@ -11052,27 +11019,24 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecords
     local theTablesA
 
     repeat for each item theTableKey in theKeysWithChildRecords
-      put theTableKey into pDynamicKeyA[theNextKeyIndex]
-
       put empty into theTablesIndexA
-      _SplitRecordsIntoTablesIndex pConnectionA, xRecordsA, theTablesA, true, pDynamicKeyA
+      _SplitRecordsIntoTablesIndex pConnectionA, xRecordA[theTableKey], theTablesA, true, theTable
       put the result into theError
 
       if theError is empty then
-        if line 1 of the keys of xRecordsA[ pDynamicKeyA ] is an integer then
+        if line 1 of the keys of xRecordA[ theTableKey ] is an integer then
           ## array of records
-          repeat with i = 1 to the number of elements of xRecordsA[ pDynamicKeyA ]
-            put i into pDynamicKeyA[theNextKeyIndex + 1]
-            if "@table" is among the keys of xRecordsA[ pDynamicKeyA ] then
-              _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordsA, pUpdateRecordAfterUpdate, pDynamicKeyA
+          repeat with i = 1 to the number of elements of xRecordA[ theTableKey ]
+            if "@table" is among the keys of xRecordA[ theTableKey ][i] then
+              _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ][i], pUpdateRecordAfterUpdate
               put the result into theError
             end if
             if theError is not empty then exit repeat
           end repeat
         else
           ## just a record
-          if "@table" is among the keys of xRecordsA[ pDynamicKeyA ] then
-            _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordsA, pUpdateRecordAfterUpdate, pDynamicKeyA
+          if "@table" is among the keys of xRecordA[ theTableKey ] then
+            _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ], pUpdateRecordAfterUpdate
             put the result into theError
           end if
         end if
@@ -11091,53 +11055,104 @@ end _UpdateRecordInTable
 
 
 /**
-* \brief This handler takes a records arrays and splits it up based on tables.
-*
-* When done rTablesA will have keys for each table represented in xRecordsA. Each
-* table in turn has an index, records, fields and primary key entry. The records
-* entry is an integer indexed array of the records to in the table with the
-* value of the primary key field(s).
-*
-* Note: If table has no 'primary key' field(s) defined then all included fields will be used as primary key.
-* this supports 'through' tables that might not have primary key defined.
-*
-* Example:
-* <pre>steps
-*    index: 7
-*    records
-*         1
-*              id: 1
-*    primary key
-*         1
-*              field index: 4
-*              value:
-*              field name: id
-*    fields: id,instructions,lesson_id,title
-* </pre>
-*
-* \return
+Summary: Dispatches callback messages associated with a table.
+
+pTable: Name of table.
+pConnectionA: The active connection.
+pCallbackKey: The callback key to use (e.g. `before delete callback`)
+@xRecordA: The record that is being acted on. Callback may modify the record.
+
+Returns: Error message
+
 */
-private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA, pEnforceKeyPresence, pDynamicKeyA
+private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbackKey, @xRecordA
+  local theTableA, theCallback, theMessage, theObject
+  local theError
+
+  if tableobjects_tableExists(pTable, pConnectionA["database"]) then
+    put tableobjects_getTable(pTable, pConnectionA["database"]) into theTableA
+
+    repeat for each line theCallback in tableobj_get(theTableA, pCallbackKey)
+      put item 1 of theCallback into theMessage
+      put item 2 to -1 of theCallback into theObject
+
+      if theObject is not empty then
+        dispatch theMessage to theObject with xRecordA, pConnectionA
+      else
+        dispatch theMessage with xRecordA, pConnectionA
+      end if
+
+      if it is "handled" then
+        put the result into theError
+        if theError is not empty then
+          exit repeat
+        end if
+      end if
+    end repeat
+  end if
+
+  return theError
+end _dispatchTableObjectEventListener
+
+
+/**
+Summary This handler takes a records arrays and splits it up based on tables.
+
+pConnectionA:
+@xRecordsA:
+@rTablesA:
+pEnforceKeyPresence:
+pParentTableKey:
+
+Description:
+When done rTablesA will have keys for each table represented in xRecordsA. Each
+table in turn has an index, records, fields and primary key entry. The records
+entry is an integer indexed array of the records to in the table with the
+value of the primary key field(s).
+
+Note: If table has no 'primary key' field(s) defined then all included fields will be used as primary key.
+this supports 'through' tables that might not have primary key defined.
+
+Example:
+```
+steps
+  index: 7
+  records
+    1
+      id: 1
+      primary key
+        1
+          field index: 4
+          value:
+          field name: id
+      fields: id,instructions,lesson_id,title
+ </pre>
+
+Returns:
+*/
+private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA, pEnforceKeyPresence, pParentTableKey
   -----
   local isAnArray, isSingleRecord, theNextIndex, i
   local theError
   local theTable, theField
   local thePrimaryKey, theIndex
   local theCount, theKeys
-  local theTableA
+  local theTableA, theLookupKeyA, tLookupIndex
   -----
   put kTableReference into theTableA["type"]
-  -- put pConnectionA["database"] into theTableA["database"]
+  put "@table" is among the keys of xRecordsA into isSingleRecord
 
-  put pDynamicKeyA is an array into isAnArray
-  if isAnArray then put "@table" is among the keys of xRecordsA[ pDynamicKeyA ] into isSingleRecord
-  else put "@table" is among the keys of xRecordsA into isSingleRecord
-  put the number of elements of pDynamicKeyA + 1 into theNextIndex
+  # If dealing with nested records then build the array index key using the existing
+  # parent table array index.
+  if pParentTableKey is not empty then
+    put rTablesA[pParentTableKey] into theLookupKeyA
+    put pParentTableKey into theLookupKeyA[ the number of elements of theLookupKeyA + 1 ]
+  end if
+  put the number of elements of theLookupKeyA + 1 into tLookupIndex
 
   if isSingleRecord then
     ## single record
-    put "@table" into pDynamicKeyA[ theNextIndex ]
-    put xRecordsA[pDynamicKeyA] into theTable
+    put xRecordsA["@table"] into theTable
 
     put theTable into rTablesA[ theTable ]["name"]
     if tableobjects_tableExists(theTable, pConnectionA["database"]) then
@@ -11152,7 +11167,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
     put 1 into theIndex
 
     ## So others can look up entry in xRecordsA
-    put empty into rTablesA[ theTable ]["records"][theIndex]["index array"]
+    put theLookupKeyA into rTablesA[ theTable ]["records"][theIndex]["index array"]
 
     ## No primary key defined for table?
     ## Use all included fields
@@ -11168,26 +11183,21 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
 
     repeat for each item theFieldName in thePrimaryKey
       if pEnforceKeyPresence and \
-            ( (isAnArray and theFieldName is not among the keys of xRecordsA[ pDynamicKeyA ]) or \
-            (not isAnArray and theFieldName is not among the keys of xRecordsA) ) then
+            theFieldName is not among the keys of xRecordsA then
         put "primary key field '" & theFieldName & "' was not found in the record array" into theError
       else
-        put theFieldName into pDynamicKeyA[ theNextIndex ]
-        put xRecordsA[pDynamicKeyA] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
+        put xRecordsA[theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
       end if
     end repeat
 
   else
     ## Multiple records
-    if isAnArray then put the number of elements of xRecordsA[ pDynamicKeyA ] into theCount
-    else put the number of elements of xRecordsA into theCount
+    put the number of elements of xRecordsA into theCount
     repeat with i = 1 to theCount
-      put i into pDynamicKeyA[ theNextIndex ]
 
-      ## Done in case pDynamicKeyA isn't an array yet (oh for pass by ref...)
-      put "@table" into pDynamicKeyA[ theNextIndex + 1 ]
-      put xRecordsA[pDynamicKeyA] into theTable
-      delete local pDynamicKeyA[ theNextIndex + 1 ]
+      put xRecordsA[i]["@table"] into theTable
+
+      put i into theLookupKeyA[tLookupIndex]
 
       if theTable is empty then put kInvalidType && "record" into theError
       add 1 to theIndex
@@ -11205,14 +11215,14 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
         replace cr with comma in rTablesA[ theTable ]["fields"]
 
         ## So others can look up entry in xRecordsA
-        put pDynamicKeyA into rTablesA[ theTable ]["records"][theIndex]["index array"]
+        put theLookupKeyA into rTablesA[ theTable ]["records"][theIndex]["index array"]
 
         ## No primary key defined for table?
         ## Use all included fields
         put rTablesA[ theTable ]["primary key"] into thePrimaryKey
         if thePrimaryKey is empty then
           repeat for each item theFieldName in rTablesA[ theTable ]["fields"]
-            if theFieldName is among the keys of xRecordsA[ pDynamicKeyA ] then
+            if theFieldName is among the keys of xRecordsA[i] then
               put theFieldName & comma after thePrimaryKey
             end if
           end repeat
@@ -11220,11 +11230,10 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
         end if
 
         repeat for each item theFieldName in thePrimaryKey
-          if pEnforceKeyPresence and theFieldName is not among the keys of xRecordsA[ pDynamicKeyA ] then
+          if pEnforceKeyPresence and theFieldName is not among the keys of xRecordsA[i] then
             put "primary key field '" & theFieldName & "' was not found in the record array" into theError
           else
-            put theFieldName into pDynamicKeyA[ theNextIndex + 1 ]
-            put xRecordsA[pDynamicKeyA] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
+            put xRecordsA[i][theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
           end if
         end repeat
       end if
@@ -12125,7 +12134,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
         ## Update
         if theError is empty then
           local updateRecordAfterUpdate = "false" ## in case we ever need some sort of refresh in the future
-          _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate, empty
+          _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate
           put the result into theError
 
           ## Update record passed in so it has new id
