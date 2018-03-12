@@ -9024,7 +9024,7 @@ command sqlquery_create pTable, pParamsA
 
     ## Perform the update
     put false into updateRecordAfterCreate
-    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, empty
+    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate
     put the result into theError
     put it into theAffectedRows
   end if
@@ -10876,7 +10876,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   local theBindingsA
   local theError
   local theField, theFields
-  local theKeysWithChildRecords, theRecordKeysA
+  local theKeysWithChildRecords
   local theNextKeyIndex
   local thePrimaryKeys
   local theTable
@@ -11461,7 +11461,7 @@ command sqlrecord_create @xRecordsA
   local theConnectionA, theTablesA
   local theAffectedRows
   local theError
-  local theKeyA, rethrowTheError
+  local rethrowTheError
   -----
 
   if "@table" is among the keys of xRecordsA then
@@ -11499,7 +11499,7 @@ command sqlrecord_create @xRecordsA
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterCreate, empty
+        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterCreate
         put the result into theError
         put it into theAffectedRows
       else
@@ -11511,8 +11511,7 @@ command sqlrecord_create @xRecordsA
             if "@table" is not among the keys of xRecordsA[i] then
               put kInvalidType && "record" into theError
             else
-              put i into theKeyA[1]
-              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterCreate, theKeyA
+              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], updateRecordAfterCreate
               put the result into theError
 
               if theError is empty then
@@ -11543,15 +11542,13 @@ command sqlrecord_create @xRecordsA
 end sqlrecord_create
 
 
-private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordsA, pUpdateRecordAfterCreate, pDynamicKeyA
+private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterCreate
   -----
   local theAffectedRows
   local theBaseSQL
   local theBindingsA
   local theError
   local theField, theFields, theFieldsToInsert
-  local theNextKeyIndex
-  local theRecordKeysA
   local theSQL
   local theTable
   local theValuesToInsert
@@ -11559,22 +11556,11 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
   -----
   ##
   ## VALIDATION CALLBACKS
-  ## Todo: Update once we can pass arrays by reference
-  if pDynamicKeyA is an array then
-    get xRecordsA[pDynamicKeyA]
-    dispatch "tableobj.validate." & xRecordsA[pDynamicKeyA]["@table"] with it
-    if it is "handled" then
-      put the result into theError
-      put it into xRecordsA[pDynamicKeyA]
-    end if
-    put the keys of xRecordsA[pDynamicKeyA] into theFields
-  else
-    dispatch "tableobj.validate." & xRecordsA["@table"] with xRecordsA
-    if it is "handled" then
-      put the result into theError
-    end if
-    put the keys of xRecordsA into theFields
+  dispatch "tableobj.validate." & xRecordA["@table"] with xRecordA
+  if it is "handled" then
+    put the result into theError
   end if
+  put the keys of xRecordA into theFields
 
   ## Validation error, prefix with something
   if theError is not empty then
@@ -11586,11 +11572,13 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
     filter theFields without "@*"
 
-    put the number of elements of pDynamicKeyA + 1 into theNextKeyIndex
+    put xRecordA["@table"] into theTable
 
-    put "@table" into pDynamicKeyA[theNextKeyIndex]
-    put xRecordsA[pDynamicKeyA] into theTable
+    _dispatchTableObjectEventListener theTable, pConnectionA, "before create callback", xRecordA
+    put the result into theError
+  end if
 
+  if theError is empty then
     ##
     ## Perform INSERT
     ##
@@ -11599,21 +11587,18 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
     put "INSERT INTO %s%s%s" into theBaseSQL
 
-    put "@passthru" into pDynamicKeyA[theNextKeyIndex]
-    put xRecordsA[pDynamicKeyA] into thePassThruFields
+    put xRecordA["@passthru"] into thePassThruFields
     set the wholeMatches to true
 
     put dbconn_get("type", pConnectionA) into theConnType
 
     ## VALUES
     repeat for each line theField in theFields
-      put theField into pDynamicKeyA[theNextKeyIndex]
-
       put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
       put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
 
       if theField is not among the items of pTablesA[ theTable ]["fields"] then
-        if xRecordsA[ pDynamicKeyA ] is an array then
+        if xRecordA[theField] is an array then
           ## This is a list of fields that are possible related record arrays.
           ## After we finish updating this record we need to find the
           ## relationship between the two, add the forign key field value
@@ -11623,7 +11608,7 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
         end if
         next repeat
       else if theField is among the items of pTablesA[ theTable ]["primary key"] then
-        if xRecordsA[pDynamicKeyA] is empty or xRecordsA[pDynamicKeyA] is NULL or xRecordsA[pDynamicKeyA] is "NULL" then
+        if xRecordA[theField] is empty or xRecordA[theField] is NULL or xRecordA[theField] is "NULL" then
           ## fields that are primary key fields with no values get skipped
           next repeat
         else
@@ -11636,13 +11621,13 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
       put pQuotesA["left"] & theField & pQuotesA["right"] & comma after theFieldsToInsert
 
-      if xRecordsA[pDynamicKeyA] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordsA[pDynamicKeyA] is empty) then
+      if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
         ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
         put "NULL" & comma after theValuesToInsert
       else if theField is among the items of thePassThruFields then
         ## Some fields should just be passed directly to the database
-        if isBoolean then put _getBooleanValue(xRecordsA[pDynamicKeyA], pConnectionA) & comma after theValuesToInsert
-        else put xRecordsA[pDynamicKeyA] & comma after theValuesToInsert
+        if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) & comma after theValuesToInsert
+        else put xRecordA[theField] & comma after theValuesToInsert
       else
         add 1 to theFieldIndex
         put ":" & theFieldIndex & comma after theValuesToInsert
@@ -11650,11 +11635,11 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
         ## Prepend "*b" to key name if binary
         --            if the shiftkey is down then answer sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["encoding"]
         if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
-          put xRecordsA[pDynamicKeyA] into theBindingsA["*b" & theFieldIndex]
+          put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
         else
-          if isBoolean then put _getBooleanValue(xRecordsA[pDynamicKeyA], pConnectionA) into theBindingsA[theFieldIndex]
+          if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
           else
-            put xRecordsA[pDynamicKeyA] into theBindingsA[theFieldIndex]
+            put xRecordA[theField] into theBindingsA[theFieldIndex]
           end if
         end if
       end if
@@ -11676,8 +11661,6 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
     dbconn_executeWBindings theSQL, theBindingsA, pConnectionA
     put the result into theError
     put it into theAffectedRows
-
-    delete local pDynamicKeyA[theNextKeyIndex]
   end if
 
   -- if the shiftkey is down and theError is not empty then answer theSQL & cr & theAffectedRows & cr & theError & cr & printKeys(theBindingsA)
@@ -11690,44 +11673,25 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
       ## Just fill in primary key field if single and empty
       ## Some dbs may return id when inserting but I don't think revDB supports that
       if the number of items of pTablesA[ theTable ]["primary key"] is 1 then
-        ## All this if/then code is because we can't pass array keys by ref
-        if theNextKeyIndex > 1 then
-          put xRecordsA[pDynamicKeyA][ pTablesA[ theTable ]["primary key"] ] into theValue
-        else
-          put xRecordsA[ pTablesA[ theTable ]["primary key"] ] into theValue
-        end if
+        put xRecordA[ pTablesA[ theTable ]["primary key"] ] into theValue
         put theValue is empty or theValue is NULL or theValue is "NULL" into insertLastID
 
         if insertLastID then
           put dbconn_get("last inserted id", pConnectionA) into theLastID
-          if theNextKeyIndex > 1 then
-            put theLastID into xRecordsA[pDynamicKeyA][ pTablesA[ theTable ]["primary key"] ]
-          else
-            put theLastID into xRecordsA[ pTablesA[ theTable ]["primary key"] ]
-          end if
+          put theLastID into xRecordA[ pTablesA[ theTable ]["primary key"] ]
         end if
       end if
     else
       ## In case we want to fetch all values from db and update Record
-      put empty into theRecordKeysA
-      put "@table" into pDynamicKeyA[theNextKeyIndex]
-      put xRecordsA[pDynamicKeyA] into theRecordKeysA["@table"]
-
-      ## If we could pass subkeys by reference then we wouldn't do this.
-      ## But xRecordsA[i] could be big so why copy all the data when passing to the function?
-      repeat for each item theFieldName in pTablesA[ theTable ]["primary key"]
-        put theFieldName into pDynamicKeyA[theNextKeyIndex]
-        put xRecordsA[pDynamicKeyA] into theRecordKeysA[theFieldName]
-      end repeat
+      put xRecordA["@table"] into theRecordKeysA["@table"]
 
       local theOutRecordA
 
-      _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, theRecordKeysA, pTablesA[ theTable ]["primary key"]
+      _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
       put the result into theError
 
       if theError is empty then
         ## Update record
-        delete local pDynamicKeyA[theNextKeyIndex]
         if theNextKeyIndex > 1 then
           put theOutRecordA into xRecordsA[pDynamicKeyA]
         else
@@ -11735,6 +11699,11 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
         end if
       end if
     end if
+  end if
+
+  if theError is empty then
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after create callback", xRecordsA
+    put the result into theError
   end if
 
   if theError is not empty then
@@ -12013,7 +11982,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
 
           ## Update
           if theError is empty then
-            _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true, empty
+            _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true
             put the result into theError
           end if
 
