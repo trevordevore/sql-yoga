@@ -10763,6 +10763,7 @@ end _RetrieveRecordsRelatedtoRecord
 *
 * \param xRecordsA SQL Record object/array of SQL Record objects (numerically indexed) that has the \
       primary key column for each record filled in along with any columns whose values you want to set.
+* \param pRefreshRecords Pass in true to refresh the record objects with new data.
 *
 * This command updates records in the database based on the SQL Record objects you pass in. Note that the primary key \
       * column will NOT be updated.
@@ -10781,7 +10782,7 @@ end _RetrieveRecordsRelatedtoRecord
 *
 * \seealso sqlrecord_find
 */
-command sqlrecord_update @xRecordsA
+command sqlrecord_update @xRecordsA, pRefreshRecords
   -----
   local i,theQs, theTablesA
   local theConnectionA
@@ -10790,6 +10791,8 @@ command sqlrecord_update @xRecordsA
   local theTablesIndexA
   local rethrowTheError
   -----
+
+  put pRefreshRecords is true into pRefreshRecords
 
   if "@table" is among the keys of xRecordsA then
     put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
@@ -10810,13 +10813,12 @@ command sqlrecord_update @xRecordsA
   ## TABLE 'fields'
   ## TABLE 'records' INDEX FIELD1
   ## TABLE 'records' INDEX FIELD2
-  local theTransA, updateRecordAfterUpdate
+  local theTransA
 
   put _internalTransactionName() into theTransA["name"]
   dbconn_beginTransaction theTransA, theConnectionA
   put the result into theError
   put 0 into theAffectedRows
-  put false into updateRecordAfterUpdate ## in case we ever need some sort of refresh in the future
 
   ##
   ##
@@ -10831,7 +10833,7 @@ command sqlrecord_update @xRecordsA
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterUpdate
+        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords
         put the result into theError
         put it into theAffectedRows
       else
@@ -10840,7 +10842,7 @@ command sqlrecord_update @xRecordsA
           if "@table" is not among the keys of xRecordsA[i] then
             put kInvalidType && "record" into theError
           else
-            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], updateRecordAfterUpdate
+            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords
             put the result into theError
 
             if theError is empty then
@@ -11006,8 +11008,9 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
     put the result into theError
 
     if theError is empty then
-      ## Update record one field at a time so we don't overwrite any related tables
+      delete local xRecordA["@passthru"]
 
+      ## Update record one field at a time so we don't overwrite any related tables
       repeat for each key theField in theOutRecordA
         put theOutRecordA[theField] into xRecordA[theField]
       end repeat
@@ -11432,6 +11435,7 @@ end sqlrecord_delete
 * \brief Creates records in a database using a SQL Record object.
 *
 * \param @xRecordsA SQL Records object/array of SQL Record objects (numerically indexed). Any column
+* \param pRefreshRecords Pass in true to refresh the records after creating them.
 * values you want to insert when you create the record should be filled in.
 *
 * This command creates records in the database based on the SQL Record object you pass in.
@@ -11455,7 +11459,7 @@ end sqlrecord_delete
 *
 * \return Error message in 'the result', affected rows in 'it'
 */
-command sqlrecord_create @xRecordsA
+command sqlrecord_create @xRecordsA, pRefreshRecords
   -----
   local i,theQs
   local theConnectionA, theTablesA
@@ -11463,6 +11467,8 @@ command sqlrecord_create @xRecordsA
   local theError
   local rethrowTheError
   -----
+
+  put pRefreshRecords is true into pRefreshRecords
 
   if "@table" is among the keys of xRecordsA then
     put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
@@ -11485,7 +11491,7 @@ command sqlrecord_create @xRecordsA
   ## TABLE 'records' INDEX FIELD2
   ## since you can only have one transaction at a time we
   ## don't automatically open transaction
-  local theTransA, updateRecordAfterCreate
+  local theTransA
   local theRecordCount
 
   put _internalTransactionName() into theTransA["name"]
@@ -11493,13 +11499,12 @@ command sqlrecord_create @xRecordsA
   put the result into theError
 
   put 0 into theAffectedRows
-  put false into updateRecordAfterCreate ## in case we ever need some sort of refresh in the future
 
   try
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, updateRecordAfterCreate
+        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords
         put the result into theError
         put it into theAffectedRows
       else
@@ -11511,7 +11516,7 @@ command sqlrecord_create @xRecordsA
             if "@table" is not among the keys of xRecordsA[i] then
               put kInvalidType && "record" into theError
             else
-              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], updateRecordAfterCreate
+              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords
               put the result into theError
 
               if theError is empty then
