@@ -979,7 +979,6 @@ end _CursorRowToArray
 private function _QueryTableHierarchyStructure @xQueryA, pCursorFields
   -----
   local i
-  local theDynamicKeyA
   local theField
   local theHierarchyA
   local theItemNo
@@ -1016,7 +1015,7 @@ private function _QueryTableHierarchyStructure @xQueryA, pCursorFields
     ## Now fill in joins tables in hierarchal structure
     put sqlquery_get(xQueryA, "related table joins including scopes") into theJoinsA
 
-    _ConvertQueryJoinToFlatHierarchy theHierarchyA, xQueryA["database"], theJoinsA, theRootTable, theDynamicKeyA
+    _ConvertQueryJoinToFlatHierarchy theHierarchyA, xQueryA["database"], theJoinsA, theRootTable
   else
     put sDbsA[ xQueryA["database"] ]["schema"]["tables"][ theRootTable ]["primary key"] into theHierarchyA[theRootTable]["unique fields"]
   end if
@@ -1119,7 +1118,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA, empty
+          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA
 
           get VCursor_NextRecord( xQueryA["cursor id"])
           if not it then exit repeat
@@ -1140,7 +1139,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA, empty
+          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA
 
           revMoveToNextRecord xQueryA["cursor id"]
           if not the result then exit repeat
@@ -1153,20 +1152,18 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
 end _HierarchalCursorToArray
 
 
-## Remove pDynamicKeyA once Revolution can pass by reference
 ## We have to use "do" to dynamically build up the multi-dimensional element reference
-private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @xTableHierarchyA, pDynamicKeyA
+private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @xTableHierarchyA
   -----
-  local usingAnArray, theColumn
+  local theColumn
   local theCurrentParentUniqueKey
   local theField
   local theIndex
-  local theNextIndex
+  local theIndexA
   local theRowTableUniqueKey
   local theTable, theTableUniqueKey
   -----
 
-  put pDynamicKeyA is an array into usingAnArray
   set the wholeMatches to true
 
   ## Check unique keys for table. If NULL or empty we are done with this table
@@ -1205,32 +1202,28 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
     if xTableHierarchyA[pTable]["relationship to parent"] is among the items of "many-to-many,one-to-one" then
       put -1 into theIndex
     else
-      if usingAnArray then
-        put the number of elements of xOutArray[pDynamicKeyA] into theIndex
-      else
-        put the number of elements of xOutArray into theIndex
-      end if
+      put the number of elements of xOutArray into theIndex
 
       add 1 to theIndex
-      put theIndex into pDynamicKeyA[max(1, the number of elements of pDynamicKeyA + 1)]
+      put theIndex into theIndexA[1]
     end if
 
     ## Identify as record
-    put pTable into xOutArray[pDynamicKeyA]["@table"]
-    put pRowA["@database"] into xOutArray[pDynamicKeyA]["@database"]
-    put pRowA["@connection"] into xOutArray[pDynamicKeyA]["@connection"]
+    put pTable into xOutArray[theIndexA]["@table"]
+    put pRowA["@database"] into xOutArray[theIndexA]["@database"]
+    put pRowA["@connection"] into xOutArray[theIndexA]["@connection"]
 
     ## Fill in values for columns
     set the itemDelimiter to "."
     repeat for each line theColumn in xTableHierarchyA[pTable]["fields"]
       ## Use -1 so that we only use field name rather than table.field
       put item -1 of theColumn into theField
-      put pRowA[theColumn] into xOutArray[pDynamicKeyA][theField]
+      put pRowA[theColumn] into xOutArray[theIndexA][theField]
 
       ## BOOLEAN CONVERSION
       if sDbsA[ pKey ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
         set the itemDelimiter to ","
-        put xOutArray[pDynamicKeyA][theField] is among the items of kBoolTrueValues into xOutArray[pDynamicKeyA][theField]
+        put xOutArray[theIndexA][theField] is among the items of kBoolTrueValues into xOutArray[theIndexA][theField]
         set the itemDelimiter to "."
       end if
     end repeat
@@ -1242,7 +1235,7 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
     ## Already used, just insert the index into the array index (if >0) before processing child tables
     ## The highest index in array index right now is parent table name.
     if theIndex > 0 then
-      put theIndex into pDynamicKeyA[max(1, the number of elements of pDynamicKeyA + 1)]
+      put theIndex into theIndexA[1]
     end if
   end if
 
@@ -1250,22 +1243,19 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
   ## into a single array entry...
 
   ## Store children tables in their child array
-  put the number of elements of pDynamicKeyA + 1 into theNextIndex
+  local theNextIndex
+
+  put the number of elements of theIndexA + 1 into theNextIndex
   repeat for each line theTable in xTableHierarchyA[pTable]["children"]
-    put theTable into pDynamicKeyA[theNextIndex]
-
-    -- if the shiftkey is down then -- pTable is "tlk_tagged" then
-    -- answer pTable & cr && theTable & cr &  printKeys(pDynamicKeyA)
-    -- end if
-
-    _ConvertRowTableFieldsToArray pKey, pRowA, theTable, xOutArray, xTableHierarchyA, pDynamicKeyA
+    put theTable into theIndexA[theNextIndex]
+    _ConvertRowTableFieldsToArray pKey, pRowA, theTable, xOutArray[theIndexA], xTableHierarchyA
   end repeat
 
   return empty
 end _ConvertRowTableFieldsToArray
 
 
-private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pParentTable, pDynamicKeyA
+private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pParentTable
   -----
   local i
   local theCount
@@ -1276,24 +1266,19 @@ private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pPa
   local theTable, theTableA
   local usingAnArray
   -----
-  put pDynamicKeyA is an array into usingAnArray
-  if usingAnArray then put the number of elements of pJoinA[ pDynamicKeyA ] into theCount
-  else put the number of elements of pJoinA into theCount
-  put the number of elements of pDynamicKeyA + 1 into theIndex
+  put the number of elements of pJoinA into theCount
 
   repeat with i = 1 to theCount
-    put i into pDynamicKeyA[theIndex]
-
-    put pJoinA[ pDynamicKeyA ]["table"]["name"] into theTable
+    put pJoinA[ i ]["table"]["name"] into theTable
     put kTableReference into theTableA["type"]
     put pKey into theTableA["database"]
     put theTable into theTableA["name"]
 
     ## Get relationship and relationship ref
-    put sDbsA[pKey]["table objects"]["relationships"][ pJoinA[ pDynamicKeyA ]["relationship index"] ] into theRelationA
+    put sDbsA[pKey]["table objects"]["relationships"][ pJoinA[ i ]["relationship index"] ] into theRelationA
     put kRelationshipReference into theRelationRefA["type"]
     put pKey into theRelationRefA["database"]
-    put pJoinA[ pDynamicKeyA ]["relationship index"] into theRelationRefA["index"]
+    put pJoinA[ i ]["relationship index"] into theRelationRefA["index"]
 
     ## Figure out unique fields
     if theTable is theRelationA["left table"] or theTable is theRelationA["right table"] then
@@ -1332,13 +1317,7 @@ private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pPa
     put theTable into line (the number of lines of xHierarchyA[pParentTable]["children"] + 1) of xHierarchyA[pParentTable]["children"]
 
     ## Now make a recursive call in order to handle the "related table joins" of this entry.
-    put the number of elements of pDynamicKeyA + 1 into theNextIndex
-    put "related table joins" into pDynamicKeyA[theNextIndex]
-    _ConvertQueryJoinToFlatHierarchy xHierarchyA, pKey, pJoinA, theTable, pDynamicKeyA
-
-    ## Go back to just index
-    delete local pDynamicKeyA[theNextIndex]
-
+    _ConvertQueryJoinToFlatHierarchy xHierarchyA, pKey, pJoinA[i]["related table joins"], theTable
   end repeat
 
   return empty
@@ -1828,12 +1807,11 @@ end _ForeignKeyClauseFromRelationship
 private function _StringToJoins pRootTableA, pString
   -----
   local i,theAs
-  local theDynamicKeyA, theJoinDynamicKeyA
   local theEntry
   local theIndex, theTableIndex
   local theJoin, theJoinType
   local theJoinsA
-  local theRelationsA, theRelDynamicKeyA
+  local theRelationsA, theJoinDynamicKeyA, theRelDynamicKeyA
   local theTable, theToTableA
   local theWordNo, theCharNo, theOnClause
   -----
@@ -10245,7 +10223,7 @@ function sqlrecord_get pRecordA, pProp
       ## Deprecated. Use _getRelated
       ## Get related table records
       put pRecordA into theTempA
-      _RetrieveRecordsRelatedtoRecord theConnectionA, theTempA, pProp, empty
+      _RetrieveRecordsRelatedtoRecord theConnectionA, theTempA, pProp
       put the result into theError
 
       if theError is empty then
@@ -10317,7 +10295,6 @@ command sqlrecord_getRelated @xRecordsA, pTable
   -----
   local theConnectionA, i
   local theError
-  local theKeyA
   local theDudA
   -----
 
@@ -10332,7 +10309,7 @@ command sqlrecord_getRelated @xRecordsA, pTable
   if "@table" is among the keys of xRecordsA then
     ## single record
     ## Get related table records
-    _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA, pTable, empty
+    _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA, pTable
     put the result into theError
   else
     ## multiple records
@@ -10342,8 +10319,7 @@ command sqlrecord_getRelated @xRecordsA, pTable
         _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
         -- put kInvalidType && "record" into theError
       else
-        put i into theKeyA[1]
-        _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA, pTable, theKeyA
+        _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA[i], pTable
         put the result into theError
       end if
 
@@ -10566,8 +10542,7 @@ private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePri
 end _FillInTableRecordFromDatabase
 
 
-## todo: get rid of pDynamicKeyA once Rev allows pass by ref
-private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelatedTable, pDynamicKeyA
+private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelatedTable
   -----
   local theArrayTableKey, theCrossRefPropKeys, theCrossRefRecordKeys, theDBKey, thePropKeyFields, theRecordKeyFields
   local theCrossRefTable
@@ -10576,16 +10551,13 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
   local theError
   local theField, theFieldEntry
   local theJoinA
-  local theNextKeyIndex
   local theQueryA
   local theRecordTable
   local theRelationA
   local theTable1A, theTable2A
   local theWhere
   -----
-  put the number of elements of pDynamicKeyA + 1 into theNextKeyIndex
-  put "@table" into pDynamicKeyA[theNextKeyIndex]
-  put xRecordA[pDynamicKeyA] into theRecordTable
+  put xRecordA["@table"] into theRecordTable
   put pConnectionA["database"] into theDBKey
 
   if theError is empty then
@@ -10658,6 +10630,8 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
   end if
 
   if theError is empty then
+    local tField
+
     if theCrossRefRecordKeys is not empty then
       local theResolvedCrossRefTable, i
 
@@ -10672,15 +10646,15 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
         if the number of elements of theField is 2 then
           put theCrossRefTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
         else
-          put item i of theRecordKeyFields into pDynamicKeyA[theNextKeyIndex]
-          if xRecordA[pDynamicKeyA] is empty then
-            put "key field '" & item i of theRecordKeyFields &"' was not found in the record" into theError
+          put item i of theRecordKeyFields into tField
+          if xRecordA[tField] is empty then
+            put "key field '" & tField &"' was not found in the record" into theError
           else
             if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedCrossRefTable ]["fields"][ theField[1] ]["meta type"] \
                   is not among the items of kDontQuoteTypes then
-              put theCrossRefTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[pDynamicKeyA]) & "'" & " AND " after theWhere
+              put theCrossRefTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
             else
-              put theCrossRefTable & "." & theField[1] & " = " & xRecordA[pDynamicKeyA] & " AND " after theWhere
+              put theCrossRefTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
             end if
           end if
         end if
@@ -10709,15 +10683,15 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
         if the number of elements of theField is 2 then
           put pRelatedTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
         else
-          put item i of theRecordKeyFields into pDynamicKeyA[theNextKeyIndex]
-          if xRecordA[pDynamicKeyA] is empty then
+          put item i of theRecordKeyFields into tField
+          if xRecordA[tField] is empty then
             put "key field '" & item i of theRecordKeyFields &"' was not found in the record" into theError
           else
             if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedRelatedTable ]["fields"][ theField[1] ]["meta type"] \
                   is not among the items of kDontQuoteTypes then
-              put pRelatedTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[pDynamicKeyA]) & "'" & " AND " after theWhere
+              put pRelatedTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
             else
-              put pRelatedTable & "." & theField[1] & " = " & xRecordA[pDynamicKeyA] & " AND " after theWhere
+              put pRelatedTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
             end if
           end if
         end if
@@ -10750,8 +10724,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
 
   ## Store in table subkey
   if theError is empty then
-    put theArrayTableKey into pDynamicKeyA[theNextKeyIndex]
-    put theDataA into xRecordA[pDynamicKeyA]
+    put theDataA into xRecordA[theArrayTableKey]
   end if
 
   return theError
