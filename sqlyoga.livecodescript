@@ -11369,36 +11369,12 @@ command sqlrecord_delete @xRecordsA
           ## Before callbacks
           ##
           if theTableA is an array then
-            local theMessage, theObject
-
-            repeat for each line theCallback in tableobj_get(theTableA, "before delete callback")
-              put item 1 of theCallback into theMessage
-              put item 2 to -1 of theCallback into theObject
-
-              ## Hack since we can't pass by reference
-              if theRecordIndexArray is an array then
-                ## Another "no pass by ref" hack
-                get xRecordsA[theRecordIndexArray]
-                if theObject is not empty then
-                  dispatch theMessage to theObject with it, theConnectionA
-                else
-                  dispatch theMessage with it, theConnectionA
-                end if
-              else
-                if theObject is not empty then
-                  dispatch theMessage to theObject with xRecordsA, theConnectionA
-                else
-                  dispatch theMessage with xRecordsA
-                end if
-              end if
-
-              if it is "handled" then
-                put the result into theError
-                if theError is not empty then
-                  exit repeat
-                end if
-              end if
-            end repeat
+            if theRecordIndexArray is an array then
+              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete callback", xRecordsA[theRecordIndexArray]
+            else
+              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete callback", xRecordsA
+            end if
+            put the result into theError
           end if
 
           if theError is empty then
@@ -11425,21 +11401,8 @@ command sqlrecord_delete @xRecordsA
           ## After callback
           ##
           if theTableA is an array then
-            repeat for each line theCallback in tableobj_get(theTableA, "after delete callback")
-              put item 1 of theCallback into theMessage
-              put item 2 to -1 of theCallback into theObject
-              if theObject is not empty then
-                dispatch theMessage to theObject with theTable, theTablesA[theTable]["records"][i]
-              else
-                dispatch theMessage with theTable, theTablesA[theTable]["records"][i]
-              end if
-              if it is "handled" then
-                put the result into theError
-                if theError is not empty then
-                  exit repeat
-                end if
-              end if
-            end repeat
+            _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", theTablesA[theTable]["records"][i]
+            put the result into theError
           end if
 
           if theError is not empty then exit repeat
