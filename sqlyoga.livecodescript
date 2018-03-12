@@ -11547,6 +11547,19 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
 end sqlrecord_create
 
 
+/**
+Summary: Inserts a record into the database.
+
+pConnectionA:
+pQuotesA:
+pTablesA:
+@xRecordA:
+pUpdateRecordAfterCreate: Pass in true to update xRecordA with the db record contents after performing the insert.
+
+Description:
+
+Returns: Error message in `the result`. Number of affected rows in `it.
+*/
 private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterCreate
   -----
   local theAffectedRows
@@ -11674,40 +11687,37 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
   if theError is empty then
     local theValue, insertLastID, theLastID
 
-    if not pUpdateRecordAfterCreate then
-      ## Just fill in primary key field if single and empty
-      ## Some dbs may return id when inserting but I don't think revDB supports that
-      if the number of items of pTablesA[ theTable ]["primary key"] is 1 then
-        put xRecordA[ pTablesA[ theTable ]["primary key"] ] into theValue
-        put theValue is empty or theValue is NULL or theValue is "NULL" into insertLastID
+    ## Just fill in primary key field if single and empty
+    ## Some dbs may return id when inserting but I don't think revDB supports that
+    if the number of items of pTablesA[ theTable ]["primary key"] is 1 then
+      put xRecordA[ pTablesA[ theTable ]["primary key"] ] into theValue
+      put theValue is empty or theValue is NULL or theValue is "NULL" into insertLastID
 
-        if insertLastID then
-          put dbconn_get("last inserted id", pConnectionA) into theLastID
-          put theLastID into xRecordA[ pTablesA[ theTable ]["primary key"] ]
-        end if
+      if insertLastID then
+        put dbconn_get("last inserted id", pConnectionA) into theLastID
+        put theLastID into xRecordA[ pTablesA[ theTable ]["primary key"] ]
       end if
-    else
-      ## In case we want to fetch all values from db and update Record
-      put xRecordA["@table"] into theRecordKeysA["@table"]
+    end if
 
+    if pUpdateRecordAfterCreate then
       local theOutRecordA
 
       _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
       put the result into theError
 
       if theError is empty then
-        ## Update record
-        if theNextKeyIndex > 1 then
-          put theOutRecordA into xRecordsA[pDynamicKeyA]
-        else
-          put theOutRecordA into xRecordsA
-        end if
+        delete local xRecordA["@passthru"]
+
+        ## Update record one field at a time so we don't overwrite any related tables
+        repeat for each key theField in theOutRecordA
+          put theOutRecordA[theField] into xRecordA[theField]
+        end repeat
       end if
     end if
   end if
 
   if theError is empty then
-    _dispatchTableObjectEventListener theTable, pConnectionA, "after create callback", xRecordsA
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after create callback", xRecordA
     put the result into theError
   end if
 
