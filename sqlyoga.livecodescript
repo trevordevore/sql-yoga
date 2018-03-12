@@ -3040,9 +3040,9 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
         tableobj_createObject tTablesA[i]["name"], "table", pDBKey
       end if
 
-      repeat for each item tKey in "type,after retrieve listeners,before create listeners," & \
-            "after create listeners,before update listeners,after update listeners," & \
-            "before delete listeners,after delete listeners," & \
+      repeat for each item tKey in "type,after retrieve callback,before create callback," & \
+            "after create callback,before update callback,after update callback," & \
+            "before delete callback,after delete callback," & \
             "name,alias for table,conditions,primary key"
         if tKey is among the keys of tTablesA[i] then
           tableobj_set tTablesA[i]["name"], tKey, tTablesA[i][tKey], pDBKey
@@ -6483,23 +6483,23 @@ end tableobj_deleteObject pTableA
 *
 * <b>Properties:</b>
 *
-* <b>after create listeners</b>:
+* <b>after create callback</b>:
 *
-* <b>after delete listeners</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
+* <b>after delete callback</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
 *  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
 *
-* <b>after retrieve listeners</b>:
+* <b>after retrieve callback</b>:
 *
-* <b>after update listeners</b>:
+* <b>after update callback</b>:
 *
 * <b>alias for table</b>: The name of the table that this Table object is an alias for.
 *
-* <b>before create listeners</b>:
+* <b>before create callback</b>:
 *
-* <b>before delete listeners</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
+* <b>before delete callback</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
 *  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
 *
-* <b>before update listeners</b>:
+* <b>before update callback</b>:
 *
 * <b>conditions</b>: If a Table object is an alias to another table then this property returns any conditions that have been set. \
       *                                 The conditions are used to filter the table content that the alias represents. The format is \
@@ -6655,14 +6655,14 @@ function tableobj_get pTableA, pProp
       return theKeys
       break
 
-    case "after retrieve listeners"
-    case "before create listeners"
-    case "after create listeners"
-    case "before update listeners"
-    case "after update listeners"
-    case "before delete listeners"
-    case "after delete listeners"
-      return sDbsA[ theOriginalKeyA ]["listeners"][word 2 of pProp][word 1 of pProp]
+    case "after retrieve callback"
+    case "before create callback"
+    case "after create callback"
+    case "before update callback"
+    case "after update callback"
+    case "before delete callback"
+    case "after delete callback"
+      return sDbsA[ theOriginalKeyA ]["callback"][word 2 of pProp][word 1 of pProp]
       break
 
       ## Alias properties
@@ -6721,24 +6721,24 @@ end tableobj_get
 *
 * <b>Properties:</b>
 *
-* <b>after create listeners</b>:
+* <b>after create callback</b>:
 *
-* <b>after delete listeners</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
+* <b>after delete callback</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
 *  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
 *
-* <b>after retrieve listeners</b>:
+* <b>after retrieve callback</b>:
 *
-* <b>after update listeners</b>:
+* <b>after update callback</b>:
 *
 * <b>alias for table</b>:
 *
-* <b>before create listeners</b>:
+* <b>before create callback</b>:
 *
-* <b>before delete listeners</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
+* <b>before delete callback</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
 *  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER\
 * If you return an error from the handler then the record will not be deleted.
 *
-* <b>before update listeners</b>:
+* <b>before update callback</b>:
 *
 * <b>conditions</b>:
 *
@@ -6778,14 +6778,14 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
       put theA into sDbsA[ theOriginalKeyA ]
       break
 
-    case "after retrieve listeners"
-    case "before create listeners"
-    case "after create listeners"
-    case "before update listeners"
-    case "after update listeners"
-    case "before delete listeners"
-    case "after delete listeners"
-      put _CleanseCallbacks(pValue) into sDbsA[ theOriginalKeyA ]["listeners"][word 2 of pProp][word 1 of pProp]
+    case "after retrieve callback"
+    case "before create callback"
+    case "after create callback"
+    case "before update callback"
+    case "after update callback"
+    case "before delete callback"
+    case "after delete callback"
+      put _CleanseCallbacks(pValue) into sDbsA[ theOriginalKeyA ]["callback"][word 2 of pProp][word 1 of pProp]
       break
 
     default
@@ -11261,7 +11261,7 @@ end _SplitRecordsIntoTablesIndex
 * put the result into theError</pre>
 *
 * Delete callbacks in your Table Object definitions will be called and \
-      * broadcasts will be sent to listeners during this operation.
+      * broadcasts will be sent to callbacks during this operation.
 *
 * After this handler completes xRecordsA will only contain SQL Record(s) with the "@table" key. \
       * Other keys will have been removed since the data no longer exists in the database.
@@ -11366,12 +11366,12 @@ command sqlrecord_delete @xRecordsA
           put theBaseSQL & theWhere into theSQL
 
           ##
-          ## Before listeners
+          ## Before callbacks
           ##
           if theTableA is an array then
             local theMessage, theObject
 
-            repeat for each line theCallback in tableobj_get(theTableA, "before delete listeners")
+            repeat for each line theCallback in tableobj_get(theTableA, "before delete callback")
               put item 1 of theCallback into theMessage
               put item 2 to -1 of theCallback into theObject
 
@@ -11425,7 +11425,7 @@ command sqlrecord_delete @xRecordsA
           ## After callback
           ##
           if theTableA is an array then
-            repeat for each line theCallback in tableobj_get(theTableA, "after delete listeners")
+            repeat for each line theCallback in tableobj_get(theTableA, "after delete callback")
               put item 1 of theCallback into theMessage
               put item 2 to -1 of theCallback into theObject
               if theObject is not empty then
@@ -11483,7 +11483,7 @@ end sqlrecord_delete
 * </pre>
 *
 * Create callbacks in your Table Object definitions will be called and \
-      * broadcasts will be sent to listeners during this operation.
+      * broadcasts will be sent to callbacks during this operation.
 *
 * \note If you pass in empty values for any of the fields in the primary key for the table then they \
       * will not be included in the CREATE statement.
