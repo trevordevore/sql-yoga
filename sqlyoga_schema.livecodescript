@@ -1787,9 +1787,6 @@ private command _mysql_dbTableFields pConnectionA, pTable
       put revDatabaseColumnNamed(theCursor, "NULL") begins with "YE" into theA["fields"][theField]["accepts null"]
       put revDatabaseColumnNamed(theCursor, "Key") begins with "PR" into theA["fields"][theField]["primary key"]
       put revDatabaseColumnNamed(theCursor, "Key") begins with "UN" into theA["fields"][theField]["unique"]
-      -- put revDatabaseColumnNamed(theCursor, "NULL") is "YES" into theA["fields"][theField]["accepts null"]
-      -- put revDatabaseColumnNamed(theCursor, "Key") is "PRI" into theA["fields"][theField]["primary key"]
-      -- put revDatabaseColumnNamed(theCursor, "Key") is "UNI" into theA["fields"][theField]["unique"]
       if theA["fields"][theField]["primary key"] then
         put theField & comma after thePrimaryKeys
       end if
