@@ -2881,33 +2881,6 @@ private function _StackOf pControl
 end _StackOf
 
 
-private function _GetGMTTimeStampForMigrationId
-  local theInternetTime, theGMTOffset
-
-  put the internet date into theInternetTime
-  put _InternetTimeStampGMTOffset(theInternetTime) into theGMTOffset
-
-  convert theInternetTime from internet date to dateItems
-  if theGMTOffset is a number then
-    subtract theGMTOffset from item 4 of theInternetTime
-  end if
-  convert theInternetTime to dateItems
-  replace comma with empty in theInternetTime
-  return theInternetTime
-end _GetGMTTimeStampForMigrationId
-
-
-private function _InternetTimeStampGMTOffset pInternetTime
-  local theGMTOffset
-
-  put the last word of pInternetTime into theGMTOffset
-  delete the char -2 to -1 of theGMTOffset
-  if char 2 of theGMTOffset is 0 then delete char 2 of theGMTOffset
-  if char 1 of theGMTOffset is "+" then delete char 1 of theGMTOffset
-  return theGMTOffset
-end _InternetTimeStampGMTOffset
-
-
 --> Object: Database
 
 
@@ -3695,42 +3668,6 @@ function dbobject_exists pDBKey
   end try
   return true
 end dbobject_exists
-
-
-## Adds an new schema migration based on current GMT timestamp
-command dbobject_addSchemaMigration pDBKey
-  local theStamp
-
-  _ValidateKey pDBKey
-  _ValidateDBKeyExistence pDBKey
-
-  ## Schemas are versioned by date
-  put _GetGMTTimeStampForMigrationId() into theStamp
-  put empty into sDbsA[pDBKey]["schema"][theStamp]
-
-  return theStamp for value
-end dbobject_addSchemaMigration
-
-
--- command dbobject_beginTransaction pParamsA, pConnection, pKey
--- put _CreateConnectionArray(pConnection, pKey) into pConnectionA
--- dbconn_beginTransaction empty, pConnectionA
--- return the result
--- end dbobject_beginTransaction
-
-
--- command dbobject_commitTransaction pKey
--- put _CreateConnectionArray(param(2), pKey) into pConnectionA
--- dbconn_commitTransaction empty, pConnectionA
--- return the result
--- end dbobject_commitTransaction
-
-
--- command dbobject_rollbackTransaction pKey
--- put _CreateConnectionArray(param(2), pKey) into pConnectionA
--- dbconn_rollbackTransaction empty, pConnectionA
--- return the result
--- end dbobject_rollbackTransaction
 
 
 --> Object: Connection
