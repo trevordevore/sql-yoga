@@ -739,7 +739,7 @@ private command _sqlite_dbTableFields pConnectionA, pTable
       ## An empty string would have a ''. Default to NULL
       if theA["fields"][theField]["default value"] is empty then put "NULL" into theA["fields"][theField]["default value"]
       put revDatabaseColumnNamed(theCursor, "notnull") is "0" into theA["fields"][theField]["accepts null"]  # value is 99 for null
-      put revDatabaseColumnNamed(theCursor, "pk") is "1" into theA["fields"][theField]["primary key"]    # value is 0 for not primary
+      put revDatabaseColumnNamed(theCursor, "pk") > 0 into theA["fields"][theField]["primary key"]    # value is 0 for not primary
       put theA["fields"][theField]["primary key"] is true into theA["fields"][theField]["unique"]    # primary has to be unique
       if theA["fields"][theField]["primary key"] then
         put theField & comma after thePrimaryKeys
@@ -750,26 +750,28 @@ private command _sqlite_dbTableFields pConnectionA, pTable
 
       dbsynch_splitFieldType revDatabaseColumnNamed(theCursor, "Type"), theType, theLength, isSigned
 
-      ## INTEGER PRIMARY KEY IS AN AUTOINCREMENT IN SQLITE
-      ## ALTHOUGH IT WILL REUSE NUMBERS
-      ## AUTOINCREMENT KEYWORD MEANS THE TABLE WILL MAX OUT
-      if theType is "integer" and theA["fields"][theField]["primary key"] then
-        put "sequence" into theA["fields"][theField]["type"]
-        put empty into theA["fields"][theField]["length"]
-        put false into theA["fields"][theField]["signed"]
-      else
-        put theType into theA["fields"][theField]["type"]
-        put theLength into theA["fields"][theField]["length"]
-        put isSigned into theA["fields"][theField]["signed"]
-      end if
+      put theType into theA["fields"][theField]["type"]
+      put theLength into theA["fields"][theField]["length"]
+      put isSigned into theA["fields"][theField]["signed"]
 
       revMoveToNextRecord theCursor
       if the result is not true then exit REPEAT
-    end REPEAT
+    end repeat
 
     delete the last char of thePrimaryKeys
     put thePrimaryKeys into theA["primary key"]
     delete the last char of theA["field order"]
+
+    ## INTEGER PRIMARY KEY IS AN AUTOINCREMENT IN SQLITE
+    ## ALTHOUGH IT WILL REUSE NUMBERS
+    ## AUTOINCREMENT KEYWORD MEANS THE TABLE WILL MAX OUT
+    if the number of items of thePrimaryKeys is 1 then
+      if theA["fields"][thePrimaryKeys]["type"] is "integer" then
+        put "sequence" into theA["fields"][thePrimaryKeys]["type"]
+        put empty into theA["fields"][thePrimaryKeys]["length"]
+        put false into theA["fields"][thePrimaryKeys]["signed"]
+      end if
+    end if
 
     revCloseCursor theCursor
   end if
