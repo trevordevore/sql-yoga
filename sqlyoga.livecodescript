@@ -5257,6 +5257,9 @@ private function _getBooleanValue pValue, pConnName, pDBKey
   ## Generate adaptor specific SQL
   local theType
 
+  if char 1 of pValue is "'" then delete char 1 of pValue
+  if char -1 of pValue is "'" then delete char -1 of pValue
+
   try
     put sDbsA[ theKeyA ]["type"] into theType
     replace space with empty in theType
