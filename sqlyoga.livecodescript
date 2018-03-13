@@ -7381,6 +7381,10 @@ function dbschema_get pProp, pDBKey
       return sDbsA[pDBKey]["schema"]["tables"]
       break
 
+    case "yaml"
+      return _outputKeyAsYAML(sDbsA[pDBKey], "schema", 1)
+      break
+
     default
       ## Todo: need actual list to compare against in case we add valid props later on
       if pProp is not among the keys of sDbsA[pDBKey]["schema"] then
@@ -12077,30 +12081,26 @@ private function resolveRelativeFilenameReference pFilename, pRootFolder
 end resolveRelativeFilenameReference
 
 
-private command _dbobjectAsYAML pDBKey
-  local tStr
-
-  repeat for each key tKey in sDbsA[pDBKey]
-    put _outputKeyAsYAML(sDbsA[pDBKey][tKey], tKey) & cr after tStr
-  end repeat
-
-  return tStr
-end _dbobjectAsYAML
-
-
-private command _outputKeyAsYAML pArrayA, pKey, pLevel
+private function _outputKeyAsYAML pArrayA, pKey, pLevel
   local tKey, tStr, i
 
+  repeat with i = 1 to pLevel-1
+    put space & space after tStr
+  end repeat
+  put pKey & ": " after tStr
+
   if pArrayA[pKey] is an array then
+    put cr after tStr
     repeat for each key tKey in pArrayA[pKey]
-      return _outputKeyAsYAML(pArrayA[pKey][tKey], pLevel+1)
+      put _outputKeyAsYAML(pArrayA[pKey], tKey, pLevel+1) & cr after tStr
     end repeat
   else
-    repeat with i = 1 to pLevel-1
-      put space & space after tStr
-    end repeat
-    put pKey & ": " after tStr
-    put quote & pArrayA[pKey] & quote & cr after tStr
+    if pArrayA[pKey] contains "'" then
+      replace "'" with "''" in pArrayA[pKey]
+      put "'" & pArrayA[pKey] & "'" & cr after tStr
+    else
+      put pArrayA[pKey] & cr after tStr
+    end if
   end if
   delete the last char of tStr
 
