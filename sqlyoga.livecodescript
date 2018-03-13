@@ -9884,13 +9884,9 @@ function sqlrecord_createObject pTable, pConnName, pDBKey
   repeat for each key theField in theTableA["fields"]
     put theTableA["fields"][theField]["default value"] into theA[theField]
 
-    ## Note: Not setting NULL to actual Rev NULL value since that
+    ## Note: Not setting NULL to actual LiveCode NULL value since that
     ## messes up displaying of strings. Since we have passthru turned
     ## on then it doesn't matter
-    if theTableA["fields"][theField]["meta type"] is "boolean" then
-      ## Translate to LiveCode true/false
-      put theA[theField] is among the items of "true,1,yes,t" into theA[theField]
-    end if
 
     put theField & comma after theA["@passthru"]
   end repeat
