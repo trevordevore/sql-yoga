@@ -10886,6 +10886,11 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
     end if
   end if
 
+  if theError is empty then
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after update callback", xRecordA
+    put the result into theError
+  end if
+
   ## Recursively process any children records
   if theError is empty then
     local theTablesA
