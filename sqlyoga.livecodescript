@@ -8287,84 +8287,47 @@ end _TranslateSQLQueryProp
 
 
 /**
-*\brief Retrieves properties of a SQL Query Object array.
-*
-* \param xQueryA A SQL Query Object array as created using sqlquery_createObject().
-* \param pProp The property to get.
-*
-* <b>Properties:</b>
-*
-* <b>column delimiter</b>: When retrieving a query as data or converting a query cursor to data the column delimiter is used. Default is TAB.
-*
-* <b>column names length</b>: Allows you to explicitly select just column name (short), the table and column name (full) or the default behavior.
-*
-* <b>conditions</b>: A string representing the search conditions for the SQL query. You can use english or SQL operators. You can also use binding. \
-      * A condition using english operators would look something like this: \
-      * <i>lesson.name contains :1 AND lesson.description contains :2</i> \
-      * If you are using binding then pass in the binding values as parameters 4 - n, where n = the number of binding variables you use \
-      * in your conditions string. Support english operators are: \
-      * IS, IS NOT, IS GREATER THAN, IS GREATER THAN OR EQUAL TO, IS LESS THAN, IS LESS THAN OR EQUAL TO, IS IN, \
-      * IS NOT IN, CONTAINS, DOES NOT CONTAIN, BEGINS WITH, ENDS WITH, DOES NOT BEGIN WITH, DOES NOT END WITH
-*
-* <b>condition bindings</b>: A numerically indexed array. The value of [1] will be used to replace :1 in the conditions, [2] for :2, and so on.
-*
-* <b>connection</b>: Name of connection to use when querying database.
-*
-* <b>cursor id</b>: The id of the RevDB cursor associated with the SQL Query object. This only returns a positive value if you use sqlquery_retrieve.
-*
-* <b>database type</b>: The type of database that the object's connection points to.
-*
-* <b>distinct</b>: Returns true/false. True means SQL query returns DISTINCT results.
-*
-* <b>find</b>: Can be set to "first" to only return the first record found.
-*
-* <b>from clause</b>: The FROM clause of the query.
-*
-* <b>full column names [deprecated - see column names length]</b>: Returns true if the query will include both the table name and field name in the column name of query results. \
-      *                               This only applies when SQL Yoga is automatically generating the SELECT clause.
-*
-* <b>group by</b>: Determines how returned rows are grouped.
-*
-* <b>having</b>: Used to filter the rows returned using group by.
-*
-* <b>join clause</b>: The JOIN clause of the query.
-*
-* <b>number of records</b>: The number of records in the object's cursor. A cursor is opened using sqlquery_retrieve.
-*
-* <b>limit</b>: The number of rows to limit the result to. Useful for large record sets of which you only want a certain number. Default is empty.
-*
-* <b>offset</b>: The number of rows to skip when returning the results. Setting this to 21 would skip records 1 to 20. Default is empty.
-*
-* <b>order by</b>: Fields to sort records by.
-*
-* <b>query</b>: The full SELECT query for the object. This query is used when opening a cursor or retrieving data.
-*
-* <b>query is at end</b>: Returns true if the object's cursor is at the end of available records. A cursor is opened using sqlquery_retrieve.
-*
-* <b>query is at start</b>: Returns true if the object's cursor is at the beginning of available records. A cursor is opened using sqlquery_retrieve.
-*
-* <b>[related table] joins</b>: The related tables to include in the results. If you have defined Table Objects and Relationship Objects then you can \
-      * simply pass in a string like "LEFT JOIN related_table_name". The string will be parsed and the ON portion of the JOIN will be included. If \
-      * you have not defined Relationship Objects for your Table Objects then you must pass in the full join string, \
-      * i.e. "JOIN related_table_name ON field = field".
-*
-* <b>row delimiter</b>: When retrieving a query as data or converting a query cursor to data the row delimiter is used. Default is CR.
-*
-* <b>select clause</b>: Returns the fields to retrieve from the database.
-*
-* <b>sort by</b>: alias for 'order by'.
-*
-* <b>table</b>: The name of the primary table for the SQL Query Object.
-*
-* <b>table as</b>: The alias to use for the table in the query.
-*
-* <b>tables</b>: A line delimited list of all tables in the query.
-*
-* <b>where clause</b>: The WHERE clause of the query.
-*
-* \package SQL Query
-*
-* \return value
+Summary: Retrieves properties of a SQL Query Object array.
+
+xQueryA: A SQL Query Object array as created using sqlquery_createObject().
+pProp: The property to get.
+
+Description:
+### Properties
+
+| Property | Description |
+| -------- |:----------- |
+| `column delimiter` | When retrieving a query as data or converting a query cursor to data the column delimiter is used. Default is TAB. |
+| `column names length` | Allows you to explicitly select just column name (short), the table and column name (full) or the default behavior. |
+| `conditions` | A string representing the search conditions for the SQL query. You can use english or SQL operators. You can also use binding. A condition using english operators would look something like this: <br /><br />  *lesson.name contains :1 AND lesson.description contains :2*<br /> <br />If you are using binding then pass in the binding values as parameters 4 - n, where n = the number of binding variables you use in your conditions string. The following english operators are supported: <br /> <br /> IS, IS NOT, IS GREATER THAN, IS GREATER THAN OR EQUAL TO, IS LESS THAN, IS LESS THAN OR EQUAL TO, IS IN, IS NOT IN, CONTAINS, DOES NOT CONTAIN, BEGINS WITH, ENDS WITH, DOES NOT BEGIN WITH, DOES NOT END WITH |
+| `condition bindings` | A numerically indexed array. The value of [1] will be used to replace :1 in the conditions, [2] for :2, and so on. |
+| `connection` | Name of connection to use when querying database. |
+| `cursor id` | The id of the RevDB cursor associated with the SQL Query object. This only returns a positive value if you use sqlquery_retrieve. |
+| `database type` | The type of database that the object's connection points to. |
+| `distinct` | Returns true/false. True means SQL query returns DISTINCT results. |
+| `find` | Can be set to "first" to only return the first record found. |
+| `from clause` | The FROM clause of the query. |
+| `full column names [deprecated - see column names length]` | Returns true if the query will include both the table name and field name in the column name of query results. This only applies when SQL Yoga is automatically generating the SELECT clause. |
+| `group by` | Determines how returned rows are grouped. |
+| `having` | Used to filter the rows returned using group by. |
+| `join clause` | The JOIN clause of the query. |
+| `number of records` | The number of records in the object's cursor. A cursor is opened using sqlquery_retrieve. |
+| `limit` | The number of rows to limit the result to. Useful for large record sets of which you only want a certain number. Default is empty. |
+| `offset` | The number of rows to skip when returning the results. Setting this to 21 would skip records 1 to 20. Default is empty. |
+| `order by` | Fields to sort records by. |
+| `query` | The full SELECT query for the object. This query is used when opening a cursor or retrieving data. |
+| `query is at end` | Returns true if the object's cursor is at the end of available records. A cursor is opened using sqlquery_retrieve. |
+| `query is at start` | Returns true if the object's cursor is at the beginning of available records. A cursor is opened using sqlquery_retrieve. |
+| `[related table] joins` | The related tables to include in the results. If you have defined Table Objects and Relationship Objects then you can simply pass in a string like "LEFT JOIN related_table_name". The string will be parsed and the ON portion of the JOIN will be included. If you have not defined Relationship Objects for your Table Objects then you must pass in the full join string, i.e. "JOIN related_table_name ON field = field". |
+| `row delimiter` | When retrieving a query as data or converting a query cursor to data the row delimiter is used. Default is CR. |
+| `select clause` | Returns the fields to retrieve from the database. |
+| `sort by` | alias for 'order by'. |
+| `table` | The name of the primary table for the SQL Query Object. |
+| `table as` | The alias to use for the table in the query. |
+| `tables` | A line delimited list of all tables in the query. |
+| `where clause` | The WHERE clause of the query. |
+
+Returns: value
 */
 function sqlquery_get @xQueryA, pProp
   _ValidateQueryArray xQueryA
@@ -9988,30 +9951,31 @@ end sqlrecord_retrieve
 
 
 /**
-* \brief Finds records in the database and returns as SQL Record objects.
-*
-* \param pRecordA Can be the name of a table or a SQL Record object. Pass in an object if you want to specify the connection and/or database to use. \
-      *  Otherwise default database and default database connection are assumed.
-* \param pParamsA  Pass a string to search on the primary key field for the table. In this case xRecordsA contains a single SQL Record object. Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
-* \param @xRecordsA [out] Contains the found record(s).
-*
-* <pre>## Find lesson with id of 2 and store it in theRecordA
-* sqlrecord_find "lessons", 2, theRecordA
-* put the result into theError
-* -- theRecordA contains a single SQL Record object
-*
-* ## Find lessons with ids of 12 or 15 and order by id
-* ## Store result in theRecordsA
-* put "id is in :1" into theParamsA["conditions"]
-* put "12,15" into theParamsA["condition bindings"][1]
-* put "id ASC" into theParamsA["order by"]
-* sqlrecord_find "lessons", theParamsA, theRecordsA
-* put the result into theError
-* -- theRecordsA contains an array of SQL Records objects (numerically indexed)
-* </pre>
-* \package SQL Record
-*
-* \return Error message
+Summary: Finds records in the database and returns as SQL Record objects.
+
+pRecordA: Can be the name of a table or a SQL Record object. Pass in an object if you want to specify the connection and/or database to use. Otherwise default database and default database connection are assumed.
+pParamsA: Pass a string to search on the primary key field for the table. In this case xRecordsA contains a single SQL Record object. Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
+@xRecordsA: [out] Contains the found record(s).
+
+Description:
+
+```
+## Find lesson with id of 2 and store it in theRecordA
+sqlrecord_find "lessons", 2, theRecordA
+put the result into theError
+-- theRecordA contains a single SQL Record object
+
+## Find lessons with ids of 12 or 15 and order by id
+## Store result in theRecordsA
+put "id is in :1" into theParamsA["conditions"]
+put "12,15" into theParamsA["condition bindings"][1]
+put "id ASC" into theParamsA["order by"]
+sqlrecord_find "lessons", theParamsA, theRecordsA
+put the result into theError
+-- theRecordsA contains an array of SQL Records objects (numerically indexed)
+```
+
+Returns: Error message
 */
 command sqlrecord_find pRecordA, pParamsA, @xRecordsA
   local theQueryA, theField
