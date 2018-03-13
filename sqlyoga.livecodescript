@@ -8054,70 +8054,38 @@ end _CreateSQLQueryFromTable
 
 
 /**
-*\brief Sets properties on a SQL Query Object array.
-*
-* \param @xQueryA A SQL Query Object array as created using sqlquery_createObject().
-* \param pProp The property to set.
-* \param pValue The value to set the property to.
-*
-* <b>Properties:</b>
-*
-* <b>column delimiter</b>: When retrieving a query as data or converting a query cursor to data the column delimiter is used. Default is TAB.
-*
-* <b>column names length</b>: Allows you to explicitly select just column name (short), the table and column name (long) or the default behavior. \
-      *         The setting only applies to columns that SQL Yoga generates the SQL for. If you manually set the "select clause" property of the query object \
-      *         this setting will only affect any entries entered as TABLE_NAME.*.
-*
-* <b>conditions</b>: A string representing the search conditions for the SQL query. You can use english or SQL operators. You can also use binding variables \
-      * with the one caveat being that you need to put single quotes around the binding variables if you are using a string. This is necessary as some conditions in \
-      * SQL WHERE statements can break if wrapped in single quotes.
-* A condition using english operators would look something like this: \
-      * <i>lesson.name contains ':1' AND lesson.description contains ':2' AND lesson.id is in :3</i> \
-      * If you are using binding then pass in the binding values as parameters 4 - n, where n = the number of binding variables you use \
-      * in your conditions string. Support english operators are: \
-      * IS, IS NOT, IS GREATER THAN, IS GREATER THAN OR EQUAL TO, IS LESS THAN, IS LESS THAN OR EQUAL TO, IS IN, \
-      * IS NOT IN, IS BETWEEN, CONTAINS, DOES NOT CONTAIN, BEGINS WITH, ENDS WITH, DOES NOT BEGIN WITH, DOES NOT END WITH
-*
-* <b>condition bindings</b>: A numerically indexed array. The value of [1] will be used to replace :1 in the conditions, [2] for :2, and so on.
-*
-* <b>connection</b>: Name of connection to use when querying database. Default is the default connection for the Database Object.
-*
-* <b>distinct</b>: Set to true/false to affect whether a SQL query returns DISTINCT results.
-*
-* <b>find</b>: Set to "first" to only return the first record in the result.
-*
-* <b>full column names [deprecated - see column names length]</b>: Set to true to include both the table name and field name in the column name of query results.
-*
-* <b>group by</b>: Determines how returned rows are grouped.
-*
-* <b>having</b>: Used to filter the rows returned using group by.
-*
-* <b>limit</b>: The number of rows to limit the result to. Useful for large record sets of which you only want a certain number. Default is empty.
-*
-* <b>offset</b>: The number of rows to skip when returning the results. Setting this to 21 would skip records 1 to 20. Default is empty.
-*
-* <b>order by</b>: Fields to sort records by.
-*
-* <b>[related table] joins</b>: The related tables to include in the results. If you have defined Table Objects and Relationship Objects then you can \
-      * simply pass in a string like "LEFT JOIN related_table_name". The string will be parsed and the ON portion of the JOIN will be included. If \
-      * you have not defined Relationship Objects for your Table Objects then you must pass in the full join string, \
-      * i.e. "JOIN related_table_name ON field = field".
-*
-* <b>report null</b>: Set to true to return "NULL" as the column value if a column is NULL. Default is 'false' in which case empty is returned for the column value.
-*
-* <b>row delimiter</b>: When retrieving a query as data or converting a query cursor to data the row delimiter is used. Default is CR.
-*
-* <b>select clause</b>: Fields to retrieve from the database. The default is empty which means all fields for all tables in the query. Use the syntax TABLE.* to include all fields for a table.
-*
-* <b>sort by</b>: alias for 'order by'.
-*
-* <b>table</b>: The name of the primary table for the SQL Query Object. You can pass in "TABLE as ALIAS_NAME" to specify an alias for the table in the query. When setting the 'table' property the "select clause", "related table joins", "group by", "having" and "conditions" properties are reset.
-*
-* <b>table as</b>: The alias to use for the table in the query.
-*
-* \package SQL Query
-*
-* \return empty
+Summary: Sets properties on a SQL Query Object array.
+
+@xQueryA: A SQL Query Object array as created using sqlquery_createObject().
+pProp: The property to set.
+pValue: The value to set the property to.
+
+### Properties
+
+| Property | Description |
+| -------- |:----------- |
+| `column delimiter` | When retrieving a query as data or converting a query cursor to data the column delimiter is used. Default is TAB. |
+| `column names length` | Allows you to explicitly select just column name (short), the table and column name (long) or the default behavior. The setting only applies to columns that SQL Yoga generates the SQL for. If you manually set the "select clause" property of the query object this setting will only affect any entries entered as TABLE_NAME.*. |
+| `conditions` | A string representing the search conditions for the SQL query. You can use english or SQL operators. You can also use binding variables with the one caveat being that you need to put single quotes around the binding variables if you are using a string. This is necessary as some conditions in SQL WHERE statements can break if wrapped in single quotes. A condition using english operators would look something like this: <br /><br /> *lesson.name contains ':1' AND lesson.description contains ':2' AND lesson.id is in :3* <br /><br /> If you are using binding then pass in the binding values as parameters 4 - n, where n = the number of binding variables you use in your conditions string. Support english operators are:<br /><br />IS, IS NOT, IS GREATER THAN, IS GREATER THAN OR EQUAL TO, IS LESS THAN, IS LESS THAN OR EQUAL TO, IS IN, IS NOT IN, IS BETWEEN, CONTAINS, DOES NOT CONTAIN, BEGINS WITH, ENDS WITH, DOES NOT BEGIN WITH, DOES NOT END WITH |
+| `condition bindings` | A numerically indexed array. The value of [1] will be used to replace :1 in the conditions, [2] for :2, and so on. |
+| `connection` | Name of connection to use when querying database. Default is the default connection for the Database Object. |
+| `distinct` | Set to true/false to affect whether a SQL query returns DISTINCT results. |
+| `find` | Set to "first" to only return the first record in the result. |
+| `full column names [deprecated - see column names length]` | Set to true to include both the table name and field name in the column name of query results. |
+| `group by` | Determines how returned rows are grouped. |
+| `having` | Used to filter the rows returned using group by. |
+| `limit` | The number of rows to limit the result to. Useful for large record sets of which you only want a certain number. Default is empty. |
+| `offset` | The number of rows to skip when returning the results. Setting this to 21 would skip records 1 to 20. Default is empty. |
+| `order by` | Fields to sort records by. |
+| `[related table] joins` | The related tables to include in the results. If you have defined Table Objects and Relationship Objects then you can simply pass in a string like "LEFT JOIN related_table_name". The string will be parsed and the ON portion of the JOIN will be included. If you have not defined Relationship Objects for your Table Objects then you must pass in the full join string, i.e. "JOIN related_table_name ON field = field". |
+| `report null` | Set to true to return "NULL" as the column value if a column is NULL. Default is 'false' in which case empty is returned for the column value. |
+| `row delimiter` | When retrieving a query as data or converting a query cursor to data the row delimiter is used. Default is CR. |
+| `select clause` | Fields to retrieve from the database. The default is empty which means all fields for all tables in the query. Use the syntax TABLE.* to include all fields for a table. |
+| `sort by` | alias for 'order by'. |
+| `table` | The name of the primary table for the SQL Query Object. You can pass in "TABLE as ALIAS_NAME" to specify an alias for the table in the query. When setting the 'table' property the "select clause", "related table joins", "group by", "having" and "conditions" properties are reset. |
+| `table as` | The alias to use for the table in the query. |
+
+Returns: empty
 */
 command sqlquery_set @xQueryA, pProp, pValue
   _ValidateQueryArray xQueryA
@@ -10149,18 +10117,17 @@ end sqlrecord_get
 
 
 /**
-* \brief When setting the value of a SQL Record column you can specify that the value should \
-      * be passed through to the database without quoting or escaping the value. This returns the setting for \
-      * a particular column.
-*
-* \param pRecordA A SQL Record object.
-* \param pColumn The name of the column to check.
-*
-* \package SQL Record
-*
-* \return true/false
-*
-* \seealso sqlrecord_set
+Summary: Returns a boolean value specifying whether or not a column value passes through to the db when bein inserted.
+
+pRecordA: A SQL Record object.
+pColumn: The name of the column to check.
+
+Description:
+When setting the value of a SQL Record column you can specify that the value should
+be passed through to the database without quoting or escaping the value. This returns the setting for
+a particular column.
+
+Returns: Boolean
 */
 function sqlrecord_columnPassesThru pRecordA, pColumn
   set the wholeMatches to true
@@ -10224,35 +10191,35 @@ end sqlrecord_getRelated
 
 
 /**
-* \brief Sets a property of a SQL Record object.
-*
-* \param @xRecordA SQL Record object that you want to set the property for.
-* \param pProp The property to set.
-* \param pValue The value to set the property to.
-* \param pPassThru Set to true if SQL Yoga should not quote and escape the value you set. \
-      * This is useful when setting the value of an expression or a value like CURRENT_TIMESTAMP. Default is false.
-*
-* pProp can be either a built-in property, a column in the SQL Record's table or a custom property \
-      * that you have defined in the Table Object for the SQL Record's table.
-*
-* The built-in properties are:
-*
-* <b>@table</b>: The name of the table to associate the SQL Record with.
-*
-* <b>@database</b>: The name of the database object the SQL record is associated with.
-*
-* <b>@connection</b>: The name of the database connection the SQL Record should use.
-*
-* <b>@passthru</b>: A comma delimited list of fields that will not be escaped or quoted, but rather passed directly to the database as is.
-*
-* If pProp is a custom property the the property would be defined in \
-      * the 'table objects behavior' script for your Database Object. The function that will be called will be \
-      * tableobj.set.TABLE_NAME.pProp. For example:
-* <pre>command tableobj.set.lessons.searchTerms xRecordA, pValue</pre>
-*
-* \package SQL Record
-*
-* \return Error message
+Summary: Sets a property of a SQL Record object.
+
+@xRecordA: SQL Record object that you want to set the property for.
+pProp: The property to set.
+pValue: The value to set the property to.
+pPassThru: Set to true if SQL Yoga should not quote and escape the value you set. This is useful when setting the value of an expression or a value like CURRENT_TIMESTAMP. Default is false.
+
+Description:
+`pProp` can be either a built-in property, a column in the SQL Record's table or a custom property
+that you have defined in the Table Object for the SQL Record's table.
+
+The built-in properties are:
+
+| Property | Description |
+| -------- |:----------- |
+| `@table` | The name of the table to associate the SQL Record with. |
+| `@database` | The name of the database object the SQL record is associated with. |
+| `@connection` | The name of the database connection the SQL Record should use. |
+| `@passthru` | A comma delimited list of fields that will not be escaped or quoted, but rather passed directly to the database as is. |
+
+If `pProp` is a custom property the the property would be defined in
+the 'table objects behavior' script for your Database Object. The function that will be called will be
+tableobj.set.TABLE_NAME.pProp. For example:
+
+```
+command tableobj.set.lessons.searchTerms xRecordA, pValue
+```
+
+Returns: Error message
 */
 command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
   local theConnectionA, theError
