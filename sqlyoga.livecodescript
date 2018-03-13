@@ -8865,7 +8865,7 @@ command sqlquery_create pTable, pParamsA
 
     ## Perform the update
     put false into updateRecordAfterCreate
-    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate
+    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, false
     put the result into theError
     put it into theAffectedRows
   end if
@@ -9022,7 +9022,7 @@ command sqlquery_update pTable, pConditions, pParamsA
     local updateRecordAfterUpdate
 
     put false into updateRecordAfterUpdate
-    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate
+    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, false
     put the result into theError
     put it into theAffectedRows
   end if
@@ -10692,7 +10692,7 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords
+        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
         put the result into theError
         put it into theAffectedRows
       else
@@ -10701,7 +10701,7 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
           if "@table" is not among the keys of xRecordsA[i] then
             put kInvalidType && "record" into theError
           else
-            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords
+            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
             put the result into theError
 
             if theError is empty then
@@ -10729,7 +10729,7 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
 end sqlrecord_update
 
 
-private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterUpdate
+private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterUpdate, pSendCallbacks
   -----
   local i,theSQL, theType, isBoolean
   local theAffectedRows
@@ -10747,6 +10747,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   local theWhere
   -----
 
+  put pSendCallbacks is true into pSendCallbacks
   put xRecordA["@table"] into theTable
 
   ## VALIDATION CALLBACKS
@@ -10770,7 +10771,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
     end if
   end if
 
-  if theError is empty then
+  if theError is empty and pSendCallbacks then
     _dispatchTableObjectEventListener theTable, pConnectionA, "before update callback", xRecordA
     put the result into theError
   end if
@@ -10876,7 +10877,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
     end if
   end if
 
-  if theError is empty then
+  if theError is empty and pSendCallbacks then
     _dispatchTableObjectEventListener theTable, pConnectionA, "after update callback", xRecordA
     put the result into theError
   end if
@@ -10895,7 +10896,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
           ## array of records
           repeat with i = 1 to the number of elements of xRecordA[ theTableKey ]
             if "@table" is among the keys of xRecordA[ theTableKey ][i] then
-              _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ][i], pUpdateRecordAfterUpdate
+              _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ][i], pUpdateRecordAfterUpdate, pSendCallbacks
               put the result into theError
             end if
             if theError is not empty then exit repeat
@@ -10903,7 +10904,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
         else
           ## just a record
           if "@table" is among the keys of xRecordA[ theTableKey ] then
-            _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ], pUpdateRecordAfterUpdate
+            _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ], pUpdateRecordAfterUpdate, pSendCallbacks
             put the result into theError
           end if
         end if
@@ -11368,7 +11369,7 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
     if theError is empty then
       if "@table" is among the keys of xRecordsA then
         ## single record
-        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords
+        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
         put the result into theError
         put it into theAffectedRows
       else
@@ -11380,7 +11381,7 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
             if "@table" is not among the keys of xRecordsA[i] then
               put kInvalidType && "record" into theError
             else
-              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords
+              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
               put the result into theError
 
               if theError is empty then
@@ -11419,12 +11420,13 @@ pQuotesA:
 pTablesA:
 @xRecordA:
 pUpdateRecordAfterCreate: Pass in true to update xRecordA with the db record contents after performing the insert.
+pSendCallbacks: Set to true to send `before/after create callbacks`.
 
 Description:
 
 Returns: Error message in `the result`. Number of affected rows in `it.
 */
-private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterCreate
+private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterCreate, pSendCallbacks
   -----
   local theAffectedRows
   local theBaseSQL
@@ -11436,6 +11438,9 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
   local theValuesToInsert
   local insertingAPrimaryKeyValue = "false"
   -----
+
+  put pSendCallbacks is true into pSendCallbacks
+
   ##
   ## VALIDATION CALLBACKS
   dispatch "tableobj.validate." & xRecordA["@table"] with xRecordA
@@ -11456,8 +11461,10 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
     put xRecordA["@table"] into theTable
 
-    _dispatchTableObjectEventListener theTable, pConnectionA, "before create callback", xRecordA
-    put the result into theError
+    if pSendCallbacks then
+      _dispatchTableObjectEventListener theTable, pConnectionA, "before create callback", xRecordA
+      put the result into theError
+    end if
   end if
 
   if theError is empty then
@@ -11580,7 +11587,7 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
     end if
   end if
 
-  if theError is empty then
+  if theError is empty and pSendCallbacks then
     _dispatchTableObjectEventListener theTable, pConnectionA, "after create callback", xRecordA
     put the result into theError
   end if
@@ -11861,7 +11868,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
 
           ## Update
           if theError is empty then
-            _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true
+            _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true, true
             put the result into theError
           end if
 
@@ -11945,7 +11952,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
         ## Update
         if theError is empty then
           local updateRecordAfterUpdate = "false" ## in case we ever need some sort of refresh in the future
-          _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate
+          _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate, true
           put the result into theError
 
           ## Update record passed in so it has new id
