@@ -1,25 +1,27 @@
 script "SQL Yoga Development Tools"
 command sqlyogadev_reloadConfigFiles
   levureReloadRegisteredKey "sql yoga|configuration"
-
   return empty
 end sqlyogadev_reloadConfigFiles
 
 
-command sqlyogadev_createTriggers
+/**
+Summary: Creates trigges in a SQLite database that enforce relationships defined for the table objects.
+*/
+command sqlyogadev_createTriggers pConnectionName, pDBKey
   local theError
 
-  dbconn_connect
+  dbconn_connect pConnectionName, pDBKey
   if theError is empty then
-    dbconn_beginTransaction
+    dbconn_beginTransaction empty, pConnectionName, pDBKey
     put the result into theError
   end if
-  dbschema_createTriggers # default connection
+  dbschema_createTriggers pConnectionName, pDBKey # default connection
   put the result into theError
   if theError is empty then
-    dbconn_commitTransaction
+    dbconn_commitTransaction empty, pConnectionName, pDBKey
   else
-    dbconn_rollbackTransaction
+    dbconn_rollbackTransaction empty, pConnectionName, pDBKey
   end if
 
   return theError
@@ -32,12 +34,24 @@ command sqlyogadev_enableLogging pBoolean, pConnectionName, pDBKey
   else
     dbconn_set "log callback", "", pConnectionName, pDBKey
   end if
+
+  return empty
 end sqlyogadev_enableLogging
 
 
 command sqlyogadev_loggingCallback pSQL, pConnectionName, pDBKey
   loggerLogMsg "sqlYoga:" && pSQL
 end sqlyogadev_loggingCallback
+
+
+command sqlyogadev_saveSchemaToYAML pDBKey
+  local tError
+
+  _saveSchemaToYAML pDBKey
+  put the result into tError
+
+  return tError for error
+end sqlyogadev_saveSchemaToYAML
 
 
 /**
@@ -58,25 +72,33 @@ command sqlyogadev_createSchemaMigration pName, pDBKey
 end sqlyogadev_createSchemaMigration
 
 
-command sqlyogadev_runMigrations pDBKey
+command sqlyogadev_runMigrations pConnectionName, pDBKey
   local tError, tConfigA, i, tMigrateFolder
 
   put _migrateFolder(pDBKey) into tMigrateFolder
 
   if there is a folder tMigrateFolder then
-    _runMigrations tMigrateFolder, empty, pDBKey
+    _runMigrations tMigrateFolder, pConnectionName, pDBKey
     put the result into tError
   else
     put "migrate folder not found:" && tMigrateFolder into tError
   end if
 
-  dbsynch_schemaWithDatabase empty, pDBKey
+  if tError is empty then
+    dbsynch_schemaWithDatabase empty, pDBKey
+    put the result into tError
+  end if
+
+  if tError is empty then
+    _saveSchemaToYAML pDBKey
+    put the result into tError
+  end if
 
   return tError
 end sqlyogadev_runMigrations
 
 
-command _runMigrations pMigrationFolder, pConnectionA, pDBKey
+command _runMigrations pMigrationFolder, pConnectionName, pDBKey
   local tError, tFiles, tFile, tMigrateA
 
   put files(pMigrationFolder) into tFiles
@@ -90,7 +112,7 @@ command _runMigrations pMigrationFolder, pConnectionA, pDBKey
     put the result into tError
 
     if tError is empty then
-      dbmigrate_processMigrationArray tMigrateA, pConnectionA, pDBKey
+      dbmigrate_processMigrationArray tMigrateA, pConnectionName, pDBKey
       put the result into tError
     end if
 
@@ -101,7 +123,22 @@ command _runMigrations pMigrationFolder, pConnectionA, pDBKey
 end _runMigrations
 
 
-private function _migrateFolder pDBKey
+private command _saveSchemaToYAML pDBKey
+  local tError, tDBFolder, tYAML
+
+  put _databaseFolder() into tDBFolder
+
+  if there is a folder tDBFolder then
+    put dbschema_get("yaml", pDBKey) into tYAML
+    put textEncode(tYAML, "utf8") into URL("binfile:" & tDBFolder & "/schema.yml")
+    put the result into tError
+  end if
+
+  return tError
+end _saveSchemaToYAML
+
+
+private function _databaseFolder pDBKey
   local tConfigA, i
 
   put levureAppGet("sql yoga") into tConfigA
@@ -109,11 +146,23 @@ private function _migrateFolder pDBKey
   repeat with i = 1 to the number of elements of tConfigA["configuration"]
     if tConfigA["configuration"][i]["database key"] is pDBKey \
           or (pDBKey is empty and tConfigA["configuration"][i]["database key"] is "default") then
-      return tConfigA["configuration"][i]["filename"] & "/migrate"
+      return tConfigA["configuration"][i]["filename"]
     end if
   end repeat
 
   return empty
+end _databaseFolder
+
+
+private function _migrateFolder pDBKey
+  local tDBFolder
+
+  put _databaseFolder(pDBKey) into tDBFolder
+  if tDBFolder is not empty then
+    return tDBFolder & "/migrate"
+  else
+    return empty
+  end if
 end _migrateFolder
 
 
