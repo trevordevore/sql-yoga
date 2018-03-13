@@ -1075,14 +1075,21 @@ private function _QueryTableHierarchyStructure @xQueryA, pCursorFields
 end _QueryTableHierarchyStructure
 
 
+/**
+Summary: Converts a db cursor to a hierarchal array of Record objects based on relationships between tables.
+
+@xQueryA: The SQL Query object that created the cursor.
+@xOutArray: The resulting array of Record objects.
+
+Returns: Error
+*/
 private command _HierarchalCursorToArray @xQueryA, @xOutArray
-  -----
   local theCursorFields, theType, theRowA
   local theError
   local theHierarchyA
-  local theRootTable
+  local theRootTable, theConnectionA
   local theIndex
-  -----
+
   set the wholeMatches to true
   put dbconn_get("type", xQueryA["connection"]) into theType
 
@@ -1103,6 +1110,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
   # filter out duplicate entries.
   if theError is empty then
     put sqlquery_get(xQueryA, "table") into theRootTable
+    put sqlquery_get(xQueryA, "connection") into theConnectionA
 
     if theType is "valentina" then
       ##
@@ -1118,7 +1126,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA
+          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA
 
           get VCursor_NextRecord( xQueryA["cursor id"])
           if not it then exit repeat
@@ -1139,7 +1147,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray xQueryA["database"], theRowA, theRootTable, xOutArray, theHierarchyA
+          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA
 
           revMoveToNextRecord xQueryA["cursor id"]
           if not the result then exit repeat
@@ -1153,7 +1161,7 @@ end _HierarchalCursorToArray
 
 
 ## We have to use "do" to dynamically build up the multi-dimensional element reference
-private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @xTableHierarchyA
+private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOutArray, @xTableHierarchyA
   -----
   local theColumn
   local theCurrentParentUniqueKey
@@ -1221,7 +1229,7 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
       put pRowA[theColumn] into xOutArray[theIndexA][theField]
 
       ## BOOLEAN CONVERSION
-      if sDbsA[ pKey ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
+      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
         set the itemDelimiter to ","
         put xOutArray[theIndexA][theField] is among the items of kBoolTrueValues into xOutArray[theIndexA][theField]
         set the itemDelimiter to "."
@@ -1248,8 +1256,12 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
   put the number of elements of theIndexA + 1 into theNextIndex
   repeat for each line theTable in xTableHierarchyA[pTable]["children"]
     put theTable into theIndexA[theNextIndex]
-    _ConvertRowTableFieldsToArray pKey, pRowA, theTable, xOutArray[theIndexA], xTableHierarchyA
+    _ConvertRowTableFieldsToArray pConnectionA, pRowA, theTable, xOutArray[theIndexA], xTableHierarchyA
   end repeat
+
+  ## Validation could have generated error
+  delete local theIndexA[theNextIndex]
+  _dispatchTableObjectEventListener pTable, pConnectionA, "after retrieve callback", xOutArray[theIndexA]
 
   return empty
 end _ConvertRowTableFieldsToArray
