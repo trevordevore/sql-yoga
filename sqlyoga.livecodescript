@@ -9918,7 +9918,7 @@ end sqlrecord_retrieve
 Summary: Finds records in the database and returns as SQL Record objects.
 
 pRecordA: Can be the name of a table or a SQL Record object. Pass in an object if you want to specify the connection and/or database to use. Otherwise default database and default database connection are assumed.
-pParamsA: Pass a string to search on the primary key field for the table. In this case xRecordsA contains a single SQL Record object. Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
+pParamsA: Pass a string to search on the primary key field for the table. If primary key is composed of more than one field then pass in `name:value,name:value` pairs. Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
 @xRecordsA: [out] Contains the found record(s).
 
 Description:
@@ -9926,6 +9926,11 @@ Description:
 ```
 ## Find lesson with id of 2 and store it in theRecordA
 sqlrecord_find "lessons", 2, theRecordA
+put the result into theError
+-- theRecordA contains a single SQL Record object
+
+## Find record using primary key composed of two fields (id_1 and id_2)
+sqlrecord_find "object", "id_1:53,id_2:25", theRecordA
 put the result into theError
 -- theRecordA contains a single SQL Record object
 
