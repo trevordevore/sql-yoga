@@ -11222,6 +11222,17 @@ command sqlrecord_delete @xRecordsA
             put the result into theError
             add it to theAffectedRows
 
+            if theError is empty then
+              if theTableA is an array then
+                if theRecordIndexArray is an array then
+                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", xRecordsA[theRecordIndexArray]
+                else
+                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", xRecordsA
+                end if
+                put the result into theError
+              end if
+            end if
+
             ## Clear out SQL Record object
             if theError is empty then
               get theTablesA[theTable]["records"][i]["index array"]
@@ -11236,18 +11247,7 @@ command sqlrecord_delete @xRecordsA
           end if
 
           if theError is not empty then exit repeat
-
-          ##
-          ## After callback
-          ##
-          if theTableA is an array then
-            _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", theTablesA[theTable]["records"][i]
-            put the result into theError
-          end if
-
-          if theError is not empty then exit repeat
         end repeat
-        -- end if
 
         if theError is not empty then exit repeat
       end repeat
