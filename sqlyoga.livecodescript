@@ -9942,7 +9942,7 @@ put the result into theError
 Returns: Error message
 */
 command sqlrecord_find pRecordA, pParamsA, @xRecordsA
-  local theQueryA, theField
+  local theQueryA, theFields, theField
   local theError
 
   put empty into xRecordsA
@@ -9963,6 +9963,8 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
   ## Integer searches on primary key field.
   ## Otherwise we parse params.
   if pParamsA is not an array then
+    local theParam, theConditions, theBindingsA, i
+
     sqlquery_set theQueryA, "find", "first" ## return single instance
 
     # Just get table record based on primary key
@@ -9970,19 +9972,39 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
       local theTableA
 
       put tableobjects_getTable(pRecordA["@table"], theQueryA["database"]) into theTableA
-      put tableobj_get(theTableA, "primary key") into theField
+      put tableobj_get(theTableA, "primary key") into theFields
     else
-      put sDbsA[ theQueryA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["primary key"] into theField
+      put sDbsA[ theQueryA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["primary key"] into theFields
     end if
-    if theField is empty or the number of items of theField > 1 then
-      _ThrowError kErrInvalidProperty, "primary key is empty or has more than one field (" & theField & ")"
+    if theFields is empty or (the number of items of theFields > 1 and the number of items of pParamsA is not the number of items of theFields) then
+      _ThrowError kErrInvalidProperty, "primary key is empty or has more than one field and not enough items in pParams (" & theFields & ")"
     end if
-    if sDbsA[ theQueryA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["fields"][ theField ]["meta type"] \
-          is not among the items of kDontQuoteTypes then
-      sqlquery_set theQueryA, "conditions", theField && "= ':1'", pParamsA
-    else
-      sqlquery_set theQueryA, "conditions", theField && "= :1", pParamsA
+
+    if pParamsA is not an integer then
+      split pParamsA by "," and ":"
     end if
+
+    repeat with i = 1 to the number of items of theFields
+      put item i of theFields into theField
+      if pParamsA is not an integer then
+        put pParamsA[theField] into theParam
+      else
+        put pParamsA into theParam
+      end if
+      if i > 1 then put " AND " after theConditions
+
+      if sDbsA[ theQueryA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["fields"][ theField ]["meta type"] \
+            is not among the items of kDontQuoteTypes then
+        put theParam into theBindingsA[i]
+        put theField && "= ':" & i & "'" after theConditions
+      else
+        put theParam into theBindingsA[i]
+        put theField && "= :" & i after theConditions
+      end if
+    end repeat
+
+    sqlquery_set theQueryA, "conditions", theConditions
+    sqlquery_set theQueryA, "condition bindings", theBindingsA
   else
     repeat for each key theProp in pParamsA
       if _TranslateSQLQueryProp(theProp) is among the items of sSQLQuerySetProps then
