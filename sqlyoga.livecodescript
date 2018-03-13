@@ -7410,70 +7410,46 @@ end dbschema_set
 
 
 /**
-* \brief Returns info on a Database Objects internal database schema represenation.
-*
-* \param pProp Property to retrieve.
-* \param [pDBKey] Database Object schema is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* <b>Properties:</b>
-*
-* <b>tables</b>: Returns a return delimited list of tables in SQL Yoga's internal representation of the database schema.
-*
-* <b>tables array</b>: Returns the array used to SQL Yoga's internal representation of the database schema.
-*
-* \package Schema
-*
-* \return value
+Summary: Returns info on a Database Objects internal database schema represenation.
+
+pProp: Property to retrieve.
+[pDBKey]: Database Object schema is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
+
+Description:
+### Properties
+
+| Property | Description |
+| -------- |:----------- |
+| `tables` | Returns a return delimited list of tables in SQL Yoga's internal representation of the database schema. |
+| `tables array` | Returns the array used to SQL Yoga's internal representation of the database schema. |
+
+Returns: array
 */
-function dbschema_get pProp
-  -----
-  local pKey,theA,theKey
-  local theIndex
-  local theKeys
-  local theReference
-  -----
-  put param(2) into pKey
-  _ValidateKey pKey
+function dbschema_get pProp, pDBKey
+  local theA, theKey, theIndex
+  local theKeys, theReference
+
+  _ValidateKey pDBKey
 
   switch pProp
-    -- case "tables"
-    -- ## Return an array of table references
-    -- put kTableReference into theReference
-    -- -- case "relationships" ## no longer stored in schema
-    -- -- if theReference is empty then put kRelationshipReference into theReference
-
-    -- put empty into theA
-    -- put the keys of sDbsA[pKey]["schema"][pProp] into theKeys
-    -- sort lines of theKeys ascending
-
-    -- put 0 into theIndex
-    -- repeat for each line theKey in theKeys
-    -- add 1 to theIndex
-
-    -- put theReference into theA[theIndex]["type"]
-    -- put pKey into theA[theIndex]["database"]
-    -- put theKey into theA[theIndex]["index"]
-    -- end repeat
-
-    -- return theA
-    -- break
-
+    case ""
+      return sDbsA[pDBKey]["schema"]
     case "tables" -- "table names"
-      put the keys of sDbsA[pKey]["schema"]["tables"] into theKeys
+      put the keys of sDbsA[pDBKey]["schema"]["tables"] into theKeys
       sort lines of theKeys ascending
       return theKeys
       break
 
     case "tables array"
-      return sDbsA[pKey]["schema"]["tables"]
+      return sDbsA[pDBKey]["schema"]["tables"]
       break
 
     default
       ## Todo: need actual list to compare against in case we add valid props later on
-      if pProp is not among the keys of sDbsA[pKey]["schema"] then
+      if pProp is not among the keys of sDbsA[pDBKey]["schema"] then
         _ThrowError kErrInvalidProperty, "invalid property passed to " & param(0)
       else
-        return sDbsA[pKey]["schema"][pProp]
+        return sDbsA[pDBKey]["schema"][pProp]
       end if
   end switch
 end dbschema_get
