@@ -85,6 +85,11 @@ command sqlyogadev_runMigrations pConnectionName, pDBKey
   end if
 
   if tError is empty then
+    sqlyogadev_createTriggers pConnectionName, pDBKey
+    put the result into tError
+  end if
+
+  if tError is empty then
     dbsynch_schemaWithDatabase empty, pDBKey
     put the result into tError
   end if
