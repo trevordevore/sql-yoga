@@ -740,7 +740,7 @@ private command _sqlite_dbTableFields pConnectionA, pTable
       if theA["fields"][theField]["default value"] is empty then put "NULL" into theA["fields"][theField]["default value"]
       put revDatabaseColumnNamed(theCursor, "notnull") is "0" into theA["fields"][theField]["accepts null"]  # value is 99 for null
       put revDatabaseColumnNamed(theCursor, "pk") > 0 into theA["fields"][theField]["primary key"]    # value is 0 for not primary
-      put theA["fields"][theField]["primary key"] is true into theA["fields"][theField]["unique"]    # primary has to be unique
+      put false into theA["fields"][theField]["unique"]
       if theA["fields"][theField]["primary key"] then
         put theField & comma after thePrimaryKeys
       end if
@@ -770,6 +770,7 @@ private command _sqlite_dbTableFields pConnectionA, pTable
         put "sequence" into theA["fields"][thePrimaryKeys]["type"]
         put empty into theA["fields"][thePrimaryKeys]["length"]
         put false into theA["fields"][thePrimaryKeys]["signed"]
+        put true into theA["fields"][thePrimaryKeys]["unique"]    # primary has to be unique
       end if
     end if
 
