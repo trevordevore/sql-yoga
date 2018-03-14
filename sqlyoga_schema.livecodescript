@@ -504,14 +504,14 @@ command dbsynch_dbCreateTable pConnectionA, pTableA
     put format("error getting CREATE TABLE sql for table \"%s\"",  theTable) into theError
   end if
 
-  ## INDEXES
-  if theError is empty then
-    local theDo
+  -- ## INDEXES
+  -- if theError is empty then
+  --   local theDo
 
-    put "_" & theDBType & "_dbCreateTableIndexes pConnectionA, pTableA" into theDo
-    do theDo
-    put the result into theError
-  end if
+  --   put "_" & theDBType & "_dbCreateTableIndexes pConnectionA, pTableA" into theDo
+  --   do theDo
+  --   put the result into theError
+  -- end if
 
   return theError
 end dbsynch_dbCreateTable
@@ -1519,8 +1519,8 @@ private command _sqlite_dbAlterTable pConnectionA, pTableA
 
   if theError is empty then
     ## INDEXES
-    _sqlite_dbCreateTableIndexes pConnectionA, pTableA
-    put the result into theError
+    -- _sqlite_dbCreateTableIndexes pConnectionA, pTableA
+    -- put the result into theError
   end if
 
   return theError
