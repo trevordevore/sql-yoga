@@ -1160,7 +1160,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
 end _HierarchalCursorToArray
 
 
-private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @xTableHierarchyA, pDynamicKeyA
+private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOutArray, @xTableHierarchyA, pDynamicKeyA
   -----
   local usingAnArray, theColumn
   local theCurrentParentUniqueKey
@@ -1233,7 +1233,7 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
       put pRowA[theColumn] into xOutArray[pDynamicKeyA][theField]
 
       ## BOOLEAN CONVERSION
-      if sDbsA[ pKey ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
+      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
         set the itemDelimiter to ","
         put xOutArray[pDynamicKeyA][theField] is among the items of kBoolTrueValues into xOutArray[pDynamicKeyA][theField]
         set the itemDelimiter to "."
@@ -1263,7 +1263,7 @@ private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @
     -- answer pTable & cr && theTable & cr &  printKeys(pDynamicKeyA)
     -- end if
 
-    _ConvertRowTableFieldsToArray pKey, pRowA, theTable, xOutArray, xTableHierarchyA, pDynamicKeyA
+    _ConvertRowTableFieldsToArray pConnectionA, pRowA, theTable, xOutArray, xTableHierarchyA, pDynamicKeyA
   end repeat
 
   return empty
