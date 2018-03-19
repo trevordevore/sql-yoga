@@ -1126,7 +1126,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA
+          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
 
           get VCursor_NextRecord( xQueryA["cursor id"])
           if not it then exit repeat
@@ -1147,7 +1147,7 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
           put xQueryA["connection"] into theRowA["@connection"]
 
           ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA
+          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
 
           revMoveToNextRecord xQueryA["cursor id"]
           if not the result then exit repeat
@@ -1160,18 +1160,18 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
 end _HierarchalCursorToArray
 
 
-## We have to use "do" to dynamically build up the multi-dimensional element reference
-private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOutArray, @xTableHierarchyA
+private command _ConvertRowTableFieldsToArray pKey, pRowA, pTable, @xOutArray, @xTableHierarchyA, pDynamicKeyA
   -----
-  local theColumn
+  local usingAnArray, theColumn
   local theCurrentParentUniqueKey
   local theField
   local theIndex
-  local theIndexA
+  local theNextIndex
   local theRowTableUniqueKey
   local theTable, theTableUniqueKey
   -----
 
+  put pDynamicKeyA is an array into usingAnArray
   set the wholeMatches to true
 
   ## Check unique keys for table. If NULL or empty we are done with this table
@@ -1210,28 +1210,32 @@ private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOut
     if xTableHierarchyA[pTable]["relationship to parent"] is among the items of "many-to-many,one-to-one" then
       put -1 into theIndex
     else
-      put the number of elements of xOutArray into theIndex
+      if usingAnArray then
+        put the number of elements of xOutArray[pDynamicKeyA] into theIndex
+      else
+        put the number of elements of xOutArray into theIndex
+      end if
 
       add 1 to theIndex
-      put theIndex into theIndexA[1]
+      put theIndex into pDynamicKeyA[max(1, the number of elements of pDynamicKeyA + 1)]
     end if
 
     ## Identify as record
-    put pTable into xOutArray[theIndexA]["@table"]
-    put pRowA["@database"] into xOutArray[theIndexA]["@database"]
-    put pRowA["@connection"] into xOutArray[theIndexA]["@connection"]
+    put pTable into xOutArray[pDynamicKeyA]["@table"]
+    put pRowA["@database"] into xOutArray[pDynamicKeyA]["@database"]
+    put pRowA["@connection"] into xOutArray[pDynamicKeyA]["@connection"]
 
     ## Fill in values for columns
     set the itemDelimiter to "."
     repeat for each line theColumn in xTableHierarchyA[pTable]["fields"]
       ## Use -1 so that we only use field name rather than table.field
       put item -1 of theColumn into theField
-      put pRowA[theColumn] into xOutArray[theIndexA][theField]
+      put pRowA[theColumn] into xOutArray[pDynamicKeyA][theField]
 
       ## BOOLEAN CONVERSION
-      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
+      if sDbsA[ pKey ]["schema"]["tables"][ pTable ]["fields"][ theField ]["meta type"] is "boolean" then
         set the itemDelimiter to ","
-        put xOutArray[theIndexA][theField] is among the items of kBoolTrueValues into xOutArray[theIndexA][theField]
+        put xOutArray[pDynamicKeyA][theField] is among the items of kBoolTrueValues into xOutArray[pDynamicKeyA][theField]
         set the itemDelimiter to "."
       end if
     end repeat
@@ -1243,7 +1247,7 @@ private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOut
     ## Already used, just insert the index into the array index (if >0) before processing child tables
     ## The highest index in array index right now is parent table name.
     if theIndex > 0 then
-      put theIndex into theIndexA[1]
+      put theIndex into pDynamicKeyA[max(1, the number of elements of pDynamicKeyA + 1)]
     end if
   end if
 
@@ -1251,17 +1255,16 @@ private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOut
   ## into a single array entry...
 
   ## Store children tables in their child array
-  local theNextIndex
-
-  put the number of elements of theIndexA + 1 into theNextIndex
+  put the number of elements of pDynamicKeyA + 1 into theNextIndex
   repeat for each line theTable in xTableHierarchyA[pTable]["children"]
-    put theTable into theIndexA[theNextIndex]
-    _ConvertRowTableFieldsToArray pConnectionA, pRowA, theTable, xOutArray[theIndexA], xTableHierarchyA
-  end repeat
+    put theTable into pDynamicKeyA[theNextIndex]
 
-  ## Validation could have generated error
-  delete local theIndexA[theNextIndex]
-  _dispatchTableObjectEventListener pTable, pConnectionA, "after retrieve callback", xOutArray[theIndexA]
+    -- if the shiftkey is down then -- pTable is "tlk_tagged" then
+    -- answer pTable & cr && theTable & cr &  printKeys(pDynamicKeyA)
+    -- end if
+
+    _ConvertRowTableFieldsToArray pKey, pRowA, theTable, xOutArray, xTableHierarchyA, pDynamicKeyA
+  end repeat
 
   return empty
 end _ConvertRowTableFieldsToArray
