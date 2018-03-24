@@ -4,12 +4,61 @@ command dbmigrate_processMigrationArray pMigrationA, pConnectionA, pDBKey
 
   put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
 
-  repeat for each element tTableA in pMigrationA["migration"]["create tables"]
-    dbschema_createTable tTableA["name"], tTableA, pConnectionA, pDBKey
-    put the result into tError
+  dbconn_connect pConnectionA
+  put the result into tError
 
-    if tError is not empty then exit repeat
-  end repeat
+  if tError is empty then
+    dbconn_beginTransaction empty, pConnectionA
+    put the result into tError
+  end if
+
+  try
+    if tError is empty then
+      repeat for each element tTableA in pMigrationA["migration"]["create tables"]
+        dbschema_createTable tTableA["name"], tTableA, pConnectionA, pDBKey
+        put the result into tError
+
+        if tError is not empty then exit repeat
+      end repeat
+    end if
+
+    if tError is empty then
+      dbsynch_schemaWithDatabase pConnectionA, pDBKey
+      put the result into tError
+    end if
+
+    if tError is empty then
+      dbschema_createTriggers pConnectionA
+      put the result into tError
+    end if
+
+    if tError is empty then
+      local tRecA, tField
+
+      repeat for each element tTableA in pMigrationA["migration"]["create records"]
+        repeat for each element tRecordA in tTableA["records"]
+          put sqlrecord_createObject(tTableA["table"], pConnectionA, pDBKey) into tRecA
+          repeat for each key tField in tRecordA
+            sqlrecord_set tRecA, tField, tRecordA[tField]
+          end repeat
+          sqlrecord_create tRecA
+          put the result into tError
+
+          if tError is not empty then exit repeat
+        end repeat
+
+        if tError is not empty then exit repeat
+      end repeat
+    end if
+  catch tError
+
+  end try
+
+  if tError is empty then
+    dbconn_commitTransaction empty, pConnectionA
+  else
+    dbconn_rollbackTransaction empty, pConnectionA
+  end if
 
   return tError for error
 end dbmigrate_processMigrationArray

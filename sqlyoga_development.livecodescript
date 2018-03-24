@@ -5,29 +5,6 @@ command sqlyogadev_reloadConfigFiles
 end sqlyogadev_reloadConfigFiles
 
 
-/**
-Summary: Creates trigges in a SQLite database that enforce relationships defined for the table objects.
-*/
-command sqlyogadev_createTriggers pConnectionName, pDBKey
-  local theError
-
-  dbconn_connect pConnectionName, pDBKey
-  if theError is empty then
-    dbconn_beginTransaction empty, pConnectionName, pDBKey
-    put the result into theError
-  end if
-  dbschema_createTriggers pConnectionName, pDBKey # default connection
-  put the result into theError
-  if theError is empty then
-    dbconn_commitTransaction empty, pConnectionName, pDBKey
-  else
-    dbconn_rollbackTransaction empty, pConnectionName, pDBKey
-  end if
-
-  return theError
-end sqlyogadev_createTriggers
-
-
 command sqlyogadev_enableLogging pBoolean, pConnectionName, pDBKey
   if pBoolean then
     dbconn_set "log callback", "sqlyogadev_loggingCallback", pConnectionName, pDBKey
@@ -82,16 +59,6 @@ command sqlyogadev_runMigrations pConnectionName, pDBKey
     put the result into tError
   else
     put "migrate folder not found:" && tMigrateFolder into tError
-  end if
-
-  if tError is empty then
-    dbsynch_schemaWithDatabase empty, pDBKey
-    put the result into tError
-  end if
-
-  if tError is empty then
-    sqlyogadev_createTriggers pConnectionName, pDBKey
-    put the result into tError
   end if
 
   if tError is empty then
