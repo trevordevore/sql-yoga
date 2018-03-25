@@ -9418,45 +9418,69 @@ end sqlquery_moveToRecord
 
 
 /**
-* \brief Converts a search string into the condition property of a SQL Query Object.
-*
-* \param @xQueryA A SQL Query Object array.
-* \param pString A string representing the terms a user wants to search for.
-* \param pConditions A string representing the SQL WHERE clause. :1 appears where you want to insert search terms. \
-      *                               You do no need to wrap :1 in single quotes as this function always assumes you are searching for a string and wraps \
-      *                               the strings in single quotes for you.
-* \param pDefaultOperator Default boolean operator to use between words that do not \
-      *             explicity state one. Valid values are "AND" or "OR". Default value is "AND".
-*
-* Search interfaces often allow a user to enter a search string for querying the database.
-* A string entered by the user as
-* <pre>tacos pizza</pre>
-* might look like this in a WHERE clause:
-* <pre>field = 'tacos' AND field='pizza'</pre>
-* or
-* <pre>field='tacos' OR field='pizza'</pre>
-* A search string such as
-* <pre>"cheese pizza" tacos</pre>
-* might look like this in a WHERE clause:
-* <pre>field = 'cheese pizza' OR field='tacos'</pre>
-*
-* This command takes a search string and combines it with the conditions of a WHERE clause and applies \
-      * them to a SQL Query Object.
-*
-* For example, if you passed in the string
-* <pre>"cheese pizza" taco</pre>
-* with a default operator of "OR" and the conditions were "food.name contains :1" then the following WHERE clause \
-      * would be generated for the query:
-*
-* <pre>WHERE (food.name LIKE  '%cheese pizza%' OR food.name LIKE '%tacos%')</pre>
-*
-* You can see that the WHERE clause searches the name field of the food table for both terms.
-*
-* \package SQL Query
-*
-* \return Error message.
-*
-* \seealso sqlyoga_splitUserSearchString()
+Summary: Converts a search string into the condition property of a SQL Query Object.
+
+Parameters:
+@xQueryA (array): A SQL Query Object array.
+pString (string): A string representing the terms a user wants to search for.
+pConditions (string): A string representing the SQL WHERE clause. :1 appears where you want to insert search terms. You do no need to wrap :1 in single quotes as this function always assumes you are searching for a string and wraps the strings in single quotes for you.
+ pDefaultOperator (enum): Default boolean operator to use between words that do not explicity state one.
+ - "AND": Default
+ - "OR"
+
+Description:
+Search interfaces often allow a user to enter a search string for querying the database.
+A string entered by the user as
+
+```
+tacos pizza
+```
+
+might look like this in a WHERE clause:
+
+```
+field = 'tacos' AND field='pizza'
+```
+
+or
+
+```
+field='tacos' OR field='pizza'
+```
+
+A search string such as
+
+```
+<pre>"cheese pizza" tacos</pre>
+```
+
+might look like this in a WHERE clause:
+
+```
+field = 'cheese pizza' OR field='tacos'
+```
+
+This command takes a search string and combines it with the conditions of a WHERE clause and applies
+them to a SQL Query Object.
+
+For example, if you passed in the string
+
+```
+"cheese pizza" taco
+```
+
+with a default operator of "OR" and the conditions were "food.name contains :1" then the following
+WHERE clause would be generated for the query:
+
+```
+WHERE (food.name LIKE  '%cheese pizza%' OR food.name LIKE '%tacos%')
+```
+
+You can see that the WHERE clause searches the name field of the food table for both terms.
+
+Returns: Error message.
+
+References: sqlyoga_splitUserSearchString (function)
 */
 command sqlquery_setConditionsFromUserSearchString @xQueryA, pString, pConditions, pDefaultOperator
   -----
@@ -9498,17 +9522,16 @@ end sqlquery_setConditionsFromUserSearchString
 
 
 /**
-* \brief Adds a condition to a query by creating a scope and assigning the condition to it.
-*
-* \param pQueryA A SQL Query Object array.
-* \param pCondition The search condition. No bindings are allowed.
-*
-* This handler can be useful if you are dynamically building search conditions and \
-      * need to add a hard coded search condition.
-*
-* \package SQL Query
-*
-* \return empty
+Summary: Adds a condition to a query by creating a scope and assigning the condition to it.
+
+pQueryA: A SQL Query Object array.
+pCondition: The search condition. No bindings are allowed.
+
+Description:
+This handler can be useful if you are dynamically building search conditions and
+need to add a hard coded search condition.
+
+Returns: empty
 */
 command sqlquery_addCondition pQueryA, pCondition
   local theScopeA, theNextIndex
@@ -9522,32 +9545,30 @@ end sqlquery_addCondition
 
 
 /**
-* \brief Adds an existing Scope object to a SQL Query Object.
-*
-* \param @xQueryA A SQL Query Object array.
-* \param pScope The name of the Scope object to add to the query.
-* \param pParamsDotDotDot Pass in additional parameters for use with any binding entries in the scopes conditions. \
-      *             You can pass in strings or a numerically indexed array.
-*
-* This handler enables you to dynamically build search criteria for a SQL Query Object. \
-      * This makes generating queries from complex search UIs much easier.
-*
-* The array for parameter 3 is numerically indexed and each numeric key has \
-      * a <b>string</b> and <b>operater</b> key.
-*
-* If you are passing in multiple arrays for use in replacing the bindings used in \
-      * the scope condition then each array MUST have the same number of numeric entries.
-* The <b>string</b> key will only be used from the first array passed in however.
-*
-* <pre>put sqlquery_createObject("lessons") into theQueryA
-* sqlquery_addScope theQueryA, "lessons linked to manuals"
-* sqlquery_retrieveAsArray theQueryA, theDataA</pre>
-*
-* \package SQL Query
-*
-* \return empty
-*
-* \seealso sqlyoga_splitUserSearchString()
+Summary: Adds an existing Scope object to a SQL Query Object.
+
+@xQueryA: A SQL Query Object array.
+pScope: The name of the Scope object to add to the query.
+pParamsDotDotDot: Pass in additional parameters for use with any binding entries in the scopes conditions. You can pass in strings or a numerically indexed array.
+
+Description:
+This handler enables you to dynamically build search criteria for a SQL Query Object.
+This makes generating queries from complex search UIs much easier.
+
+The array for parameter 3 is numerically indexed and each numeric key has
+a **string** and **operater** key.
+
+If you are passing in multiple arrays for use in replacing the bindings used in
+the scope condition then each array MUST have the same number of numeric entries.
+The <b>string</b> key will only be used from the first array passed in however.
+
+```
+put sqlquery_createObject("lessons") into theQueryA
+sqlquery_addScope theQueryA, "lessons linked to manuals"
+sqlquery_retrieveAsArray theQueryA, theDataA
+```
+
+Returns: empty
 */
 command sqlquery_addScope @xQueryA, pScope, pParamsDotDotDot
   -----
