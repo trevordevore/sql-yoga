@@ -955,12 +955,12 @@ end _sqlite_dbTableIndexes
 private function _sqlite_getFieldSQLType pFieldA
   local theType, theLimit, thePrecision, theScale, theSQLType
 
-  put pFieldA["type"] into theType
+  put _effectiveFieldtype(pFieldA) into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
   put pFieldA["scale"] into theScale
 
-  put theType into theSQLType
+  put toupper(theType) into theSQLType
 
   switch theType
     case "text"
@@ -982,6 +982,14 @@ private function _sqlite_getFieldSQLType pFieldA
       end if
       break
 
+    case "float"
+      put "FLOAT" into theSQLType
+      break
+
+    case "double precision"
+      put "DOUBLE PRECISION" into theSQLType
+      break
+
     case "decimal"
       if thePrecision is not an integer then
         put "10" into thePrecision
@@ -989,7 +997,7 @@ private function _sqlite_getFieldSQLType pFieldA
       if theScale is not an integer then
         put "2" into theScale
       end if
-      put theSQLType & "(" & thePrecision & comma & theScale & ")" into theSQLType
+      put "DECIMAL (" & thePrecision & comma & theScale & ")" into theSQLType
       break
 
     case "date time"
@@ -997,7 +1005,7 @@ private function _sqlite_getFieldSQLType pFieldA
       break
 
     case "binary"
-      put "blob" into theSQLType
+      put "BLOB" into theSQLType
       break
   end switch
 
@@ -1971,8 +1979,8 @@ end _mysql_dbTableIndexes
 private function _mysql_getFieldSQLType pFieldA
   local theType, theLimit, thePrecision, theScale, theSQLType
 
-  -- boolean, decimal, integer, timestamp, date, date time, binary, sequence, list, text
-  put pFieldA["type"] into theType
+  -- boolean, decimal, float, double precision, integer, timestamp, date, date time, binary, sequence, list, text
+  put _effectiveFieldtype(pFieldA) into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
   put pFieldA["scale"] into theScale
@@ -1997,6 +2005,14 @@ private function _mysql_getFieldSQLType pFieldA
 
         put theSQLType & "(" & theLimit & ")" into theSQLType
       end if
+      break
+
+    case "float"
+      put "FLOAT" into theSQLType
+      break
+
+    case "double precision"
+      put "DOUBLE PRECISION" into theSQLType
       break
 
     case "decimal"
@@ -2281,7 +2297,7 @@ end _mysql_dbCreateForeignKeyConstraints
 private function _postgresql_getFieldSQLType pFieldA
   local theType, theLimit, thePrecision, theScale, theSQLType
 
-  put pFieldA["type"] into theType
+  put _effectiveFieldtype(pFieldA) into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
   put pFieldA["scale"] into theScale
@@ -2302,6 +2318,14 @@ private function _postgresql_getFieldSQLType pFieldA
       if theLimit > 0 then
         put "(" & theLimit & ")" after theSQLType
       end if
+      break
+
+    case "float"
+      put "real" into theSQLType
+      break
+
+    case "double precision"
+      put "double precision" into theSQLType
       break
 
     case "decimal"
@@ -2756,7 +2780,7 @@ end _postgresql_systemTables
 private function _valentina_getFieldSQLType pFieldA
   local theType, theLimit, thePrecision, theScale, theSQLType
 
-  put pFieldA["type"] into theType
+  put _effectiveFieldtype(pFieldA) into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
   put pFieldA["scale"] into theScale
@@ -2781,6 +2805,14 @@ private function _valentina_getFieldSQLType pFieldA
 
         put theSQLType & "(" & theLimit & ")" into theSQLType
       end if
+      break
+
+    case "float"
+      put "FLOAT" into theSQLType
+      break
+
+    case "double precision"
+      put "DOUBLE PRECISION" into theSQLType
       break
 
     case "decimal"
@@ -3085,7 +3117,7 @@ end _filemaker_systemTables
 private function _sqlserver_getFieldSQLType pFieldA, pConnectionA
   local theType, theLimit, thePrecision, theScale, theEncoding, theSQLType
 
-  put pFieldA["type"] into theType
+  put _effectiveFieldtype(pFieldA) into theType
   put pFieldA["length"] into theLimit
   put pFieldA["precision"] into thePrecision
   put pFieldA["scale"] into theScale
@@ -3115,6 +3147,14 @@ private function _sqlserver_getFieldSQLType pFieldA, pConnectionA
       if theEncoding begins with "utf" or theEncoding begins with "unicode" then
         put "n" before theSQLType
       end if
+      break
+
+    case "float"
+      put "DOUBLE" into theSQLType
+      break
+
+    case "double precision"
+      put "DOUBLE PRECISION" into theSQLType
       break
 
     case "decimal"
@@ -3525,11 +3565,15 @@ private function _NormalizeFieldType pFromType
     case "BOOLEAN"
       put "boolean" into theType
       break
+    case "REAL"
     case "FLOAT"
     case "DOUBLE"
-    case "double precision" ## postgresql
+      put "float" into theType
+    case "DOUBLE PRECISION"
+      put "double precision" into theType
+      break
     case "decimal"
-    case "real"
+    case "numeric"
       put "decimal" into theType
       break
     case "LONG"
@@ -3597,6 +3641,15 @@ private function _NormalizeFieldType pFromType
 
   return theType
 end _NormalizeFieldType
+
+
+private function _effectiveFieldType pFieldA
+  if pFieldA["meta type"] is not empty then
+    return pFieldA["meta type"]
+  else
+    return pFieldA["type"]
+  end if
+end _effectiveFieldType
 
 private function _ErrorMsg pMsg, pError
   if pError is not empty then
