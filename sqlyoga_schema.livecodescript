@@ -983,7 +983,7 @@ private function _sqlite_getFieldSQLType pFieldA
       break
 
     case "float"
-      put "FLOAT" into theSQLType
+      put "REAL" into theSQLType
       break
 
     case "double precision"
