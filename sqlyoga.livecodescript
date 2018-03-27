@@ -959,19 +959,6 @@ private command _CursorRowToArray pQueryA, pFields, @xArray, pDynamicKeyA
 
   --> todo: Apply encodings
 
-  --> Callbacks baby!
-  local theMessage, theObject
-
-  repeat for each line theCallback in pQueryA["callbacks"]["retrieve"]["after"]
-    put item 1 of theCallback into theMessage
-    put item 2 to -1 of theCallback into theObject
-    if theObject is not empty then
-      dispatch theMessage to theObject with pQueryA, xArray, pDynamicKeyA
-    else
-      dispatch theMessage with pQueryA, xArray, pDynamicKeyA
-    end if
-  end repeat
-
   return empty
 end _CursorRowToArray
 
@@ -2425,37 +2412,6 @@ private function _getRelationshipIndexFromName pDBKey, pName
 end _getRelationshipIndexFromName
 
 
-/**
-* Workaround for lack of multiple behaviors.
-* Must assign behavior associated with db key so
-* handlers are available.
-* returns true if behavior exists, false otherwise
-*/
-private command _LoadTableBehaviorsForDB pDBKey
-  _ValidateKey pDBKey
-  if sDbsA[ pDBKey ]["table objects behavior"] is not empty then
-    set the behavior of me to sDbsA[ pDBKey ]["table objects behavior"]
-    return true
-  else
-    return false
-  end if
-end _LoadTableBehaviorsForDB
-
-
-private function _CleanseCallbacks pCallbacks
-  local theCleansedCallbacks, theMessage, theObject
-
-  repeat for each line theCallback in pCallbacks
-    put item 1 of theCallback into theMessage
-    put item 2 to -1 of theCallback into theObject
-    put _CustomControlReference(theObject) into theObject
-    put theMessage & comma & theObject & cr after theCleansedCallbacks
-  end repeat
-  delete the last char of theCleansedCallbacks
-  return theCleansedCallbacks
-end _CleanseCallbacks
-
-
 private function _CustomControlReference pControl
   -----
   local theFirstCharToDelete
@@ -3006,10 +2962,7 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
         tableobj_createObject tTablesA[i]["name"], "table", pDBKey
       end if
 
-      repeat for each item tKey in "type,after retrieve callback,before create callback," & \
-            "after create callback,before update callback,after update callback," & \
-            "before delete callback,after delete callback," & \
-            "name,alias for table,conditions,primary key"
+      repeat for each item tKey in "type,name,alias for table,conditions,primary key"
         if tKey is among the keys of tTablesA[i] then
           tableobj_set tTablesA[i]["name"], tKey, tTablesA[i][tKey], pDBKey
         end if
@@ -3165,11 +3118,6 @@ command dbobject_createFromArray pArray, pDBKey
 
   put pArray into sDbsA[pDBKey]
 
-  if sDbsA[ pDBKey ]["tables behavior"] is not empty then
-    put sDbsA[ pDBKey ]["tables behavior"] into sDbsA[ pDBKey ]["table objects behavior"]
-    delete local sDbsA[ pDBKey ]["tables behavior"]
-  end if
-
   return theError
 end dbobject_createFromArray
 
@@ -3324,9 +3272,6 @@ end dbobject_getArrays
 *
 * <b>storage type</b>: "object" or "file" depending on whether the Database object will be stored in a LiveCode object or a file.
 *
-* <b>table objects behavior</b>: A reference to the LiveCode button that contains the table objects behavior script. This is where you \
-      *                store the code that creates Table, Relationship and Scope objects as well as where you add custom table properties, callbacks, etc.
-*
 * \package Database
 *
 * \return Value
@@ -3340,12 +3285,6 @@ function dbobject_get pProperty, pDBKey
   -----
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
-
-  switch pProperty
-    case "tables behavior" ## deprecated before final release
-      put  "table objects behavior" into pProperty
-      break
-  end switch
 
   -- put empty into sDbsA
   switch pProperty
@@ -3391,7 +3330,6 @@ function dbobject_get pProperty, pDBKey
       end if
       break
 
-    case "table objects behavior"
     case "schema migrations"
     case "encoding" ## undocumented
       return sDbsA[ pDBKey ][pProperty]
@@ -3424,27 +3362,17 @@ end dbobject_get
 * <b>storage object</b>: The long id of the LiveCode control that you would like to save your database object in (as a custom property). \
       *                       This allows the object to persist across sessions by using dbobject_createFromObject.
 *
-* <b>table objects behavior</b>: Set to the long id of the button that contains code for creating table, sql query template, scope and relationship objects, \
-      * defining callbacks and validations, etc. \
-      *                          Setting this property will trigger tableobjects_reload.
-*
 * \package Database
 *
 * \return Error message
 *
-* \seealso tableobjects_reload, dbobject_createFromObject, dbobject_createFromFile
+* \seealso dbobject_createFromObject, dbobject_createFromFile
 */
 command dbobject_set pProperty, pValue, pDBKey
   local theError
 
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
-
-  switch pProperty
-    case "tables behavior" ## deprecated before final release
-      put  "table objects behavior" into pProperty
-      break
-  end switch
 
   ## Set
   switch pProperty
@@ -3463,15 +3391,6 @@ command dbobject_set pProperty, pValue, pDBKey
     case "storage file"
       put pValue into sDbsA[pDBKey]["storage"]["resource"]
       put "file" into sDbsA[pDBKey]["storage"]["type"]
-      break
-
-    case "table objects behavior"
-      if pValue is not empty then put _CustomControlReference(pValue) into pValue
-      put pValue into sDbsA[ pDBKey ][pProperty]
-
-      ## Send off messages that generate table objects
-      tableobjects_reload pDBKey
-      put the result into theError
       break
 
     case "schema migrations"
@@ -3593,16 +3512,14 @@ end dbobject_getQueryTemplate
 * \brief Creates a new Database Object.
 *
 * \param [pDBKey] Database Object to create. Default is name returned by sqlyoga_getDefaultDatabase().
-* \param [pTablesBehavior] The long id of the button to assign as the 'table objects behavior' property of the Database Object.
 *
-* Calling this command will create a new Database Object. If you pass in pTablesBehavior then \
-      * the dbobject.createTables.[pDBKey] message will be called in the 'table objects behavior' script.
+* Calling this command will create a new Database Object.
 *
 * \package Database
 *
 * \return Error messsage
 */
-command dbobject_createObject pDBKey, pTablesBehavior
+command dbobject_createObject pDBKey
   -----
   local theA
   local theError
@@ -3622,16 +3539,11 @@ command dbobject_createObject pDBKey, pTablesBehavior
     put empty into theA["query templates"]
     put empty into theA["schema"]
     put empty into theA["schema migrations"]
-    put empty into theA["table objects behavior"]
 
     ## Create table objects
     put empty into theA["table objects"] --["tables"] / ["relationships"]
 
     put theA into sDbsA[pDBKey]
-
-    ## Assign behavior
-    dbobject_set "table objects behavior", pTablesBehavior, pDBKey
-    put the result into theError
   end if
 
   return theError
@@ -6019,65 +5931,6 @@ end tblscope_set
 
 
 /**
-* \brief Deletes all table objects (thus any relationship, scope and sql query template objects) from a Database Object and triggers the message to create them in the 'table objects behavior' script.
-*
-* \param [pDBKey] Database Object to reset. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* Calling this command will delete all table objects and their associated relationships and scopes (but not the internal database schema) from a Database Object. \
-      * The dbobject.createTables message will then be called. This message should be handled in the 'table objects behavior' script.
-*
-* \package Tables
-*
-* \return Error messsage
-*/
-command tableobjects_reload pDBKey
-  local theError,theOrigKey
-  local theErrorToRethrow
-
-  _ValidateKey pDBKey
-
-  if theError is empty then
-    put empty into sDbsA[ pDBKey ]["table objects"]
-    put empty into sDbsA[ pDBKey ]["query templates"]
-
-    -- _LoadTableBehaviorsForDB pDBKey
-    -- if the result then
-    if sDbsA[ pDBKey ]["table objects behavior"] is not empty then
-      ## So any calls user makes target proper db
-      put sqlyoga_getDefaultDatabase() into theOrigKey
-      sqlyoga_setDefaultDatabase pDBKey
-
-      try
-        local theCommand
-
-        ## dispatch to behavior button itself so there is no ambiguity.
-        put "dbobject.createTables" into theCommand
-        dispatch theCommand to sDbsA[ pDBKey ]["table objects behavior"]
-        if it is not "unhandled" then
-          put the result into theError
-        else
-          ## old behavior was to affix the dbkey. We don't need that.
-          put "dbobject.createTables." & pDBKey into theCommand
-          dispatch theCommand
-          if it is "handled" then
-            put the result into theError
-          end if
-        end if
-      catch e
-        put e into theErrorToRethrow
-      finally
-        sqlyoga_setDefaultDatabase theOrigKey
-      end try
-
-      if theErrorToRethrow is not empty then throw theErrorToRethrow
-    end if
-  end if
-
-  return theError
-end tableobjects_reload pDBKey
-
-
-/**
 * \brief Retrieves properties of the Table Objects in a Database Object
 *
 * \param pProp The property to get.
@@ -6309,19 +6162,6 @@ command tableobj_createObject pName, pType, pDBKey
   ## Store it
   put theA into sDbsA[pDBKey]["table objects"]["tables"][pName]
 
-  _LoadTableBehaviorsForDB pDBKey
-  if the result then
-    local theRef, theCommand
-
-    put pName into theRef
-    replace space with empty in theRef
-    put "tableobj.create." & theRef into theCommand
-    dispatch theCommand
-    if it is "handled" then
-      put the result into theError
-    end if
-  end if
-
   ## Return reference
   put empty into theA
   put kTableReference into theA["type"]
@@ -6415,24 +6255,6 @@ end tableobj_deleteObject pTableA
 * \param [pDBKey] Database Object table is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
 *
 * <b>Properties:</b>
-*
-* <b>after create callback</b>:
-*
-* <b>after delete callback</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
-*  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
-*
-* <b>after retrieve callback</b>:
-*
-* <b>after update callback</b>:
-*
-* <b>alias for table</b>: The name of the table that this Table object is an alias for.
-*
-* <b>before create callback</b>:
-*
-* <b>before delete callback</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
-*  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
-*
-* <b>before update callback</b>:
 *
 * <b>conditions</b>: If a Table object is an alias to another table then this property returns any conditions that have been set. \
       *                                 The conditions are used to filter the table content that the alias represents. The format is \
@@ -6588,16 +6410,6 @@ function tableobj_get pTableA, pProp
       return theKeys
       break
 
-    case "after retrieve callback"
-    case "before create callback"
-    case "after create callback"
-    case "before update callback"
-    case "after update callback"
-    case "before delete callback"
-    case "after delete callback"
-      return sDbsA[ theOriginalKeyA ]["callback"][word 2 of pProp][word 1 of pProp]
-      break
-
       ## Alias properties
     case "alias for table"
       if theAliasKeyA is an array then
@@ -6654,23 +6466,6 @@ end tableobj_get
 *
 * <b>Properties:</b>
 *
-* <b>after create callback</b>:
-*
-* <b>after delete callback</b>: Handlers that will be called right after a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
-*  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER
-*
-* <b>after retrieve callback</b>:
-*
-* <b>after update callback</b>:
-*
-* <b>alias for table</b>:
-*
-* <b>before create callback</b>:
-*
-* <b>before delete callback</b>: Handlers that will be called right before a Record object is deleted using sqlrecord_delete, one per line. Each line consists of the following:\
-*  HANDER_NAME,REFERNECE_TO_OBJECT_CONTAINING_HANDLER\
-* If you return an error from the handler then the record will not be deleted.
-*
 * <b>before update callback</b>:
 *
 * <b>conditions</b>:
@@ -6709,16 +6504,6 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
       put sDbsA[ theOriginalKeyA ]["name"] into theA["name"]
       _SetDefaultTableProperties pValue, theA
       put theA into sDbsA[ theOriginalKeyA ]
-      break
-
-    case "after retrieve callback"
-    case "before create callback"
-    case "after create callback"
-    case "before update callback"
-    case "after update callback"
-    case "before delete callback"
-    case "after delete callback"
-      put _CleanseCallbacks(pValue) into sDbsA[ theOriginalKeyA ]["callback"][word 2 of pProp][word 1 of pProp]
       break
 
     default
@@ -10051,32 +9836,34 @@ end sqlrecord_find
 
 
 /**
-* \brief Returns a property of a SQL Record object.
-*
-* \param pRecordA SQL Record object that you want to get the property for.
-* \param pProp The property to get.
-*
-* <b>Properties:</b>
-*
-* pProp can be a built-in property, a column in the SQL Record's table or a custom property.
-*
-* The built-in properties are:
-*
-* <b>@table</b>: The name of the table to associate the SQL Record with.
-*
-* <b>@database</b>: The name of the database object the SQL record is associated with.
-*
-* <b>@connection</b>: The connection object the SQL Record should use.
-*
-* If pProp is not a built-in property or a column then it is assumed that it is a property that you have \
-      * defined in the Table Object for the SQL Record's table. This property would be defined in \
-      * the 'table objects behavior' script for your Database Object. The function that will be called will be \
-      * tableobj.get.TABLE_NAME.pProp. For example:
-* <pre>function tableobj.get.lessons.shortDescription pRecordA</pre>
-*
-* \package SQL Record
-*
-* \return value
+Summary: Returns a property of a SQL Record object.
+
+Parameters:
+pRecordA: SQL Record object that you want to get the property for.
+pProp: The property to get.
+
+Description:
+pProp can be a built-in property, a column in the SQL Record's table
+or a custom property. The built-in properties are:
+
+| Property | Description |
+| -------- |:----------- |
+| `@table` | The name of the table to associate the SQL Record with. |
+| `@database` | The name of the database object the SQL record is associated with. |
+| `@connection` | The connection object the SQL Record should use. |
+
+If pProp is not a built-in property or a column then it is assumed that it is a
+custom property that you have defined in the table behavior stack script (`TABLE_NAME table behavior`)
+for the SQL Record's table. The function that will be called will be `TABLE_NAME_getPROP`.
+For example:
+
+```
+function lessons_getShortDescription pRecordA
+  return char 1 to 35 of pRecordA["description"]
+end lessons_getShortDescription
+```
+
+Returns: value
 */
 function sqlrecord_get pRecordA, pProp
   local i
@@ -10109,59 +9896,24 @@ function sqlrecord_get pRecordA, pProp
     end switch
 
   else
-    local theConnectionA
-
-    put _CreateConnectionArray(pRecordA["@connection"], pRecordA["@database"]) into theConnectionA
-
-    ## Note: when we have dispatch function then we can dispatch and see if it is handled.
-    ## That may be quicker then current test.
-
-    -- ## Determine if pProp is a related table
-    -- put tableobjects_getTable(pProp) into theToTableA
-    -- if theToTableA is an array then
-    -- put tableobjects_getTable(pRecordA["@table"]) into theFromTableA
-    -- if theFromTableA is an array then
-    -- put _FindImmediateRelationBetweenTables(theFromTableA, theToTableA, theDudA) into theRelationA
-    -- if theRelationA is an array then
-    -- put true into thePropIsARelatedTable
-    -- end if
-    -- end if
-    -- end if
-
-    if thePropIsARelatedTable then
-      local theTempA
-
-      ## Deprecated. Use _getRelated
-      ## Get related table records
-      put pRecordA into theTempA
-      _RetrieveRecordsRelatedtoRecord theConnectionA, theTempA, pProp
-      put the result into theError
-
-      if theError is empty then
-        return theTempA[pProp]
-      else
-        return empty ## default if problem occurs
-      end if
+    if pProp is among the keys of pRecordA then
+      return pRecordA[pProp]
     else
-      if pProp is among the keys of pRecordA then
-        return pRecordA[pProp]
-      else
-        ## user defined property
-        local theSanitizedProp, theCommand
+      ## user defined property
+      local theSanitizedProp, theCommand, theBehaviorStack
 
-        put pProp into theSanitizedProp
-        replace space with empty in theSanitizedProp
-        put "tableobj.get." & pRecordA["@table"] & "." & theSanitizedProp into theCommand
+      put pProp into theSanitizedProp
+      replace space with empty in theSanitizedProp
+      put pRecordA["@table"] & "_get" & theSanitizedProp into theCommand
+      put _tableBehaviorStackName(pRecordA["@table"]) into theBehaviorStack
 
-        _LoadTableBehaviorsForDB theConnectionA["database"]
-        if the result then
-          dispatch function theCommand with pRecordA
-          return the result
-        end if
-
-        ## prop doesn't exist
-        _ThrowError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & pRecordA["@table"] & "' table object"
+      dispatch function theCommand to stack theBehaviorStack with pRecordA
+      if it is "handled" then
+        return the result
       end if
+
+      ## prop doesn't exist
+      _ThrowError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & pRecordA["@table"] & "' table object"
     end if
   end if
 end sqlrecord_get
@@ -10262,12 +10014,15 @@ The built-in properties are:
 | `@connection` | The name of the database connection the SQL Record should use. |
 | `@passthru` | A comma delimited list of fields that will not be escaped or quoted, but rather passed directly to the database as is. |
 
-If `pProp` is a custom property the the property would be defined in
-the 'table objects behavior' script for your Database Object. The function that will be called will be
-tableobj.set.TABLE_NAME.pProp. For example:
+If pProp is not a built-in property or a column then it is assumed that it is a
+custom property that you have defined in the table behavior stack script (`TABLE_NAME table behavior`)
+for the SQL Record's table. The function that will be called will be `TABLE_NAME_setPROP`.
+For example:
 
 ```
-command tableobj.set.lessons.searchTerms xRecordA, pValue
+function lessons_setSearchTerms pRecordA, pValue
+  ...
+end lessons_setSearchTerms
 ```
 
 Returns: Error message
@@ -10303,8 +10058,6 @@ command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
     end if
 
     ## If pProp is a column in array then set normally
-    ## When we can dispatch functions and add overriding for both
-    ## get/set then we will change code so you can override setting.
     if pProp is among the keys of xRecordA then
       local theItemNo
 
@@ -10323,17 +10076,16 @@ command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
         end if
       end if
     else
-      local theCommand
+      local theSanitizedProp, theCommand, theBehaviorStack
 
-      replace space with empty in pProp
-      put "tableobj.set." & xRecordA["@table"] & "." & pProp into theCommand
+      put pProp into theSanitizedProp
+      replace space with empty in theSanitizedProp
+      put xRecordA["@table"] & "_set" & theSanitizedProp into theCommand
+      put _tableBehaviorStackName(xRecordA["@table"]) into theBehaviorStack
 
-      _LoadTableBehaviorsForDB theConnectionA["database"]
-      if the result then
-        dispatch theCommand with xRecordA, pValue
-        if it is "handled" then
-          return the result
-        end if
+      dispatch command theCommand to stack theBehaviorStack with xRecordA, pValue
+      if it is "handled" then
+        return the result
       end if
 
       ## prop doesn't exist
@@ -10775,7 +10527,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   put xRecordA["@table"] into theTable
 
   ## VALIDATION CALLBACKS
-  dispatch "tableobj.validate." & theTable with xRecordA
+  _dispatchValidationCheck xRecordA
   put the result into theError
   put the keys of xRecordA into theFields
 
@@ -10796,7 +10548,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   end if
 
   if theError is empty and pSendCallbacks then
-    _dispatchTableObjectEventListener theTable, pConnectionA, "before update callback", xRecordA
+    _dispatchTableObjectEventListener theTable, pConnectionA, "before update", xRecordA
     put the result into theError
   end if
 
@@ -10902,7 +10654,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   end if
 
   if theError is empty and pSendCallbacks then
-    _dispatchTableObjectEventListener theTable, pConnectionA, "after update callback", xRecordA
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after update", xRecordA
     put the result into theError
   end if
 
@@ -10949,42 +10701,59 @@ end _UpdateRecordInTable
 /**
 Summary: Dispatches callback messages associated with a table.
 
+Parameters:
 pTable: Name of table.
 pConnectionA: The active connection.
-pCallbackKey: The callback key to use (e.g. `before delete callback`)
+pCallbackKey: The callback key to use (e.g. `before delete`)
 @xRecordA: The record that is being acted on. Callback may modify the record.
 
 Returns: Error message
 
 */
-private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbackKey, @xRecordA
-  local theTableA, theCallback, theMessage, theObject
-  local theError
+private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbackType, @xRecordA
+  local tError, tBehaviorStack, tCallbackHandler
 
-  if tableobjects_tableExists(pTable, pConnectionA["database"]) then
-    put tableobjects_getTable(pTable, pConnectionA["database"]) into theTableA
+  put _tableBehaviorStackName(pTable) into tBehaviorStack
 
-    repeat for each line theCallback in tableobj_get(theTableA, pCallbackKey)
-      put item 1 of theCallback into theMessage
-      put item 2 to -1 of theCallback into theObject
+  if there is a stack tBehaviorStack then
+    put _tableCallbackHandlerName(pTable, pCallbackType) into tCallbackHandler
 
-      if theObject is not empty then
-        dispatch theMessage to theObject with xRecordA, pConnectionA
-      else
-        dispatch theMessage with xRecordA, pConnectionA
-      end if
-
-      if it is "handled" then
-        put the result into theError
-        if theError is not empty then
-          exit repeat
-        end if
-      end if
-    end repeat
+    dispatch tCallbackHandler to stack tBehaviorStack with xRecordA, pConnectionA
+    if it is "handled" then
+      put the result into tError
+    end if
   end if
 
-  return theError
+  return tError
 end _dispatchTableObjectEventListener
+
+
+private command _dispatchValidationCheck @xRecordA
+  local tError, tBehaviorStack, tCallbackHandler
+
+  put _tableBehaviorStackName(xRecordA["@table"]) into tBehaviorStack
+  put _tableCallbackHandlerName(xRecordA["@table"], "validate") into tCallbackHandler
+
+  if there is a stack tBehaviorStack then
+    dispatch tCallbackHandler to stack tBehaviorStack with xRecordA
+    if it is "handled" then
+      put the result into tError
+    end if
+  end if
+
+  return tError
+end _dispatchValidationCheck
+
+
+private function _tableBehaviorStackName pTable
+  return pTable && "table" && "behavior"
+end _tableBehaviorStackName
+
+
+private function _tableCallbackHandlerName pTable, pCallbackType
+  replace space with empty in pCallbackType
+  return pTable & "_" & pCallbackType
+end _tableCallbackHandlerName
 
 
 /**
@@ -11262,9 +11031,9 @@ command sqlrecord_delete @xRecordsA
           ##
           if theTableA is an array then
             if theRecordIndexArray is an array then
-              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete callback", xRecordsA[theRecordIndexArray]
+              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA[theRecordIndexArray]
             else
-              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete callback", xRecordsA
+              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA
             end if
             put the result into theError
           end if
@@ -11277,9 +11046,9 @@ command sqlrecord_delete @xRecordsA
             if theError is empty then
               if theTableA is an array then
                 if theRecordIndexArray is an array then
-                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", xRecordsA[theRecordIndexArray]
+                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA[theRecordIndexArray]
                 else
-                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete callback", xRecordsA
+                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA
                 end if
                 put the result into theError
               end if
@@ -11337,9 +11106,6 @@ end sqlrecord_delete
 *
 * ## theRecordA["id"] is now filled in with new id in database for this record
 * </pre>
-*
-* Create callbacks in your Table Object definitions will be called and \
-      * broadcasts will be sent to callbacks during this operation.
 *
 * \note If you pass in empty values for any of the fields in the primary key for the table then they \
       * will not be included in the CREATE statement.
@@ -11467,10 +11233,9 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
   ##
   ## VALIDATION CALLBACKS
-  dispatch "tableobj.validate." & xRecordA["@table"] with xRecordA
-  if it is "handled" then
-    put the result into theError
-  end if
+  _dispatchValidationCheck xRecordA
+  put the result into theError
+
   put the keys of xRecordA into theFields
 
   ## Validation error, prefix with something
@@ -11486,7 +11251,7 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
     put xRecordA["@table"] into theTable
 
     if pSendCallbacks then
-      _dispatchTableObjectEventListener theTable, pConnectionA, "before create callback", xRecordA
+      _dispatchTableObjectEventListener theTable, pConnectionA, "before create", xRecordA
       put the result into theError
     end if
   end if
@@ -11612,7 +11377,7 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
   end if
 
   if theError is empty and pSendCallbacks then
-    _dispatchTableObjectEventListener theTable, pConnectionA, "after create callback", xRecordA
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after create", xRecordA
     put the result into theError
   end if
 
