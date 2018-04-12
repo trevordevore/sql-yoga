@@ -2917,7 +2917,7 @@ Returns: Error message
 */
 command dbobject_initialize pDbA, pRootFolder, pDBKey
   local theError, tConnectionsA, tRelationshipsA, tScopesA, tTablesA
-  local tKey, tTable, tField, i
+  local tKey, tTable, tField, tProp, tVendor, i
 
   if theError is empty then
     put pDbA["connections"] into tConnectionsA
@@ -2952,6 +2952,18 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
       else if tConnectionsA[tKey]["database name"] is not empty then
         dbconn_set "database name", tConnectionsA[tKey]["database name"]
       end if
+
+      repeat for each item tProp in "host,port,username,password,use ssl,dsn,quote identifiers"
+        if tConnectionsA[tKey][tProp] is empty then next repeat
+
+        dbconn_set tProp, tConnectionsA[tKey][tProp], tKey, pDBKey
+      end repeat
+
+      repeat for each key tVendor in tConnectionsA[tKey]["vendor"]
+        repeat for each key tProp in tConnectionsA[tKey]["vendor"][tVendor]
+          dbconn_setVendor tVendor, tProp, tConnectionsA[tKey]["vendor"][tVendor][tProp], tKey, pDBKey
+        end repeat
+      end repeat
     end repeat
   end if
 
@@ -3978,81 +3990,71 @@ end dbconn_get
 
 
 /**
-*\brief Sets properties for a Database Connection Object.
-*
-* \param pProp The property of the Connection to set.
-* \param pValue The value to set the property to.
-* \param [pConnName] The name of a Database Connection. The default is the "default connection" for the Database Object.
-* \param [pDBKey] Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* <b>Properties:</b>
-*
-* <b>adaptor</b>: The adaptor to use to connect to the database: mysql, odbc, postgresql, sqlite, valentina.
-*
-* <b>dsn</b>: The DSN you would like to connect to. Used with ODBC and maps to the "host" property.
-*
-* <b>database name</b>: The name of the database on the server. For sqlite this and the 'file' property are synonymous.
-*
-* <b>file</b>: For SQLite databases this is the path to the database file on disk. Synonymous with 'database name'.
-*
-* <b>host</b>: The host for your database.
-*
-* <b>last executed sql</b>: The last SQL statement that was executed using this database connection.
-*
-* <b>log field</b>: A reference to a field where all SQL statements that are executed will be logged. For debugging purposes.
-*
-* <b>log file</b>: A file path where all SQL statements that are executed will be logged. For debugging purposes.
-*
-* <b>password</b>: Password required to connect to the database.
-*
-* <b>port</b>: Port to connect to the database over. Default values for each platform are implied.
-*
-* <b>quote identifiers</b>: Set to true to have SQL Yoga add quotes around every table/field name in queries. Default is false.
-*
-* <b>type</b>: The type of database that this connection is associated with. Only applies if the adaptor is set to "odbc": sql server, mysql, postgresql.
-*
-* <b>username</b>: Username used to connect to the database.
-*
-* <b>use ssl</b>: Set to true to connect to the database using SSL. Currently supported with MySQL and Valentina client.
-*
-* <b>Examples:</b>
-*
-* <pre>## SQLite Example
-* dbconn_set "file", thePathToDatabaseFile
-* dbconn_setVendor "sqlite", "options", "binary,extensions"
-*
-* ## MySQL Example
-* dbconn_set "host", "localhost"
-* dbconn_set "username", "root"
-* dbconn_set "password", empty
-* dbconn_set "database name", "sql_yoga_test"
-*
-* ## ODBC Example
-* -- Note: When calling dbconn_createObject you pass in 3 parameters
-* --                The 2nd is "odbc" and the 3rd is the type of database you are
-* --                connection too
-* -- dbconn_createObject "development", "odbc", "sql server"
-* dbconn_set "dsn", "sqlserver_odbc"
-* dbconn_set "username", "odbc_user"
-* dbconn_set "password", empty
-*
-* ## Local Valentina Example
-* dbconn_set "file", theDatabase
-* dbconn_setVendor "valentina", "mac serial number", MyValMacSerialNumber
-* dbconn_setVendor "valentina", "win serial number", MyValWinSerialNumber
-* dbconn_setVendor "valentina", "unix serial number", MyValUnixSerialNumber
-* dbconn_setVendor "valentina", "encryption key", MyEncryptionKey
-*
-* ## Valentina Client Example
-* dbconn_set "host", "localhost"
-* dbconn_set "username", "sa"
-* dbconn_set "password", "sa"
-* dbconn_set "use ssl", true
-* dbconn_set "database name", "my database.vdb"</pre>
-*
-* \package Database Connection
-*
-* \return empty
+Summary: Sets properties for a Database Connection Object.
+
+Parameters:
+pProp: The property of the Connection to set.
+pValue: The value to set the property to.
+[pConnName]: The name of a Database Connection. The default is the "default connection" for the Database Object.
+[pDBKey]: Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
+
+Description:
+
+| Property | Description |
+| -------- |:----------- |
+| `adaptor` | The adaptor to use to connect to the database: mysql, odbc, postgresql, sqlite, valentina. |
+| `dsn` | The DSN you would like to connect to. Used with ODBC and maps to the "host" property. |
+| `database name` | The name of the database on the server. For sqlite this and the 'file' property are synonymous. |
+| `file` | For SQLite databases this is the path to the database file on disk. Synonymous with 'database name'. |
+| `host` | The host for your database. |
+| `last executed sql` | The last SQL statement that was executed using this database connection. |
+| `log field` | A reference to a field where all SQL statements that are executed will be logged. For debugging purposes. |
+| `log file` | A file path where all SQL statements that are executed will be logged. For debugging purposes. |
+| `password` | Password required to connect to the database. |
+| `port` | Port to connect to the database over. Default values for each platform are implied. |
+| `quote identifiers` | Set to true to have SQL Yoga add quotes around every table/field name in queries. Default is false. |
+| `type` | The type of database that this connection is associated with. Only applies if the adaptor is set to "odbc": sql server, mysql, postgresql. |
+| `username` | Username used to connect to the database. |
+| `use ssl` | Set to true to connect to the database using SSL. Currently supported with MySQL and Valentina client. |
+
+## Examples:
+
+```
+## SQLite Example
+dbconn_set "file", thePathToDatabaseFile
+dbconn_setVendor "sqlite", "options", "binary,extensions"
+
+## MySQL Example
+dbconn_set "host", "localhost"
+dbconn_set "username", "root"
+dbconn_set "password", empty
+dbconn_set "database name", "sql_yoga_test"
+
+## ODBC Example
+-- Note: When calling dbconn_createObject you pass in 3 parameters
+--                The 2nd is "odbc" and the 3rd is the type of database you are
+--                connection too
+-- dbconn_createObject "development", "odbc", "sql server"
+dbconn_set "dsn", "sqlserver_odbc"
+dbconn_set "username", "odbc_user"
+dbconn_set "password", empty
+
+## Local Valentina Example
+dbconn_set "file", theDatabase
+dbconn_setVendor "valentina", "mac serial number", MyValMacSerialNumber
+dbconn_setVendor "valentina", "win serial number", MyValWinSerialNumber
+dbconn_setVendor "valentina", "unix serial number", MyValUnixSerialNumber
+dbconn_setVendor "valentina", "encryption key", MyEncryptionKey
+
+## Valentina Client Example
+dbconn_set "host", "localhost"
+dbconn_set "username", "sa"
+dbconn_set "password", "sa"
+dbconn_set "use ssl", true
+dbconn_set "database name", "my database.vdb"</pre>
+```
+
+Returns: empty
 */
 command dbconn_set pProp, pValue, pConnName, pDBKey
   local theConnectionA, theKeyA, theTempKeyA
@@ -4155,55 +4157,38 @@ end dbconn_set
 
 
 /**
-* \brief Sets vendor specific connection settings.
-*
-* \param pVendor Name of vendor to set property for: mysql, odbc, postgresql, sqlite, valentina.
-* \param pProp Property to set.
-* \param pValue Value to set property to.
-* \param [pConnName] The name of a Database Connection. The default is the "default connection" for the Database Object.
-* \param [pDBKey] Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* <b>SQLite</b>
-*
-* See revOpenDatabase documentation for a description of each of these properties.
-*
-* <b>options</b>:
-*
-* <b>Valentina</b>
-*
-* See Valentina documentation for a description of each of these properties. Appropriate defaults are used.
-*
-* <b>cache size</b>:
-*
-* <b>debug level</b>:
-*
-* <b>encryption key</b>:
-*
-* <b>encryption type</b>:
-*
-* <b>flush each log</b>:
-*
-* <b>mac serial number</b>:
-*
-* <b>mode</b>:
-*
-* <b>os encoding</b>:
-*
-* <b>port</b>:
-*
-* <b>timeout</b>:
-*
-* <b>segment size</b>:
-*
-* <b>storage type</b>:
-*
-* <b>unix serial number</b>:
-*
-* <b>win serial number</b>:
-*
-* \package Database Connection
-*
-* \return empty
+Summary: Sets vendor specific connection settings.
+
+Parameters:
+pVendor: Name of vendor to set property for: mysql, odbc, postgresql, sqlite, valentina.
+pProp: Property to set.
+pValue: Value to set property to.
+[pConnName]: The name of a Database Connection. The default is the "default connection" for the Database Object.
+[pDBKey]: Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
+
+Description:
+
+| Vendor    | Property | Description |
+| --------- | -------- |:----------- |
+| SQLite    |          | See revOpenDatabase documentation for a description of each of these properties. |
+|           | `options` |            |
+| Valentina |          | See Valentina documentation for a description of each of these properties. Appropriate defaults are used. |
+|           | `cache size` |         |
+|           | `debug level` |        |
+|           | `encryption key` |     |
+|           | `encryption type` |    |
+|           | `flush each log` |     |
+|           | `mac serial number` |  |
+|           | `mode` |               |
+|           | `os encoding` |        |
+|           | `port` |               |
+|           | `timeout` |            |
+|           | `segment size` |       |
+|           | `storage type` |       |
+|           | `unix serial number` | |
+|           | `win serial number` |  |
+
+Returns: empty
 */
 command dbconn_setVendor pVendor, pProp, pValue, pConnName, pDBKey
   local pKey, theConnectionA, theKeyA
