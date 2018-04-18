@@ -2948,9 +2948,9 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
 
       if tConnectionsA[tKey]["file"] is not empty then
         put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
-        dbconn_set "file", tConnectionsA[tKey]["file"]
+        dbconn_set "file", tConnectionsA[tKey]["file"], tKey, pDBKey
       else if tConnectionsA[tKey]["database name"] is not empty then
-        dbconn_set "database name", tConnectionsA[tKey]["database name"]
+        dbconn_set "database name", tConnectionsA[tKey]["database name"], tKey, pDBKey
       end if
 
       repeat for each item tProp in "host,port,username,password,use ssl,dsn,quote identifiers"
