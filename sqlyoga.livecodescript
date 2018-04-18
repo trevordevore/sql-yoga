@@ -11091,29 +11091,29 @@ end sqlrecord_delete
 
 
 /**
-* \brief Creates records in a database using a SQL Record object.
-*
-* \param @xRecordsA SQL Records object/array of SQL Record objects (numerically indexed). Any column
-* \param pRefreshRecords Pass in true to refresh the records after creating them.
-* values you want to insert when you create the record should be filled in.
-*
-* This command creates records in the database based on the SQL Record object you pass in.
-*
-* <pre>put sqlrecord_createObject("lessons") into theRecordA
-* sqlrecord_set theRecordA, "title", "A new title"
-* sqlrecord_set theRecordA, "description", "It's a description."
-* sqlrecord_create theRecordA
-* put the result into theError
-*
-* ## theRecordA["id"] is now filled in with new id in database for this record
-* </pre>
-*
-* \note If you pass in empty values for any of the fields in the primary key for the table then they \
-      * will not be included in the CREATE statement.
-*
-* \package SQL Record
-*
-* \return Error message in 'the result', affected rows in 'it'
+Summary: Creates records in a database using a SQL Record object.
+
+Parameters:
+@xRecordsA: SQL Records object/array of SQL Record objects (numerically indexed).
+pRefreshRecords: Pass in false if you do not want to refresh the records with data from the database after you create them.
+
+Description:
+This command creates records in the database based on the SQL Record object you pass in.
+
+```
+put sqlrecord_createObject("lessons") into theRecordA
+sqlrecord_set theRecordA, "title", "A new title"
+sqlrecord_set theRecordA, "description", "It's a description."
+sqlrecord_create theRecordA
+put the result into theError
+
+## theRecordA["id"] is now filled in with new id in database for this record
+```
+
+If you pass in empty values for any of the fields in the primary key for the table then they \
+will not be included in the CREATE statement.
+
+Returns: Error message in 'the result', affected rows in 'it'
 */
 command sqlrecord_create @xRecordsA, pRefreshRecords
   -----
@@ -11124,7 +11124,7 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
   local rethrowTheError
   -----
 
-  put pRefreshRecords is true into pRefreshRecords
+  put pRefreshRecords is not false into pRefreshRecords
 
   if "@table" is among the keys of xRecordsA then
     put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
