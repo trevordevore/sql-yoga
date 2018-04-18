@@ -10202,7 +10202,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
   local theRecordTable
   local theRelationA
   local theTable1A, theTable2A
-  local theWhere
+  local theWhere, theFind, theOrderBy
   -----
   put xRecordA["@table"] into theRecordTable
   put pConnectionA["database"] into theDBKey
@@ -10232,6 +10232,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
   ## Build WHERE
   if theError is empty then
     put pConnectionA["name"] into theRelationA["connection"] ## in order to get db quotes for field=value keys
+    put tblrelation_get(theRelationA, "order by") into theOrderBy
 
     if tblrelation_get(theRelationA, "type") is "many-to-many" then
       put tblrelation_get(theRelationA, "cross-reference table") into theCrossRefTable
@@ -10240,15 +10241,29 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
         ## extract right table key from xRecordA and assign to left table key in search
         put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
         put tblrelation_get(theRelationA, "left table key") into thePropKeyFields
-        put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefPropKeys
-        put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefRecordKeys
+        if theRecordTable is not theCrossRefTable then
+          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefPropKeys
+          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefRecordKeys
+        else
+          # If the record table is the cross-ref table then skip the join and flatten the result
+          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theRecordKeyFields
+          put empty into theOrderBy
+          put "first" into theFind
+        end if
 
       else if pRelatedTable is tblrelation_get(theRelationA, "right table") then
         ## extract right table key from xRecordA and assign to left table key in search
         put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
         put tblrelation_get(theRelationA, "right table key") into thePropKeyFields
-        put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefPropKeys
-        put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefRecordKeys
+        if theRecordTable is not theCrossRefTable then
+          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefPropKeys
+          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefRecordKeys
+        else
+          # If the record table is the cross-ref table then skip the join and flatten the result
+          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theRecordKeyFields
+          put empty into theOrderBy
+          put "first" into theFind
+        end if
 
       else
         ## the cross-ref table
@@ -10353,8 +10368,9 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
 
   ## Execute
   if theError is empty then
-    sqlquery_set theQueryA, "order by", tblrelation_get(theRelationA, "order by")
+    sqlquery_set theQueryA, "order by", theOrderBy
     sqlquery_set theQueryA, "conditions", theWhere
+    sqlquery_set theQueryA, "find", theFind
     sqlquery_set theQueryA, "column names length", "long"
     put true into theQueryA["ignore alias conditions"] ## internal property as relationships already contain alias WHERE
     sqlquery_retrieve theQueryA
