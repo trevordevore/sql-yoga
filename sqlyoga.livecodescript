@@ -4944,20 +4944,21 @@ end dbconn_closeCursor pCursor
 
 
 /**
-* \brief Executes a SQL query against a database connection. Only execute queries that do not return record sets.
-*
-* \param  pSQL SQL query to execute.
-* \param [pConnName] The name of a Database Connection. The default is the "default connection" for the Database Object.
-* \param [pDBKey] Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* \package Database Connection
-*
-* \return Error message in 'the result', affected rows in 'it'.
+Summary: Executes a SQL query against a database connection. Only execute queries that do not return record sets.
+
+Parameters:
+pSQL: SQL query to execute.
+[pConnName]: The name of a Database Connection. The default is the "default connection" for the Database Object.
+[pDBKey]: Database Object connection is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
+
+Returns:
+it: The affected rows
+the result: Error message
 */
-command dbconn_executeSQL pSQL
+command dbconn_executeSQL pSQL, pConnName, pDBKey
   local theDataA
 
-  dbconn_executeWBindings pSQL, theDataA, param(2), param(3) ## connection/db params
+  dbconn_executeWBindings pSQL, theDataA, pConnName, pDBKey
   if the result is empty then
     return it for value
   else
