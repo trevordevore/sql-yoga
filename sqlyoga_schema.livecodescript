@@ -1076,34 +1076,40 @@ end _sqlite_dbCreateTableSQL
 
 
 -- pTableA["@primary key is taken care of"] can be modified
-function _sqlite_getColumnDefSQL @pTableA, theFieldA
+function _sqlite_getColumnDefSQL @pTableA, pFieldA
   local theQsA, theSQLType, theCollation, theSQL
 
   put quote into theQsA["left"]
   put quote into theQsA["right"]
-  put _sqlite_getFieldSQLType(theFieldA) into theSQLType
-  put _sqlite_getFieldCollateType(theFieldA) into theCollation
+  put _sqlite_getFieldSQLType(pFieldA) into theSQLType
+  put _sqlite_getFieldCollateType(pFieldA) into theCollation
 
   ## Name
-  put theQsA["left"] & theFieldA["name"] & theQsA["right"] & space into theSQL
+  put theQsA["left"] & pFieldA["name"] & theQsA["right"] & space into theSQL
 
-  if theFieldA["type"] is "sequence" \
-        and (pTableA["primary key"] is theFieldA["name"] or pTableA["primary key"] is empty) then
+  if pFieldA["type"] is "sequence" \
+        and (pTableA["primary key"] is pFieldA["name"] or pTableA["primary key"] is empty) then
     put "INTEGER PRIMARY KEY AUTOINCREMENT " after theSQL
-    put theFieldA["name"] into pTableA["primary key"]
+    put pFieldA["name"] into pTableA["primary key"]
     put true into pTableA["@primary key is taken care of"]
   else
     put theSQLType & space after theSQL
 
-    if "default" is among the keys of theFieldA then
-      put "DEFAULT " & theFieldA["default"] & " " after theSQL
+    if "default" is among the keys of pFieldA then
+      switch pFieldA["type"]
+        case "boolean"
+          if pFieldA["default"] is among the items of "0,false" then put "0" into pFieldA["default"]
+          else if pFieldA["default"] is among the items of "1,true" then put "1" into pFieldA["default"]
+          break
+      end switch
+      put "DEFAULT " & pFieldA["default"] & " " after theSQL
     end if
 
     if theCollation is not empty then
       put "COLLATE" && theCollation & " " after theSQL
     end if
 
-    if theFieldA["accepts null"] is false then
+    if pFieldA["accepts null"] is false then
       put "NOT NULL " after theSQL
     end if
   end if
@@ -2129,6 +2135,12 @@ function _mysql_getColumnDefSQL @pTableA, pFieldA
     put theSQLType & space after theSQL
 
     if "default" is among the keys of pFieldA then
+      switch pFieldA["type"]
+        case "boolean"
+          if pFieldA["default"] is among the items of "0,false" then put "0" into pFieldA["default"]
+          else if pFieldA["default"] is among the items of "1,true" then put "1" into pFieldA["default"]
+          break
+      end switch
       put "DEFAULT " & pFieldA["default"] & " " after theSQL
     end if
 
@@ -3395,35 +3407,35 @@ end _sqlserver_dbCreateTable
 
 
 -- pTableA["@primary key is taken care of"] can be modified
-function _sqlserver_getColumnDefSQL @pTableA, theFieldA, pConnectionA
+function _sqlserver_getColumnDefSQL @pTableA, pFieldA, pConnectionA
   local theQsA, theSQLType, theSQL
 
   put quote into theQsA["left"]
   put quote into theQsA["right"]
-  put _sqlserver_getFieldSQLType(theFieldA, pConnectionA) into theSQLType
+  put _sqlserver_getFieldSQLType(pFieldA, pConnectionA) into theSQLType
 
   ## Name
-  put theQsA["left"] & theFieldA["name"] & theQsA["right"] & space into theSQL
+  put theQsA["left"] & pFieldA["name"] & theQsA["right"] & space into theSQL
 
-  if theFieldA["type"] is "sequence" \
-        and (pTableA["primary key"] is theFieldA["name"] or pTableA["primary key"] is empty) then
+  if pFieldA["type"] is "sequence" \
+        and (pTableA["primary key"] is pFieldA["name"] or pTableA["primary key"] is empty) then
     put "INTEGER IDENTITY (1,1) PRIMARY KEY CLUSTERED " after theSQL
-    put theFieldA["name"] into pTableA["primary key"]
+    put pFieldA["name"] into pTableA["primary key"]
     put true into pTableA["@primary key is taken care of"]
   else
     put theSQLType & space after theSQL
 
-    if "default" is among the keys of theFieldA then
-      switch theFieldA["type"]
+    if "default" is among the keys of pFieldA then
+      switch pFieldA["type"]
         case "boolean"
-          if theFieldA["default"] is among the items of "0,false" then put "0" into theFieldA["default"]
-          else if theFieldA["default"] is among the items of "1,true" then put "1" into theFieldA["default"]
+          if pFieldA["default"] is among the items of "0,false" then put "0" into pFieldA["default"]
+          else if pFieldA["default"] is among the items of "1,true" then put "1" into pFieldA["default"]
           break
       end switch
-      put "DEFAULT " & theFieldA["default"] & " " after theSQL
+      put "DEFAULT " & pFieldA["default"] & " " after theSQL
     end if
 
-    if theFieldA["accepts null"] is false then
+    if pFieldA["accepts null"] is false then
       put "NOT NULL " after theSQL
     end if
   end if
