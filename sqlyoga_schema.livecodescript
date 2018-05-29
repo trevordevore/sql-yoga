@@ -1033,7 +1033,17 @@ end _sqlite_getFieldCollateType
 
 
 private command _sqlite_dbCreateTable pName, pTableA, pConnectionA
-  local theError
+  local theError, theSQL
+
+  put _sqlite_dbCreateTableSQL(pName, pTableA, pConnectionA) into theSQL
+  dbconn_executeSQL theSQL, pConnectionA
+  put the result into theError
+
+  return theError
+end _sqlite_dbCreateTable
+
+
+private function _sqlite_dbCreateTableSQL pName, pTableA, pConnectionA
   local theQsA, theSQL
 
   put dbconn_get("quotes", pConnectionA) into theQsA
@@ -1061,13 +1071,8 @@ private command _sqlite_dbCreateTable pName, pTableA, pConnectionA
     put ")" into char -2 to -1 of theSQL
   end if
 
-  if theError is empty then
-    dbconn_executeSQL theSQL, pConnectionA
-    put the result into theError
-  end if
-
-  return theError
-end _sqlite_dbCreateTable
+  return theSQL
+end _sqlite_dbCreateTableSQL
 
 
 -- pTableA["@primary key is taken care of"] can be modified
