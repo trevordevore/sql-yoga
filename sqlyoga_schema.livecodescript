@@ -1,5 +1,5 @@
 script "libSQLYogaSchema"
-command dbmigrate_processMigrationArray pMigrationA, pConnectionA, pDBKey
+command dbmigrate_processMigrationArray pMigrationVersion, pMigrationA, pConnectionA, pDBKey
   local tError, tTableA
 
   put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
@@ -9,6 +9,16 @@ command dbmigrate_processMigrationArray pMigrationA, pConnectionA, pDBKey
 
   if tError is empty then
     dbconn_beginTransaction empty, pConnectionA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    _createSchemaMigrationsTable pConnectionA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    _insertSchemaMigration pMigrationVersion, pConnectionA
     put the result into tError
   end if
 
@@ -62,6 +72,52 @@ command dbmigrate_processMigrationArray pMigrationA, pConnectionA, pDBKey
 
   return tError for error
 end dbmigrate_processMigrationArray
+
+
+private command _insertSchemaMigration pMigrationVersion, pConnectionA
+  local tError
+
+  if tError is empty then
+    local tSQL, tBindingsA, tRecords
+
+    put pMigrationVersion into tBindingsA[1]
+
+    put "SELECT * FROM schema_migrations WHERE version = :1" into tSQL
+    dbconn_retrieveRecordsAsText tSQL, tBindingsA, tRecords,, pConnectionA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    if tRecords is not empty then
+      put "migration has already been applied" into tError
+    end if
+  end if
+
+  if tError is empty then
+    put pMigrationVersion into tBindingsA[1]
+
+    put "INSERT INTO schema_migrations (version) VALUES (:1)" into tSQL
+    dbconn_executeWBindings tSQL, tBindingsA, pConnectionA
+    put _ErrorMsg("unable to update schema_migrations version info", the result) into tError
+  end if
+
+  return tError for error
+end _insertSchemaMigration
+
+
+private command _createSchemaMigrationsTable pConnectionA
+  local tError, tDBTables, tSQL
+
+  put revDatabaseTableNames(dbconn_get("connection id", pConnectionA)) into tDBTables
+  if "schema" is not among the lines of tDBTables then
+    put "CREATE TABLE schema_migrations (version varchar(255) NOT NULL UNIQUE)" into tSQL
+    dbconn_executeSQL tSQL, pConnectionA
+    put _ErrorMsg("unable to create schema_migrations table", the result) into tError
+  end if
+
+  return tError
+end _createSchemaMigrationsTable
+
 
 /**
 * brief Updates the physical database schema to the schema version specified.

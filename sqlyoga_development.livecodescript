@@ -84,7 +84,10 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
     put the result into tError
 
     if tError is empty then
-      dbmigrate_processMigrationArray tMigrateA, pConnectionName, pDBKey
+      local tMigrationVersion
+
+      put _extractMigrationVersionFromFilename(tFile) into tMigrationVersion
+      dbmigrate_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
       put the result into tError
     end if
 
@@ -93,6 +96,19 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
 
   return tError
 end _runMigrations
+
+
+private function _extractMigrationVersionFromFilename pFilename
+  local tChar, tVersion
+
+  repeat for each char tChar in pFilename
+    if tChar is a number then
+      put tChar after tVersion
+    end if
+  end repeat
+
+  return tVersion
+end _extractMigrationVersionFromFilename
 
 
 private command _saveSchemaToYAML pDBKey
