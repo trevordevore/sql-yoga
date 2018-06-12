@@ -6269,7 +6269,7 @@ end tableobj_deleteObject pTableA
 *
 * \return value
 */
-function tableobj_get pTableA, pProp
+function tableobj_get pTableA, pProp, pDBKey
   -----
   local theA
   local theOriginalKeyA
@@ -6279,7 +6279,7 @@ function tableobj_get pTableA, pProp
   local theIndex
   local theNames
   -----
-  put _CreateTableArray(pTableA, param(3)) into pTableA
+  put _CreateTableArray(pTableA, pDBKey) into pTableA
   put _KeyArrayForTable(pTableA) into theKeyA
 
   ## Resolve alias
