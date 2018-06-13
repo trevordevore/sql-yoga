@@ -72,6 +72,7 @@ end sqlyogadev_runMigrations
 
 command _runMigrations pMigrationFolder, pConnectionName, pDBKey
   local tError, tFiles, tFile, tMigrateA
+  local tMigrationVersion
 
   put files(pMigrationFolder) into tFiles
   filter tFiles without ".*"
@@ -80,15 +81,19 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
   sort lines of tFiles numeric by each
 
   repeat for each line tFile in tFiles
-    put yamlFileToArray(pMigrationFolder & "/" & tFile) into tMigrateA
-    put the result into tError
+    put _extractMigrationVersionFromFilename(tFile) into tMigrationVersion
 
-    if tError is empty then
-      local tMigrationVersion
-
-      put _extractMigrationVersionFromFilename(tFile) into tMigrationVersion
-      dbmigrate_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
+    if tFile ends with ".yml" or tFile ends with ".yaml" then
+      put yamlFileToArray(pMigrationFolder & "/" & tFile) into tMigrateA
       put the result into tError
+
+      if tError is empty then
+        dbmigrate_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
+        put the result into tError
+      end if
+    else if tFile ends with ".livecodescript" or tFile ends with ".livecode" then
+        dbmigrate_processMigrationFile tMigrationVersion, tFile, pConnectionName, pDBKey
+        put the result into tError
     end if
 
     if tError is not empty then exit repeat
