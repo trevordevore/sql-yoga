@@ -1,26 +1,53 @@
 script "libSQLYogaSchema"
-command dbmigrate_processMigrationArray pMigrationVersion, pMigrationA, pConnectionA, pDBKey
-  local tError, tTableA
 
-  put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
 
-  dbconn_connect pConnectionA
+command dbschema_load pSchemaFile
+  # code...
+end dbschema_load
+
+
+/**
+Summary: Dispatches `RunMigration` to a stack file.
+
+Parameters:
+pMigrationVersion:
+pStackFilename:
+pConnectionA:
+pDBKey:
+
+Description:
+
+*/
+command dbschema_processMigrationFile pMigrationVersion, pStackFilename, pConnectionA, pDBKey
+  local tError
+
+  _beginProcessMigration pMigrationVersion, pConnectionA, pDBKey
   put the result into tError
 
-  if tError is empty then
-    dbconn_beginTransaction empty, pConnectionA
+  if tError then
+    dispatch "RunMigration" to stack pStackFilename with pConnectionA
     put the result into tError
   end if
 
   if tError is empty then
-    _createSchemaMigrationsTable pConnectionA
-    put the result into tError
+    dbconn_commitTransaction empty, pConnectionA
+  else
+    dbconn_rollbackTransaction empty, pConnectionA
   end if
 
-  if tError is empty then
-    _insertSchemaMigration pMigrationVersion, pConnectionA
-    put the result into tError
-  end if
+  return tError for error
+end dbschema_processMigrationFile
+
+
+/**
+Summary:
+
+*/
+command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnectionA, pDBKey
+  local tError, tTableA
+
+  _beginProcessMigration pMigrationVersion, pConnectionA, pDBKey
+  put the result into tError
 
   try
     if tError is empty then
@@ -31,6 +58,20 @@ command dbmigrate_processMigrationArray pMigrationVersion, pMigrationA, pConnect
         if tError is not empty then exit repeat
       end repeat
     end if
+
+    /*
+    If .livecodescript then load and try to call `sqlyogaMigrateChange` and `sqlyogaMigrateUp`
+    actions:
+      change: Just reverse the action on down.
+      up: perform during migration. Change precision fo a column for example.
+      down: perform when roll back. When going down can't know the original precision.
+    "add index"
+    "add column"
+    "rename column"
+    "change column"
+    "drop table"
+    "drop column"
+    */
 
     if tError is empty then
       dbsynch_schemaWithDatabase pConnectionA, pDBKey
@@ -71,38 +112,94 @@ command dbmigrate_processMigrationArray pMigrationVersion, pMigrationA, pConnect
   end if
 
   return tError for error
-end dbmigrate_processMigrationArray
+end dbschema_processMigrationArray
+
+
+private command _beginProcessMigration pMigrationVersion, @rConnectionA, pDBKey
+  local tError
+
+  put dbobject_createConnectionArray(rConnectionA, pDBKey) into rConnectionA
+
+  dbconn_connect rConnectionA
+  put the result into tError
+
+  if tError is empty then
+    dbconn_beginTransaction empty, rConnectionA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    _createSchemaMigrationsTable rConnectionA
+    put the result into tError
+  end if
+
+  if tError is empty then
+    _insertSchemaMigration pMigrationVersion, rConnectionA
+    put the result into tError
+  end if
+
+  return tError
+end _beginProcessMigration
 
 
 private command _insertSchemaMigration pMigrationVersion, pConnectionA
   local tError
 
   if tError is empty then
-    local tSQL, tBindingsA, tRecords
+    local tSQL, tVersion, tBindingsA, tRecords
 
-    put pMigrationVersion into tBindingsA[1]
-
-    put "SELECT * FROM schema_migrations WHERE version = :1" into tSQL
-    dbconn_retrieveRecordsAsText tSQL, tBindingsA, tRecords,, pConnectionA
+    put _getCurrentSchemaVersion(pConnectionA) into tVersion
     put the result into tError
   end if
 
   if tError is empty then
-    if tRecords is not empty then
+    if tVersion >= pMigrationVersion then
       put "migration has already been applied" into tError
     end if
   end if
 
   if tError is empty then
-    put pMigrationVersion into tBindingsA[1]
+    local theAffectedRows
 
-    put "INSERT INTO schema_migrations (version) VALUES (:1)" into tSQL
+    put pMigrationVersion + 0 into tBindingsA[1]
+
+    put "UPDATE schema SET version = :1" into tSQL
     dbconn_executeWBindings tSQL, tBindingsA, pConnectionA
-    put _ErrorMsg("unable to update schema_migrations version info", the result) into tError
+    put it into theAffectedRows
+    put _ErrorMsg("unable to update schema version info", the result) into tError
+
+    if theAffectedRows is 0 then
+      put "INSERT INTO schema (version) VALUES (:1)" into tSQL
+      dbconn_executeWBindings tSQL, tBindingsA, pConnectionA
+      put _ErrorMsg("unable to update schema version info", the result) into tError
+    end if
   end if
 
   return tError for error
 end _insertSchemaMigration
+
+
+/**
+Summary: Returns the current version number of the database.
+
+Parameters:
+pConnectionA: A connection array.
+
+Returns: Version or error in result.
+*/
+private function _getCurrentSchemaVersion pConnectionA
+  local tError, tSQL, tBindingsA, tVersion
+
+  put "SELECT version FROM schema" into tSQL
+  dbconn_retrieveQueryAsData tSQL, tBindingsA, tVersion, empty, empty, pConnectionA
+  put the result into tError
+
+  if tError is empty then
+    return tVersion for value
+  else
+    return tError for error
+  end if
+end _getCurrentSchemaVersion
 
 
 private command _createSchemaMigrationsTable pConnectionA
@@ -110,21 +207,25 @@ private command _createSchemaMigrationsTable pConnectionA
 
   put revDatabaseTableNames(dbconn_get("connection id", pConnectionA)) into tDBTables
   if "schema" is not among the lines of tDBTables then
-    put "CREATE TABLE schema_migrations (version varchar(255) NOT NULL UNIQUE)" into tSQL
+    put "CREATE TABLE schema (version varchar(255) NOT NULL UNIQUE)" into tSQL
     dbconn_executeSQL tSQL, pConnectionA
-    put _ErrorMsg("unable to create schema_migrations table", the result) into tError
+    put _ErrorMsg("unable to create schema table", the result) into tError
   end if
 
-  return tError
+  return tError for error
 end _createSchemaMigrationsTable
 
 
 /**
-* brief Updates the physical database schema to the schema version specified.
-*
-* \param pVersion The version to upgrade the database schema to.
-*
-* \package Database Schema
+Summary: Updates the physical database schema to the schema version specified.
+
+Parameters:
+pVersion: The version to upgrade the database schema to.
+
+Description:
+DEPRECATED
+
+Returns: Error messages
 */
 command dbschema_migrateToVersion pVersion, pConnectionA, pDBKey
   local theError, theContainer, theVersions, theSQL
@@ -226,6 +327,7 @@ command dbschema_migrateToVersion pVersion, pConnectionA, pDBKey
 
   return theError
 end dbschema_migrateToVersion
+
 
 ## Creates a table in the database
 command dbschema_createTable pName, pTableA, pConnectionA, pDBKey
@@ -398,18 +500,16 @@ end dbschema_createTriggers
 # Makes any changes necessary to database to put it in synch with the current schema.
 # No data will be lost.
 command dbsynch_databaseWithSchema pConnectionA, pDBKey
-  -----
-  local i,theDBKey
+  local i, theDBKey
   local theConnectionID
   local theDatabaseTables
   local theDBType
   local theSQL
   local theError
-  local theTable, theTableA
-  local theTablesA
+  local theTable, theTables
   local theVersion
   local theRecords
-  -----
+
   put dbobject_createConnectionArray(pConnectionA, pDBKey) into pConnectionA
 
   set the wholeMatches to true
@@ -436,19 +536,17 @@ command dbsynch_databaseWithSchema pConnectionA, pDBKey
 
   ## CREATE OR ALTER TABLES THAT EXIST IN SCHEMA
   if theError is empty then
-    put dbschema_get("tables", theDBKey) into theTablesA
+    put dbschema_get("tables", theDBKey) into theTables
 
-    repeat with i = 1 to the number of elements of theTablesA
-      put dbtable_get(theTablesA[i], "name") into theTable
-
+    repeat for each line theTable in theTables
       if theTable is among the lines of theDatabaseTables then
-        dbsynch_dbAlterTable pConnectionA, theTablesA[i]
+        dbsynch_dbAlterTable theTable, pConnectionA
         put the result into theError
         if theError is not empty then
           exit repeat
         end if
       else
-        dbsynch_dbCreateTable pConnectionA, theTablesA[i]
+        dbsynch_dbCreateTable theTable, pConnectionA
         put the result into theError
         if theError is not empty then
           exit repeat
@@ -466,38 +564,17 @@ command dbsynch_databaseWithSchema pConnectionA, pDBKey
     put the result into theError
   end if
 
+  ## Update schema table
   if theError is empty then
-    ## Update schema table
+    _createSchemaMigrationsTable pConnectionA
+    put the result into theError
+  end if
+
+  if theError is empty then
     put dbschema_get("version", theDBKey) into theVersion
 
-    put revDatabaseTableNames(theConnectionID) into theDatabaseTables  ## May have been created in schema
-    if "schema" is not among the lines of theDatabaseTables then
-      put "CREATE TABLE schema (version integer NOT NULL)" into theSQL
-      dbconn_executeSQL theSQL, pConnectionA
-      put _ErrorMsg("unable to create schema table", the result) into theError
-    end if
-
-    if theError is empty then
-      ## sync version
-      local theBindingsA
-
-      put "SELECT * FROM schema" into theSQL
-      dbconn_retrieveRecordsAsText theSQL, theBindingsA, theRecords,, pConnectionA
-      put the result into theError
-    end if
-
-    if theError is empty then
-      ## Update version #
-      ## todo: very what we should do with schema migrations
-      if theRecords is empty then
-        put format("INSERT INTO schema (version) VALUES (%u)", theVersion) into theSQL
-      else
-        put format("UPDATE schema SET version = %u", theVersion) into theSQL
-      end if
-
-      dbconn_executeSQL theSQL, pConnectionA
-      put _ErrorMsg("unable to update schema version info", the result) into theError
-    end if
+    _insertSchemaMigration theVersion, pConnectionA
+    put the result into theError
   end if
 
   if theError is empty then
@@ -568,11 +645,10 @@ end dbsynch_schemaWithDatabase
 
 
 on dbsynch_dbDropTable pConnectionA, pTable
-  -----
   local theDBType
   local theError
   local theSQL
-  -----
+
   put dbconn_get("type", pConnectionA) into theDBType
   set the wholeMatches to true
 
@@ -584,29 +660,26 @@ on dbsynch_dbDropTable pConnectionA, pTable
 end dbsynch_dbDropTable
 
 
-command dbsynch_dbCreateTable pConnectionA, pTableA
-  -----
+command dbsynch_dbCreateTable pTableName, pConnectionA
   local theDBType
   local theSQL
   local theError
-  local theTable
-  -----
+  local theTableA
+
   ## NO FIELDS, NO CREATE
-  if dbtable_get(pTableA, "fields") is empty then return empty
+  if dbschema_tableGet(pTableName, "fields", pConnectionA["database"]) is empty then return empty
 
-  put dbconn_get("type", pConnectionA) into theDBType
-  put dbtable_get(pTableA, "name") into theTable
-
-  replace space with empty in theDBType
+  -- put dbconn_get("type", pConnectionA) into theDBType
+  -- replace space with empty in theDBType
 
   ## CREATE TABLE
-  put dbsynch_createTableSQL(pConnectionA, pTableA) into theSQL
+  put dbsynch_createTableSQL(pTableName, pConnectionA) into theSQL
 
   if theSQL is not empty then
     dbconn_executeSQL theSQL, pConnectionA
-    put _ErrorMsg("unable to create table '" & theTable & "'", the result) into theError
+    put _ErrorMsg("unable to create table '" & pTableName & "'", the result) into theError
   else
-    put format("error getting CREATE TABLE sql for table \"%s\"",  theTable) into theError
+    put format("error getting CREATE TABLE sql for table \"%s\"",  pTableName) into theError
   end if
 
   -- ## INDEXES
@@ -622,32 +695,41 @@ command dbsynch_dbCreateTable pConnectionA, pTableA
 end dbsynch_dbCreateTable
 
 
-command dbsynch_dbAlterTable pConnectionA, pTableA
-  local theDBType, theDO
-  local theError
+function dbsynch_createTableSQL pTableName, pConnectionA
+  local theDBType, theDo
+  local theTableA, theSQL, theHandler
+
+  if dbschema_tableGet(pTableName, "fields", pConnectionA["database"]) is empty then return empty
+
+  put dbschema_tableGet(pTableName,, pConnectionA["database"]) into theTableA
 
   put dbconn_get("type", pConnectionA) into theDBType
   replace space with empty in theDBType
-  put "_" & theDBType & "_dbAlterTable pConnectionA, pTableA" into theDO
+  put "_" & theDBType & "_dbCreateTableSQL" into theHandler
+  put "put" && theHandler && "(pTableName, theTableA, pConnectionA) into theSQL" into theDo
+  do theDo
+
+  return theSQL
+end dbsynch_createTableSQL
+
+
+command dbsynch_dbAlterTable pTableName, pConnectionA
+  local theDBType, theDo, theHandler
+  local theTableA, theError
+
+  if dbschema_tableGet(pTableName, "fields", pConnectionA["database"]) is empty then return empty
+
+  put dbschema_tableGet(pTableName,, pConnectionA["database"]) into theTableA
+
+  put dbconn_get("type", pConnectionA) into theDBType
+  replace space with empty in theDBType
+  put "_" & theDBType & "_dbAlterTable" into theHandler
+  put theHandler && "pTableName, theTableA, pConnectionA" into theDo
   do theDo
   put the result into theError
 
   return theError
 end dbsynch_dbAlterTable
-
-
-function dbsynch_createTableSQL pConnectionA, pTableA
-  local theDBType, theDo
-  local theSQL
-
-  put dbconn_get("type", pConnectionA) into theDBType
-  replace space with empty in theDBType
-  ## CREATE TABLE
-  put "put _" & theDBType & "_dbCreateTableSQL(pConnectionA, pTableA) into theSQL" into theDo
-  do theDo
-  put the result into theSQL
-  return theSQL
-end dbsynch_createTableSQL
 
 
 command dbsynch_schemaImportTable pConnectionA, pTable
@@ -1100,7 +1182,7 @@ end _sqlite_dbCreateTable
 
 
 private function _sqlite_dbCreateTableSQL pName, pTableA, pConnectionA
-  local theQsA, theSQL
+  local theQsA, theSQL, theField
 
   put dbconn_get("quotes", pConnectionA) into theQsA
 
@@ -1109,8 +1191,8 @@ private function _sqlite_dbCreateTableSQL pName, pTableA, pConnectionA
 
   ## Fields
   put " (" after theSQL
-  repeat with i = 1 to the number of elements of pTableA["fields"]
-    put _sqlite_getColumnDefSQL(pTableA, pTableA["fields"][i]) after theSQL
+  repeat for each item theField in pTableA["field order"]
+    put _sqlite_getColumnDefSQL(pTableA, pTableA["fields"][theField]) after theSQL
     put comma & space after theSQL
   end repeat
 
@@ -1590,8 +1672,7 @@ private function _findNextCreateDef pSQL, @xRootSearchCharNo, @rStartCharNo, @rE
 end _findNextCreateDef
 
 
-private command _sqlite_dbAlterTable pConnectionA, pTableA
-  -----
+private command _sqlite_dbAlterTable pTable, pTableA, pConnectionA
   local theSQL
   local theConnID
   local theError
@@ -1599,20 +1680,19 @@ private command _sqlite_dbAlterTable pConnectionA, pTableA
   local theFieldsThatLiveAnotherDay
   local theNewCreateSQL, theNewFields
   local theOldFields, theOldCreateSQL
-  local theTable, theBindingsA
+  local theBindingsA
   local theTempName
-  -----
-  put dbconn_get("connection id", pConnectionA) into theConnID
-  put dbtable_get(pTableA, "name") into theTable
 
-  put format("SELECT sql FROM sqlite_master WHERE name = '%s'", theTable) into theSQL
-  dbconn_retrieveRecordsAsText theSQL, theBindingsA, theOldCreateSQL,,pConnectionA
+  put dbconn_get("connection id", pConnectionA) into theConnID
+
+  put format("SELECT sql FROM sqlite_master WHERE name = '%s'", pTable) into theSQL
+  dbconn_retrieveQueryAsData theSQL, theBindingsA, theOldCreateSQL, empty, empty, pConnectionA
   put _ErrorMsg("retrieving create sql for table alteration", the result) into theError
 
   if theError is empty then
     ## Get current and new field names
-    put revDatabaseColumnNames(theConnID, theTable) into theOldFields
-    put dbtable_get(pTableA, "fields") into theNewFields
+    put revDatabaseColumnNames(theConnID, pTable) into theOldFields
+    put dbschema_tableGet(pTable, "fields", pConnectionA["database"]) into theNewFields
 
     ## Determine which fields will exist after the update. These are fields we can insert into.
     set the wholeMatches to true
@@ -1624,21 +1704,21 @@ private command _sqlite_dbAlterTable pConnectionA, pTableA
     delete the last char of theFieldsThatLiveAnotherDay
 
     ## Extra data from table we are altering
-    put "_tmp_" & theTable & "_tmp_" into theTempName
+    put "_tmp_" & pTable & "_tmp_" into theTempName
     put "CREATE TEMPORARY table" && quote & theTempName & quote into word 1 to 3 of theOldCreateSQL
-    put _sqlite_dbCreateTableSQL(pConnectionA, pTableA) into theNewCreateSQL
+    put _sqlite_dbCreateTableSQL(pTable, pTableA, pConnectionA) into theNewCreateSQL
 
     put theOldCreateSQL & ";" & cr into theSQL
     put format("INSERT INTO %s (rowid,%s) SELECT rowid,%s FROM \"%s\";\n", \
-          theTempName, theOldFields, theOldFields, theTable) after theSQL
-    put "DROP TABLE" && quote & theTable & quote & ";" & cr after theSQL
+          theTempName, theOldFields, theOldFields, pTable) after theSQL
+    put "DROP TABLE" && quote & pTable & quote & ";" & cr after theSQL
     put theNewCreateSQL & ";" & cr after theSQL
     put format("INSERT INTO \"%s\" (rowid,%s) select rowid,%s from \"%s\";\n", \
-          theTable, theFieldsThatLiveAnotherDay, theFieldsThatLiveAnotherDay, theTempName) after theSQL
+          pTable, theFieldsThatLiveAnotherDay, theFieldsThatLiveAnotherDay, theTempName) after theSQL
     put "DROP TABLE" && quote & theTempName & quote & ";" after theSQL
 
     dbconn_executeSQL theSQL, pConnectionA
-    put _ErrorMsg("alter table '" & theTable & "'", the result) into theError
+    put _ErrorMsg("alter table '" & pTable & "'", the result) into theError
   end if
 
   if theError is empty then

@@ -1565,7 +1565,7 @@ private function _SelectClauseFromTables pConnectionA, pTablesA, pPrependTableNa
       end if
     end if
 
-    put dbschema_getTableFields(pTablesA[i]["name"], pConnectionA["database"]) into theFields
+    put dbschema_tableGet(pTablesA[i]["name"], "fields", pConnectionA["database"]) into theFields
     if pPrependTableName then
       put pTablesA[i]["name"] into theTable
     end if
@@ -7174,10 +7174,13 @@ function dbschema_get pProp, pDBKey
       return _outputKeyAsYAML(sDbsA[pDBKey], "schema", 1)
       break
 
+    case "version"
+      return sDbsA[pDBKey]["schema"]["version"]
+
     default
       ## Todo: need actual list to compare against in case we add valid props later on
       if pProp is not among the keys of sDbsA[pDBKey]["schema"] then
-        _ThrowError kErrInvalidProperty, "invalid property passed to " & param(0)
+        _ThrowError kErrInvalidProperty, "invalid property passed to " & param(0) && ":" && pProp
       else
         return sDbsA[pDBKey]["schema"][pProp]
       end if
@@ -7238,40 +7241,23 @@ end dbschema_storeForeignKeys
 *
 * \return Array
 */
-function dbschema_getTable pTable, pDBKey
+function dbschema_tableGet pTable, pProperty, pDBKey
   _ValidateKey pDBKey
 
   if pTable is not among the keys of sDbsA[pDBKey]["schema"]["tables"] then
     _ThrowError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
   else
-    return sDbsA[pDBKey]["schema"]["tables"][pTable]
+    switch pProperty
+      case ""
+        return sDbsA[pDBKey]["schema"]["tables"][pTable]
+      case "fields"
+        local tFields
+        put sDbsA[pDBKey]["schema"]["tables"][pTable]["field order"] into tFields
+        replace comma with cr in tFields
+        return tFields
+    end switch
   end if
-end dbschema_getTable
-
-
-/**
-* \brief Retreives a CR delimited list of fields for a table as stored in the internal database schema.
-*
-* \param pTable The name of the table
-* \param [pDBKey] Database Object schema is associated with. Default is name returned by sqlyoga_getDefaultDatabase().
-*
-* \package Schema
-*
-* \return CR delimited list
-*/
-function dbschema_getTableFields pTable, pDBKey
-  local theFields
-
-  _ValidateKey pDBKey
-
-  if pTable is not among the keys of sDbsA[pDBKey]["schema"]["tables"] then
-    _ThrowError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
-  else
-    put sDbsA[pDBKey]["schema"]["tables"][pTable]["field order"] into theFields
-    replace comma with cr in theFields
-    return theFields
-  end if
-end dbschema_getTableFields
+end dbschema_tableGet
 
 
 /**
@@ -10824,7 +10810,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
       put tableobj_get(theTableA, "fields") into rTablesA[ theTable ]["fields"]
     else
       put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["primary key"] into rTablesA[ theTable ]["primary key"]
-      put dbschema_getTableFields(theTable, pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
+      put dbschema_tableGet(theTable, "fields", pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
     end if
     replace cr with comma in rTablesA[ theTable ]["fields"]
     put 1 into theIndex
@@ -10873,7 +10859,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
           put tableobj_get(theTableA, "fields") into rTablesA[ theTable ]["fields"]
         else
           put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["primary key"] into rTablesA[ theTable ]["primary key"]
-          put dbschema_getTableFields(theTable, pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
+          put dbschema_tableGet(theTable, "fields", pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
         end if
         replace cr with comma in rTablesA[ theTable ]["fields"]
 
