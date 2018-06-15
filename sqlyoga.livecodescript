@@ -1626,7 +1626,7 @@ private function _SelectClauseFromSelect pKey, pSelectA, pTableIndexesA, pPrepen
   repeat with i = 1 to the number of elements of pTableIndexesA
     put pTableIndexesA[i]["index"] into theTableIndex
 
-    put dbschema_getTable(theTableIndex, pKey) into theTableA
+    put dbschema_tableGet(theTableIndex, pKey) into theTableA
     if pPrependTableName then put tableobj_get(theTableA, "name") into theTable
 
     ## override table name with as
