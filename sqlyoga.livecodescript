@@ -9628,7 +9628,7 @@ function sqlrecord_createObject pTable, pConnName, pDBKey
     end if
   end if
 
-  put dbschema_getTable(pTable, pDBKey) into theTableA
+  put dbschema_tableGet(pTable, pDBKey) into theTableA
 
   repeat for each key theField in theTableA["fields"]
     put theTableA["fields"][theField]["default value"] into theA[theField]
