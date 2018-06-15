@@ -8522,55 +8522,35 @@ end _TableAliasWhereClause
 
 
 /**
-* \brief Creates a record in a table.
-*
-* \param pTable The name of the table to create the record. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
-* \param pParamsA An array of key value pairs used to create the record.
-*
-* This command will perform a CREATE based on the parameters you pass in.
-*
-* <pre>## Create lesson
-* put 0 into theValuesA["draft"]
-* sqlquery_create "lessons", theValuesA
-* put the result into theError
-* </pre>
-*
-* An alternative to passing in an array for pParamsA is to pass in combinations of "key", "value" parameters. \
-      * For example, the following code would set the draft field in the database to 0.
-*
-* <pre>sqlquery_create "lessons", "draft", 0
-* </pre>
-*
-* \package SQL Query
-*
-* \return Error string in 'the result', number of affected rows in 'it'.
+Summary: Creates a record in a table.
+
+Parameters:
+pTable: The name of the table to create the record. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
+pParamsA: An array of key value pairs used to create the record.
+
+Description:
+This command will perform a CREATE based on the parameters you pass in.
+
+```
+## Create lesson
+put 0 into theValuesA["draft"]
+sqlquery_create "lessons", theValuesA
+put the result into theError
+```
+
+Returns: Error string in 'the result', number of affected rows in 'it'.
 */
-command sqlquery_create pTable, pParamsA
+command sqlquery_create pTable, pParamsA, pConnName, pDBKey
   local theAffectedRows
   local theQueryA
   local theError
 
   ## Get query object
   if pTable is not an array then
-    put sqlquery_createObject(pTable) into theQueryA
+    put sqlquery_createObject(pTable, pConnName, pDBKey) into theQueryA
   else
     put pTable into theQueryA
     _ValidateQueryArray theQueryA
-  end if
-
-  ##
-  ## Get parameters
-  local theParamsA, theLimit
-
-  if pParamsA is not an array then
-    ## http://quality.runrev.com/show_bug.cgi?id=8441
-    put the paramCount into theLimit
-    repeat with i = 2 to theLimit step 2
-      if i > theLimit then exit repeat
-      put param(i+1) into theParamsA[param(i)]
-    end repeat
-  else
-    put pParamsA into theParamsA
   end if
 
   ##
@@ -8595,15 +8575,15 @@ command sqlquery_create pTable, pParamsA
       ## Automatically set alias properties
       repeat with i = 1 to the number of elements of sDbsA[ theQueryA["database"] ]["table objects"]["tables"][ theQueryA["table"]["name"] ]["conditions"]
         put sDbsA[ theQueryA["database"] ]["table objects"]["tables"][ theQueryA["table"]["name"] ]["conditions"][i]["value"] \
-              into theParamsA[ sDbsA[ theQueryA["database"] ]["table objects"]["tables"][ theQueryA["table"]["name"] ]["conditions"][i]["field"] ]
+              into pParamsA[ sDbsA[ theQueryA["database"] ]["table objects"]["tables"][ theQueryA["table"]["name"] ]["conditions"][i]["field"] ]
       end repeat
     end if
   else
     put sDbsA[ theQueryA["database"] ]["schema"]["tables"][ theQueryA["table"]["name"] ]["primary key"] into thePrimaryKey
   end if
 
-  repeat for each key theKey in theParamsA
-    put theParamsA[theKey] into theRecordA[theKey]
+  repeat for each key theKey in pParamsA
+    put pParamsA[theKey] into theRecordA[theKey]
   end repeat
 
   ##
@@ -8613,7 +8593,7 @@ command sqlquery_create pTable, pParamsA
   put _CreateConnectionArray(theQueryA["connection"], theQueryA["database"]) into theConnectionA
   put dbconn_get("effective quotes", theConnectionA) into theQs
   put thePrimaryKey into theTablesA[ theRecordA["@table"] ]["primary key"]
-  repeat for each key theField in theParamsA
+  repeat for each key theField in pParamsA
     put theField & "," after theTablesA[ theRecordA["@table"] ]["fields"]
   end repeat
   delete the last char of theTablesA[ theRecordA["@table"] ]["fields"]
@@ -8639,48 +8619,45 @@ end sqlquery_create
 
 
 /**
-* \brief Updates a record in a table.
-*
-* \param pTable The name of the table to update. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
-* \param pConditions The search conditions. This can be an array of search parameters, a primary key value or an exact string to assign to the WHERE clause. You can pass in an empty value for pConditions if there is no primary key for the table.
-* \param pParamsA An array of key value pairs used to perform the update.
-*
-* This command will perform an UPDATE based on the parameters you pass in.
-*
-* <pre>## Update lesson with id of 2
-* put 0 into theValuesA["draft"]
-* sqlquery_update "lessons", 2, theValuesA
-* put the result into theError
-*
-* <pre>## Update lesson with id of 2
-* sqlquery_update "lessons", "id = 2", theValuesA
-* put the result into theError
-*
-* ## Update lessons with an id of 12 and 15
-* put "id is in :1" into theConditionsA["conditions"]
-* put "12,15" into theConditionsA["condition bindings"][1]
-* sqlquery_update "lessons", theConditionsA, theValuesA
-* put the result into theError
-* </pre>
-*
-* An alternative to passing in an array for pParamsA is to pass in combinations of "key", "value" parameters. \
-      * For example, the following code would set the draft field in the database to 0.
-*
-* <pre>sqlquery_update "lessons", 15, "draft", 0
-* </pre>
-*
-* \package SQL Query
-*
-* \return Error string in 'the result', number of affected rows in 'it'.
+Summary: Updates a record in a table.
+
+Parameters:
+pTable" The name of the table to update. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
+pConditions: The search conditions. This can be an array of search parameters, a primary key value or an exact string to assign to the WHERE clause. You can pass in an empty value for pConditions if there is no primary key for the table.
+pParamsA: An array of key value pairs used to perform the update.
+
+Description:
+
+This command will perform an UPDATE based on the parameters you pass in.
+
+```
+## Update lesson with id of 2
+put 0 into theValuesA["draft"]
+sqlquery_update "lessons", 2, theValuesA
+put the result into theError
+
+```
+## Update lesson with id of 2
+sqlquery_update "lessons", "id = 2", theValuesA
+put the result into theError
+
+## Update lessons with an id of 12 and 15
+put "id is in :1" into theConditionsA["conditions"]
+put "12,15" into theConditionsA["condition bindings"][1]
+sqlquery_update "lessons", theConditionsA, theValuesA
+put the result into theError
+```
+
+Returns: Error string in 'the result', number of affected rows in 'it'.
 */
-command sqlquery_update pTable, pConditions, pParamsA
+command sqlquery_update pTable, pConditions, pParamsA, pConnName, pDBKey
   local theResolvedTable, theTableA, theAffectedRows
   local thePrimaryKey, theQueryA, theAliasWhere
   local theError
 
   ## Get query object
   if pTable is not an array then
-    put sqlquery_createObject(pTable) into theQueryA
+    put sqlquery_createObject(pTable, pConnName, pDBKey) into theQueryA
   else
     put pTable into theQueryA
     _ValidateQueryArray theQueryA
@@ -8733,26 +8710,10 @@ command sqlquery_update pTable, pConditions, pParamsA
   end if
 
   ##
-  ## Get parameters
-  local theParamsA, theLimit
-
-  put empty into theParamsA
-  if pParamsA is not an array then
-    ## http://quality.runrev.com/show_bug.cgi?id=8441
-    put the paramCount into theLimit
-    repeat with i = 3 to theLimit step 2
-      if i > theLimit then exit repeat
-      put param(i+1) into theParamsA[param(i)]
-    end repeat
-  else
-    put pParamsA into theParamsA
-  end if
-
-  ##
   ## Create Record object
   local theRecordA
 
-  put theParamsA into theRecordA
+  put pParamsA into theRecordA
   put theResolvedTable into theRecordA["@table"]
   put theQueryA["connection"] into theRecordA["@connection"]
   put theQueryA["database"] into theRecordA["@database"]
@@ -8770,7 +8731,7 @@ command sqlquery_update pTable, pConditions, pParamsA
   put _CreateConnectionArray(theQueryA["connection"], theQueryA["database"]) into theConnectionA
   put dbconn_get("effective quotes", theConnectionA) into theQs
   --    put thePrimaryKey into theTablesA[ theRecordA["@table"] ]["primary key"]
-  repeat for each key theField in theParamsA
+  repeat for each key theField in pParamsA
     put theField & "," after theTablesA[ theRecordA["@table"] ]["fields"]
   end repeat
   delete the last char of theTablesA[ theRecordA["@table"] ]["fields"]
