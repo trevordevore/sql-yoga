@@ -76,7 +76,7 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
 
   put files(pMigrationFolder) into tFiles
   filter tFiles without ".*"
-  filter tFiles with "*.yml"
+  filter tFiles with regex pattern "(.*\.yml$)|(.*\.livecodescript$)"
 
   sort lines of tFiles numeric by each
 
@@ -88,15 +88,15 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
       put the result into tError
 
       if tError is empty then
-        dbmigrate_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
+        dbschema_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
         put the result into tError
       end if
     else if tFile ends with ".livecodescript" or tFile ends with ".livecode" then
-        dbmigrate_processMigrationFile tMigrationVersion, tFile, pConnectionName, pDBKey
+        dbschema_processMigrationFile tMigrationVersion, pMigrationFolder & "/" & tFile, pConnectionName, pDBKey
         put the result into tError
     end if
 
-    if tError is not empty then exit repeat
+    if tError is not empty and tError is not "migration has already been applied" then exit repeat
   end repeat
 
   return tError
