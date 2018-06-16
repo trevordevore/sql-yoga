@@ -34,6 +34,15 @@ command dbschema_processMigrationFile pMigrationVersion, pStackFilename, pConnec
       dbschema_createTriggers pConnectionA
       put the result into tError
     end if
+
+    if tError is empty then
+      _endProcessMigration pMigrationVersion, pConnectionA
+    end if
+
+    if tError is empty then
+      dbsynch_schemaWithDatabase pConnectionA, pDBKey
+      put the result into tError
+    end if
   catch tError
 
   finally
@@ -41,10 +50,6 @@ command dbschema_processMigrationFile pMigrationVersion, pStackFilename, pConnec
       delete stack pStackFilename
     end if
   end try
-
-  if tError is empty then
-    _endProcessMigration pMigrationVersion, pConnectionA
-  end if
 
   if tError is empty then
     dbconn_commitTransaction empty, pConnectionA
@@ -91,12 +96,16 @@ command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnecti
     */
 
     if tError is empty then
-      dbsynch_schemaWithDatabase pConnectionA, pDBKey
+      dbschema_createTriggers pConnectionA
       put the result into tError
     end if
 
     if tError is empty then
-      dbschema_createTriggers pConnectionA
+      _endProcessMigration pMigrationVersion, pConnectionA
+    end if
+
+    if tError is empty then
+      dbsynch_schemaWithDatabase pConnectionA, pDBKey
       put the result into tError
     end if
 
@@ -121,10 +130,6 @@ command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnecti
   catch tError
 
   end try
-
-  if tError is empty then
-    _endProcessMigration pMigrationVersion, pConnectionA
-  end if
 
   if tError is empty then
     dbconn_commitTransaction empty, pConnectionA
@@ -678,7 +683,10 @@ command dbsynch_schemaWithDatabase pConnectionA, pDBKey
     ## Import tables
     repeat for each line theTable in theTables
       dbsynch_schemaImportTable pConnectionA, theTable
-    end REPEAT
+    end repeat
+
+    # Set version
+    dbschema_set "version", _getCurrentSchemaVersion(pConnectionA), pConnectionA["database"]
   end if
 
   return theError
