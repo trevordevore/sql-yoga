@@ -106,6 +106,10 @@ command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnecti
   end try
 
   if tError is empty then
+    _endProcessMigration pMigrationVersion, pConnectionA
+  end if
+
+  if tError is empty then
     dbconn_commitTransaction empty, pConnectionA
   else
     dbconn_rollbackTransaction empty, pConnectionA
