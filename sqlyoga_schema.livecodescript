@@ -134,7 +134,7 @@ private command _beginProcessMigration pMigrationVersion, @rConnectionA, pDBKey
   end if
 
   if tError is empty then
-    _insertSchemaMigration pMigrationVersion, rConnectionA
+    _checkSchemaMigrationShouldRun pMigrationVersion, rConnectionA
     put the result into tError
   end if
 
@@ -142,11 +142,23 @@ private command _beginProcessMigration pMigrationVersion, @rConnectionA, pDBKey
 end _beginProcessMigration
 
 
-private command _insertSchemaMigration pMigrationVersion, pConnectionA
+private command _endProcessMigration pMigrationVersion, pConnectionA
   local tError
 
   if tError is empty then
-    local tSQL, tVersion, tBindingsA, tRecords
+    _insertSchemaMigration pMigrationVersion, pConnectionA
+    put the result into tError
+  end if
+
+  return tError
+end _endProcessMigration
+
+
+private command _checkSchemaMigrationShouldRun pMigrationVersion, pConnectionA
+  local tError
+
+  if tError is empty then
+    local tSQL, tVersion
 
     put _getCurrentSchemaVersion(pConnectionA) into tVersion
     put the result into tError
@@ -157,6 +169,14 @@ private command _insertSchemaMigration pMigrationVersion, pConnectionA
       put "migration has already been applied" into tError
     end if
   end if
+
+  return tError for error
+end _checkSchemaMigrationShouldRun
+
+
+private command _insertSchemaMigration pMigrationVersion, pConnectionA
+  local tError
+  local tSQL, tBindingsA, tRecords
 
   if tError is empty then
     local theAffectedRows
