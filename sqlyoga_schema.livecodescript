@@ -24,9 +24,26 @@ command dbschema_processMigrationFile pMigrationVersion, pStackFilename, pConnec
   _beginProcessMigration pMigrationVersion, pConnectionA, pDBKey
   put the result into tError
 
-  if tError then
-    dispatch "RunMigration" to stack pStackFilename with pConnectionA
-    put the result into tError
+  try
+    if tError is empty then
+      dispatch "RunMigration" to stack pStackFilename with pConnectionA
+      put the result into tError
+    end if
+
+    if tError is empty then
+      dbschema_createTriggers pConnectionA
+      put the result into tError
+    end if
+  catch tError
+
+  finally
+    if there is a stack pStackFilename then
+      delete stack pStackFilename
+    end if
+  end try
+
+  if tError is empty then
+    _endProcessMigration pMigrationVersion, pConnectionA
   end if
 
   if tError is empty then
