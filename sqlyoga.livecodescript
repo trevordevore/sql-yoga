@@ -145,6 +145,19 @@ command sqlyoga_addToArray @xArrayA, pKey, pKeyValue
 end sqlyoga_addToArray
 
 
+function sqlyoga_array
+  local tKey, tArray
+
+  set the itemDelimiter to ":"
+  repeat with i = 1 to the paramCount
+    put item 1 of param(i) into tKey
+    put item 2 to -1 of param(i) into tArray[tKey]
+  end repeat
+
+  return tArray
+end sqlyoga_array
+
+
 /**
 * \brief Adds a new element onto the end of an array.
 *
