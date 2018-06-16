@@ -7130,7 +7130,15 @@ end tblrelation_set
 command dbschema_set pPropPathA, pValue, pDBKey
   _ValidateKey pDBKey
 
-  put pValue into sDbsA[pDBKey]["schema"]["tables"][pPropPathA]
+  if pPropPathA is an array then
+    put pValue into sDbsA[pDBKey]["schema"]["tables"][pPropPathA]
+  else
+    if pPropPathA is empty then
+      put pValue into sDbsA[pDBKey]["schema"]
+    else
+      put pValue into sDbsA[pDBKey]["schema"][pPropPathA]
+    end if
+  end if
   return empty
 end dbschema_set
 
