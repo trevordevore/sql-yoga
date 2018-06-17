@@ -466,9 +466,16 @@ command dbschema_createFields pTable, pFieldsA, pConnection, pDBKey
     local theDo
 
     replace space with empty in theType
-    put "_" & theType & "_dbCreateFields pTable, pFieldsA, pConnectionA" into theDo
+    put "_" & theType & "_dbCreateFields pTable, pFieldsA, theConnectionA" into theDo
     do theDo
     put _ErrorMsg("unable to add fields", the result) into theError
+  end if
+
+  # sync schema with table changes
+  if theError is empty then
+    dbschema_tableSet pTable, empty, empty, theConnectionA["database"]
+    dbsynch_schemaImportTable theConnectionA, pTable
+    put the result into theError
   end if
 
   return theError
@@ -482,9 +489,16 @@ command dbschema_deleteFields pTable, pFields, pConnection, pDBKey
   put dbconn_get("type", theConnectionA) into theType
 
   replace space with empty in theType
-  put "_" & theType & "_dbDeleteFields pTable, pFields, pConnectionA" into theDo
+  put "_" & theType & "_dbDeleteFields pTable, pFields, theConnectionA" into theDo
   do theDo
   put the result into theError
+
+  # Sync schema with table changes
+  if theError is empty then
+    dbschema_tableSet pTable, empty, empty, theConnectionA["database"]
+    dbsynch_schemaImportTable theConnectionA, pTable
+    put the result into theError
+  end if
 
   return theError
 end dbschema_deleteFields
@@ -1387,7 +1401,7 @@ private command _sqlite_dbDeleteFields pTable, pFields, pConnectionA
 
     set the wholeMatches to true
     repeat for each item theField in pFields
-      put itemOffset(theField, theOldFields) into theItemNo
+      put itemOffset(theField, theNewFields) into theItemNo
       if theItemNo > 0 then
         delete item theItemNo of theNewFields
       end if
