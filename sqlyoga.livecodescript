@@ -7236,7 +7236,8 @@ command dbschema_addTableDefinition pName, pTableA, pDBKey
 
   _ValidateKey pDBKey
 
-  if pName is among the keys of sDbsA[pDBKey]["schema"]["tables"] then
+  if pName is among the keys of sDbsA[pDBKey]["schema"]["tables"] \
+        and the keys of sDbsA[pDBKey]["schema"]["tables"][pName] is not empty then
     put "table '" & pName & "' already exists in database object '" & pDBKey & "'" into theError
   else
     put pTableA into sDbsA[pDBKey]["schema"]["tables"][pName]
