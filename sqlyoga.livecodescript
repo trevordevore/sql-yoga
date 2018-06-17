@@ -7144,7 +7144,7 @@ command dbschema_set pPropPathA, pValue, pDBKey
   _ValidateKey pDBKey
 
   if pPropPathA is an array then
-    put pValue into sDbsA[pDBKey]["schema"]["tables"][pPropPathA]
+    put pValue into sDbsA[pDBKey]["schema"][pPropPathA]
   else
     if pPropPathA is empty then
       put pValue into sDbsA[pDBKey]["schema"]
