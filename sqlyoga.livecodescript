@@ -7282,6 +7282,24 @@ function dbschema_tableGet pTable, pProperty, pDBKey
 end dbschema_tableGet
 
 
+command dbschema_tableSet pTable, pProperty, pValue, pDBKey
+  _ValidateKey pDBKey
+
+  if pTable is not among the keys of sDbsA[pDBKey]["schema"]["tables"] then
+    _ThrowError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
+  else
+    switch pProperty
+      case ""
+        put pValue into sDbsA[pDBKey]["schema"]["tables"][pTable]
+        break
+      default
+        put pValue into sDbsA[pDBKey]["schema"]["tables"][pTable][pProperty]
+        break
+    end switch
+  end if
+end dbschema_tableSet
+
+
 /**
 * \brief Returns true if the table exists in the internal database schema.
 *
