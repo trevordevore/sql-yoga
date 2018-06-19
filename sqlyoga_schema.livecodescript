@@ -66,7 +66,7 @@ Summary:
 
 */
 command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnectionA, pDBKey
-  local tError, tTableA
+  local tError, tTableA, tIndexA, tFieldA, tFieldsA
 
   _beginProcessMigration pMigrationVersion, pConnectionA, pDBKey
   put the result into tError
@@ -74,6 +74,17 @@ command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnecti
   try
     if tError is empty then
       repeat for each element tTableA in pMigrationA["migration"]["create tables"]
+
+        # Get fields into format that API expects
+        if tTableA["field order"] is empty then
+          repeat for each element tFieldA in tTableA["fields"]
+            put tFieldA["name"] & "," after tTableA["field order"]
+            put tFieldA into tFieldsA[tFieldA["name"]]
+          end repeat
+          delete the last char of tTableA["field order"]
+        end if
+        put tFieldsA into tTableA["fields"]
+
         dbschema_createTable tTableA["name"], tTableA, pConnectionA, pDBKey
         put the result into tError
 
@@ -81,19 +92,23 @@ command dbschema_processMigrationArray pMigrationVersion, pMigrationA, pConnecti
       end repeat
     end if
 
-    /*
-    If .livecodescript then load and try to call `sqlyogaMigrateChange` and `sqlyogaMigrateUp`
-    actions:
-      change: Just reverse the action on down.
-      up: perform during migration. Change precision fo a column for example.
-      down: perform when roll back. When going down can't know the original precision.
-    "add index"
-    "add column"
-    "rename column"
-    "change column"
-    "drop table"
-    "drop column"
-    */
+    if tError is empty then
+      repeat for each element tTableA in pMigrationA["migration"]["create fields"]
+        dbschema_createFields tTableA["table"], tTableA["fields"], pConnectionA, pDBKey
+        put the result into tError
+
+        if tError is not empty then exit repeat
+      end repeat
+    end if
+
+    if tError is empty then
+      repeat for each element tIndexA in pMigrationA["migration"]["create indexes"]
+        dbschema_createIndex tIndexA["name"], tIndexA, pConnectionA, pDBKey
+        put the result into tError
+
+        if tError is not empty then exit repeat
+      end repeat
+    end if
 
     if tError is empty then
       dbschema_createTriggers pConnectionA
