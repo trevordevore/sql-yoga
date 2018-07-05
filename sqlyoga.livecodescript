@@ -9767,13 +9767,13 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
       _ThrowError kErrInvalidProperty, "primary key is empty or has more than one field and not enough items in pParams (" & theFields & ")"
     end if
 
-    if pParamsA is not an integer then
+    if pParamsA contains ":" and pParamsA contains "," then
       split pParamsA by "," and ":"
     end if
 
     repeat with i = 1 to the number of items of theFields
       put item i of theFields into theField
-      if pParamsA is not an integer then
+      if pParamsA is an array then
         put pParamsA[theField] into theParam
       else
         put pParamsA into theParam
