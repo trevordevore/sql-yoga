@@ -11409,7 +11409,13 @@ private command _RetrieveUpdatedRecordAfterDbMod @xOutRecordA, pConnectionA, pRe
     end if
   else
     repeat for each item theFieldName in pTablePrimaryKeys
-      put theFieldName & " = " & pRecordA[ theFieldName ] & " AND " after theWhere
+      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["fields"][ theFieldName ]["meta type"] \
+            is not among the items of kDontQuoteTypes then
+        put theFieldName & " = '" & pRecordA[ theFieldName ] & "' AND " after theWhere
+      else
+        put theFieldName & " = " & pRecordA[ theFieldName ] & " AND " after theWhere
+      end if
+
     end repeat
     delete the last word of theWhere
   end if
