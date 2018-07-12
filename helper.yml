@@ -6,7 +6,7 @@ frontscripts:
   - filename: sqlyoga_development.livecodescript
     distribute: false
 register components:
-  - key: sql yoga|configuration
+  - key: sql yoga>configuration
     kind: files
     callback stackfile: sqlyoga_levure_callbacks.livecodescript
     distribute: false
