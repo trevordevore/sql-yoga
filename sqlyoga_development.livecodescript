@@ -1,6 +1,6 @@
 script "SQL Yoga Development Tools"
 command sqlyogadev_reloadConfigFiles
-  levureReloadRegisteredKey "sql yoga|configuration"
+  levureReloadRegisteredKey "sql yoga>configuration"
   return empty
 end sqlyogadev_reloadConfigFiles
 
