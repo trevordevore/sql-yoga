@@ -8840,7 +8840,7 @@ end sqlquery_retrieve
 /**
 * \brief Executes a SQL Query Object query and returns the result as an array.
 *
-* \param @xQueryA A SQL Query Object array as created using sqlquery_createObject().
+* \param pQueryA A SQL Query Object array as created using sqlquery_createObject().
 * \param[out] @xOutArray Upon completion holds a numerically indexed array. The keys are column names and values are column values. \
       *                    If xOutArray already contains numerical indexes then this command will add the returned records to the end.
 *
@@ -8859,31 +8859,30 @@ end sqlquery_retrieve
 *
 * \return Error message
 */
-command sqlquery_retrieveAsArray @xQueryA, @xOutArray
-  -----
-  local theError
-  -----
-  sqlquery_retrieve xQueryA
-  put the result into theError
+command sqlquery_retrieveAsArray pQueryA, @xOutArray
+  local tError
 
-  if theError is empty then
-    sqlquery_convertToArray xQueryA, xOutArray
-    put the result into theError
+  sqlquery_retrieve pQueryA
+  put the result into tError
 
-    sqlquery_close xQueryA
-    if theError is empty then
-      put the result into theError
+  if tError is empty then
+    sqlquery_convertToArray pQueryA, xOutArray
+    put the result into tError
+
+    sqlquery_close pQueryA
+    if tError is empty then
+      put the result into tError
     end if
   end if
 
-  return theError
+  return tError
 end sqlquery_retrieveAsArray
 
 
 /**
 * \brief Executes a SQL Query Object query and returns the result as data from the selected columns (no cursor).
 *
-* \param @xQueryA A SQL Query Object array as created using sqlquery_createObject().
+* \param pQueryA A SQL Query Object array as created using sqlquery_createObject().
 * \param[out] @xOutData Upon completion the data returned will be in this parameter.
 *
 * The 'column delimter' and 'row delimiter' properties of the SQL Query Object will be \
@@ -8893,19 +8892,19 @@ end sqlquery_retrieveAsArray
 *
 * \return Error message
 */
-command sqlquery_retrieveAsData @xQueryA, @xOutData
+command sqlquery_retrieveAsData pQueryA, @xOutData
   local theQuery, theBindingsA, theError
   local theConnectionA
 
   put empty into xOutData
 
-  put sqlquery_get(xQueryA, "connection") into theConnectionA
+  put sqlquery_get(pQueryA, "connection") into theConnectionA
   _ValidateConnectionArray theConnectionA
 
-  put sqlquery_get(xQueryA, "query") into theQuery
-  put sqlquery_get(xQueryA, "condition bindings") into theBindingsA
+  put sqlquery_get(pQueryA, "query") into theQuery
+  put sqlquery_get(pQueryA, "condition bindings") into theBindingsA
   dbconn_retrieveQueryAsData theQuery, theBindingsA, xOutData, \
-        sqlquery_get(xQueryA, "column delimiter"), sqlquery_get(xQueryA, "row delimiter"), \
+        sqlquery_get(pQueryA, "column delimiter"), sqlquery_get(pQueryA, "row delimiter"), \
         theConnectionA
   put the result into theError
   _dbconnSetLastError theConnectionA, theError
@@ -8916,7 +8915,7 @@ end sqlquery_retrieveAsData
 /**
 * \brief Executes a SQL Query Object query and returns the result as a Records array.
 *
-* \param @xQueryA A SQL Query Object array as created using sqlquery_createObject().
+* \param pQueryA A SQL Query Object array as created using sqlquery_createObject().
 * \param[out] @xOutRecordsA Upon completion holds a numerically indexed array. If you pass in an array \
       *                                             that already has numerical indexes then the array will be added to.
 *
@@ -8940,30 +8939,25 @@ end sqlquery_retrieveAsData
 *
 * \return Error message
 */
-command sqlquery_retrieveAsRecords @xQueryA, @xOutRecordsA
-  -----
-  local theError
-  local theOrigFullColumn
-  -----
-  put sqlquery_get(xQueryA, "column names length") into theOrigFullColumn
-  sqlquery_set xQueryA, "column names length", "long"
+command sqlquery_retrieveAsRecords pQueryA, @xOutRecordsA
+  local tError
 
-  sqlquery_retrieve xQueryA
-  put the result into theError
+  sqlquery_set pQueryA, "column names length", "long"
 
-  sqlquery_set xQueryA, "column names length", theOrigFullColumn
+  sqlquery_retrieve pQueryA
+  put the result into tError
 
-  if theError is empty then
-    sqlquery_convertToRecords xQueryA, xOutRecordsA
-    put the result into theError
+  if tError is empty then
+    sqlquery_convertToRecords pQueryA, xOutRecordsA
+    put the result into tError
 
-    sqlquery_close xQueryA
-    if theError is empty then
-      put the result into theError
+    sqlquery_close pQueryA
+    if tError is empty then
+      put the result into tError
     end if
   end if
 
-  return theError
+  return tError
 end sqlquery_retrieveAsRecords
 
 
