@@ -246,14 +246,20 @@ Summary: Returns the current version number of the database.
 Parameters:
 pConnectionA: A connection array.
 
+Description:
+This function returns 0 if the `version` table does not exist.
+
 Returns: Version or error in result.
 */
 private function _getCurrentSchemaVersion pConnectionA
-  local tError, tSQL, tBindingsA, tVersion
+  local tError, tSQL, tBindingsA
+  local tVersion = "0"
 
-  put "SELECT version FROM schema" into tSQL
-  dbconn_retrieveQueryAsData tSQL, tBindingsA, tVersion, empty, empty, pConnectionA
-  put the result into tError
+  if dbschema_tableExists("version", pConnectionA["database"]) then
+    put "SELECT version FROM schema" into tSQL
+    dbconn_retrieveQueryAsData tSQL, tBindingsA, tVersion, empty, empty, pConnectionA
+    put the result into tError
+  end if
 
   if tError is empty then
     return tVersion for value
