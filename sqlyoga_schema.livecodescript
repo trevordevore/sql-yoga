@@ -240,6 +240,40 @@ private command _insertSchemaMigration pMigrationVersion, pConnectionA
 end _insertSchemaMigration
 
 
+private function _listTables pConnectionA
+  local tConnID, tTables, tError
+
+  put dbconn_get("connection id", pConnectionA) into tConnID
+
+  if dbconn_get("type", pConnectionA) is "valentina" then
+    local tTableCount, tTableRef
+
+    put VDatabase_TableCount( tConnID ) into tTableCount
+    repeat with i = 1 to tTableCount
+      put VDatabase_Table( tConnID, i) into tTableRef
+      put VTable_Name( tTableRef) & cr after tTables
+    end repeat
+    delete the last char of tTables
+    put _valentinaErrorSchema(tConnID) into tError
+  else
+    if dbconn_get("type", pConnectionA) is "mysql" then
+      put revDataFromQuery(tab, cr, tConnID, "SHOW TABLES") into tTables
+    else
+      put revDatabaseTableNames(tConnID) into tTables
+    end if
+    if item 1 of tTables is "revdberr" then
+      put _ErrorMsg("retrieving database tables", item 2 to -1 of tTables) into tError
+    end if
+  end if
+
+  if tError is empty then
+    return tTables for value
+  else
+    return tError for error
+  end if
+end _listTables
+
+
 /**
 Summary: Returns the current version number of the database.
 
@@ -255,7 +289,7 @@ private function _getCurrentSchemaVersion pConnectionA
   local tError, tSQL, tBindingsA
   local tVersion = "0"
 
-  if dbschema_tableExists("version", pConnectionA["database"]) then
+  if "schema" is among the lines of _listTables(pConnectionA) then
     put "SELECT version FROM schema" into tSQL
     dbconn_retrieveQueryAsData tSQL, tBindingsA, tVersion, empty, empty, pConnectionA
     put the result into tError
@@ -689,27 +723,7 @@ command dbsynch_schemaWithDatabase pConnectionA, pDBKey
   end if
 
   if theError is empty then
-    ## get tables in database
-    local theTableCount, theTableRef
-
-    if dbconn_get("type", pConnectionA) is "valentina" then
-      put VDatabase_TableCount( theConnectionID ) into theTableCount
-      repeat with i = 1 to theTableCount
-        put VDatabase_Table( theConnectionID, i) into theTableRef
-        put VTable_Name( theTableRef) & cr after theTables
-      end repeat
-      delete the last char of theTables
-      put _valentinaErrorSchema(theConnectionID) into theError
-    else
-      if dbconn_get("type", pConnectionA) is "mysql" then
-        put revDataFromQuery(tab, cr, theConnectionID, "SHOW TABLES") into theTables
-      else
-        put revDatabaseTableNames(theConnectionID) into theTables
-      end if
-      if item 1 of theTables is "revdberr" then
-        put _ErrorMsg("retrieving database tables", item 2 to -1 of theTables) into theError
-      end if
-    end if
+    put _listTables(pConnectionA) into theTables
   end if
 
   if theError is empty then
