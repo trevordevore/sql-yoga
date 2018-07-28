@@ -10266,7 +10266,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   put xRecordA["@table"] into theTable
 
   ## VALIDATION CALLBACKS
-  _dispatchValidationCheck xRecordA
+  _dispatchValidationCheck xRecordA, "update"
   put the result into theError
   put the keys of xRecordA into theFields
 
@@ -10467,14 +10467,14 @@ private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbac
 end _dispatchTableObjectEventListener
 
 
-private command _dispatchValidationCheck @xRecordA
+private command _dispatchValidationCheck @xRecordA, pEventType
   local tError, tBehaviorStack, tCallbackHandler
 
   put _tableBehaviorStackName(xRecordA["@table"]) into tBehaviorStack
   put _tableCallbackHandlerName(xRecordA["@table"], "validate") into tCallbackHandler
 
   if there is a stack tBehaviorStack then
-    dispatch tCallbackHandler to stack tBehaviorStack with xRecordA
+    dispatch tCallbackHandler to stack tBehaviorStack with xRecordA, pEventType
     if it is "handled" then
       put the result into tError
     end if
@@ -10980,7 +10980,7 @@ private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecor
 
   ##
   ## VALIDATION CALLBACKS
-  _dispatchValidationCheck xRecordA
+  _dispatchValidationCheck xRecordA, "create"
   put the result into theError
 
   put the keys of xRecordA into theFields
