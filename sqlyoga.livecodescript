@@ -1,5 +1,5 @@
 script "libSQLYoga"
-constant kVersion = "1.5.0"
+constant kVersion = "2.0.0"
 constant kBuildNumber = "2"
 constant kBuildProfile = "development"
 constant kExpirationDate = ""
