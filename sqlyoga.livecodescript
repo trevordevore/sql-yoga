@@ -9554,45 +9554,6 @@ function sqlrecord_initWithTable pTable, pDBKey
 end sqlrecord_initWithTable
 
 
-## Deprecated by sqlrecord_find
-command sqlrecord_retrieve @xRecordsA
-  -----
-  local theConnectionA, i
-  local theError
-  local theKeyA
-  -----
-  if "@table" is among the keys of xRecordsA then
-    put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
-  else if "@table" is among the keys of xRecordsA[1] then
-    put _CreateConnectionArray(xRecordsA[1]["@connection"], xRecordsA[1]["@database"]) into theConnectionA
-  else
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
-  end if
-
-  if "@table" is among the keys of xRecordsA then
-    ## single record
-    _FillInTableRecordFromDatabase theConnectionA, xRecordsA, false
-    put the result into theError
-  else
-    ## multiple records
-    ## todo: Optimize with a single query that then puts results into the array
-    repeat with i = 1 to the number of elements of xRecordsA
-      if "@table" is not among the keys of xRecordsA[i] then
-        put kInvalidType && "record" into theError
-      else
-        put i into theKeyA[1]
-        _FillInTableRecordFromDatabase theConnectionA, xRecordsA, false, theKeyA
-        put the result into theError
-      end if
-
-      if theError is not empty then exit repeat
-    end repeat
-  end if
-
-  return theError
-end sqlrecord_retrieve
-
-
 /**
 Summary: Finds records in the database and returns as SQL Record objects.
 
