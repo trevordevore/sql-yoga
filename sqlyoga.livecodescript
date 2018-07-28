@@ -1619,78 +1619,6 @@ private function _SelectClauseFromTables pConnectionA, pTablesA, pPrependTableNa
 end _SelectClauseFromTables
 
 
-## Deprecated in overhaul.
-## Now we set select clause as a string.
-private function _SelectClauseFromSelect pKey, pSelectA, pTableIndexesA, pPrependTableName, pSelectColumnNamesAs
-  -----
-  local i,theIndex, theKey
-  local theClause
-  local theFieldA, theFieldName
-  local theTable, theTableA, theTableIndex
-  -----
-  if pTableIndexesA is not an array then
-    repeat for each key theKey in pSelectA
-      add 1 to theIndex
-      put theKey into pTableIndexesA[i]["index"]
-    end repeat
-  end if
-
-  ## Just those fields in select clause array
-  repeat with i = 1 to the number of elements of pTableIndexesA
-    put pTableIndexesA[i]["index"] into theTableIndex
-
-    put dbschema_tableGet(theTableIndex, pKey) into theTableA
-    if pPrependTableName then put tableobj_get(theTableA, "name") into theTable
-
-    ## override table name with as
-    if pTableIndexesA[i]["as"] is not empty then
-      put pTableIndexesA[i]["as"] into theTable
-    end if
-
-    ## Loop through fields for each table
-    repeat with j =1 to the number of elements of pSelectA[theTableIndex]
-      put tableobj_getField(theTableA, pSelectA[theTableIndex][j]["field index"]) into theFieldA
-      if pPrependTableName then
-        put theTable & "." after theClause
-      end if
-      put theFieldA["name"] into theFieldName
-      put theFieldName after theClause
-
-      ## as
-      if pSelectA[theTableIndex][j]["as"] is not empty then
-        put " AS " & quote & pSelectA[theTableIndex][j]["as"] & quote after theClause
-      else if pSelectColumnNamesAs is "long" then
-        if pPrependTableName then
-          put " AS " & quote & theTable & "." & theFieldName & quote after theClause
-        else
-          put " AS " & theFieldName after theClause
-        end if
-      end if
-
-      put comma after theClause
-    end repeat
-  end repeat
-  delete the last char of theClause
-
-  return theClause
-end _SelectClauseFromSelect
-
-
-private function _SelectClauseFromVirtual pVirtualFields
-  local theClause
-
-  repeat with i = 1 to the number of elements of pVirtualFields
-    put pVirtualFields[i]["value"] after theClause
-    if pVirtualFields[i]["as"] is not empty then
-      put " AS" && pVirtualFields[i]["as"] after theClause
-    end if
-    put comma after theClause
-  end repeat
-  delete the last char of theClause
-  return theClause
-end _SelectClauseFromVirtual
-
-
 private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeftTableName, pRightTable, pRightTableName
   -----
   local i
@@ -6592,31 +6520,6 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
 
   return empty
 end tableobj_set
-
-
-## Deprecated
-function tableobj_getField pTableA, pFieldName
-  -----
-  local theA
-  local theKeyA
-  -----
-  put _CreateTableArray(pTableA, param(3)) into pTableA
-
-  ## Resolve alias
-  put _KeyArrayForTable(pTableA) into theKeyA
-  if sDbsA[ theKeyA ]["type"] is "alias" then
-    put sDbsA[ theKeyA ]["alias for table"] into pTableA["name"]
-  end if
-
-  ## Lookup in schema
-  put _KeyArrayForSchemaTable(pTableA) into theKeyA
-
-  if pFieldName is among the keys of sDbsA[ theKeyA ]["fields"] then
-    return sDbsA[ theKeyA ]["fields"][ pFieldName ]
-  else
-    _ThrowError kErrCantFindObject, "field '" & pFieldName & "' does not exist in table '" & tableobj_get(pTableA, "name") & "'"
-  end if
-end tableobj_getField
 
 
 /**
