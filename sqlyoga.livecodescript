@@ -111,16 +111,16 @@ end releaseStack
 Summary: Converts any number of key:value pairs into an array that is added to as a new element to another array.
 
 Params:
-@xArrayA: The array to add an element to. A new key equal to the number of elements of xArrayA + 1 will be added.
+xArrayA: The array to add an element to. A new key equal to the number of elements of xArrayA + 1 will be added.
 pKey: Key of xArrayA to store key/values in.
 pKeyValue: Key/Value pairs in the format key:value. Each key value passed in will be added to the new key of pArray.
 
 Description:
+Helper command for populating arrays.
 
-```
+Example:
 put empty into tFieldsA
 sqlyoga_addToArray tFieldsA, "name:id", "type:sequence"
-```
 
 Returns: empty
 */
@@ -152,9 +152,8 @@ Summary: Converts the parameters to an array.
 Description:
 Each parameter is a key:value pair.
 
-```
+Example:
 put sqlyoga_array("id:1", "label:My Record") into tDataA
-```
 
 Returns: Array
 */
@@ -175,10 +174,13 @@ end sqlyoga_array
 Summary: Adds a new element onto the end of an array.
 
 Params:
-@xArrayA: The array to add an element to. A new key equal to the number of elements of xArrayA + 1 will be added.
+xArrayA: The array to add an element to. A new key equal to the number of elements of xArrayA + 1 will be added.
 pValue: Variable to add to array.
 
-```
+Description:
+Helper command for populating arrays.
+
+Example:
 put "a value" into theFieldsA[1]
 sqlyoga_arrayPush theFieldsA, "another value" -- added to theFieldsA[2]
 
@@ -276,7 +278,7 @@ like this (assuming `OR` was the default operator):
 [1]["string"] = cheese pizza
 [1]["operator"] = OR
 [2]["string"] = tacos
-[2]["operator"] = OR</pre>
+[2]["operator"] = OR
 ```
 
 Returns: Numerically indexed array. Each index has two keys: `operator` and `string`.
@@ -1097,8 +1099,8 @@ end _QueryTableHierarchyStructure
 /**
 Summary: Converts a db cursor to a hierarchal array of Record objects based on relationships between tables.
 
-@xQueryA: The SQL Query object that created the cursor.
-@xOutArray: The resulting array of Record objects.
+xQueryA: The SQL Query object that created the cursor.
+xOutArray: The resulting array of Record objects.
 
 Returns: Error
 */
@@ -2820,7 +2822,7 @@ Summary: Initializes a database object using a configuration array.
 
 pDbA: The configuration array.
 pRootFolder: Folder used to resolve relative filenames in pDbA.
-[pDBKey]: Key to assign to the new database object.
+pDBKey: Key to assign to the new database object.
 
 Description:
 
@@ -2995,7 +2997,7 @@ Summary: Creates a Database Object from an object that you have previously store
 
 Params:
 pObjectID: The id of the LiveCode object that the Database Object was stored in.
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 If you are using SQL Yoga with Levure you will not use this command. Levure uses the YAML configuration files.
@@ -3027,7 +3029,7 @@ Summary: Creates a Database Object from a file where you have previously stored 
 
 Params:
 pFile: The path to the file the Database Object is stored in.
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 If you are using SQL Yoga with Levure you will not use this command. Levure uses the YAML configuration files.
@@ -3067,7 +3069,7 @@ Summary: Creates a Database Object from database object array that you retrieved
 
 Params:
 pArray: The array containing the Database Object.
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 If you are using SQL Yoga with Levure you will not use this command. Levure uses the YAML configuration files.
@@ -3111,7 +3113,7 @@ end _ResetDatabaseKey
 Summary: Saves a Database Object to a LiveCode object or a file depending on what you have configured.
 
 Parameters:
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 
 Description:
@@ -3168,7 +3170,7 @@ end dbobject_save
 Summary: Imports the database schema into the Database object using the default connection for the Database object.
 
 Parameters:
-[pDBKey]: The Database object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: The Database object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 Call this handler when you change your database schema and need to tell SQL Yoga about the change.
@@ -3201,7 +3203,7 @@ end dbobject_reloadSchema
 Summary: Returns the internal array used to represent a Database Object.
 
 Parameters:
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Array
 */
@@ -3228,7 +3230,7 @@ Summary: Retrieves a Database Object property.
 
 Parameters:
 pProperty: Property to get.
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -3316,7 +3318,7 @@ Summary: Sets a Database Object property.
 Parameters:
 pProperty: Property to get.
 pValue: Value to set property to.
-[pDBKey]: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to store created Database Object in. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -3385,7 +3387,7 @@ Summary: Deletes a Connection Object from a Database Object.
 
 Parameters:
 pConnectionA: The name of the Connection Object or a Connection Object reference array.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pConnectionA is a name and not a reference array.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pConnectionA is a name and not a reference array.
 
 Returns: empty
 */
@@ -3401,7 +3403,7 @@ Summary: Returns a Connection Object reference array for a given connection name
 
 Parameters:
 pConnectionName: The name of the Connection Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Connection Object reference array or empty if one doesn't exist.
 */
@@ -3426,7 +3428,7 @@ Summary: Deletes a SQL Query Template Object from a Database Object.
 
 Parameters:
 pTemplateA: The name of the SQL Query Template Object or a SQL Query Template Object reference array.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pTemplateA is a name and not a reference array.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pTemplateA is a name and not a reference array.
 
 Returns: empty
 */
@@ -3469,7 +3471,7 @@ end dbobject_getQueryTemplate
 Summary: Creates a new Database Object.
 
 Parameters:
-[pDBKey]: Database Object to create. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to create. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 Calling this command will create a new Database Object.
@@ -3511,7 +3513,7 @@ end dbobject_createObject
 Summary: Deletes a Database Object.
 
 Parameters:
-[pDBKey]: Database Object to delete. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to delete. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: empty
 */
@@ -3537,7 +3539,7 @@ end dbobject_deleteObject
 Summary: Checks as to whether or not a Database Object exists.
 
 Parameters:
-[pDBKey]: Database Object to create. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to create. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: empty
 */
@@ -3579,7 +3581,7 @@ Summary: Checks as to whether or not a Connection Object exists.
 
 Parameters:
 pConnName: The name of a Connection.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: empty
 */
@@ -3611,7 +3613,7 @@ Parameters:
 pName: The Database Connection name. You will use this name whenever you refer to the connection in the API.
 pAdaptor: The adaptor to use to connect to the database that the connection is associated with: `mysql`, `odbc`, `postgresql`, `sqlite`, `valentina`.
 pType: The type of database you are connecting to. Only required for ODBC.
-[pDBKey]: Database Object to associate connection with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to associate connection with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 SQL Yoga allows you to have multiple database connections.
@@ -3734,7 +3736,7 @@ Summary: Deletes a Database Connection from a Database.
 
 Parameters:
 pConnName: The name of a Connection.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 If the connection you are deleting is the default connection then SQL Yoga will assign
@@ -3776,8 +3778,8 @@ Summary: Retrieves properties of a Database Connection Object.
 
 Parameters:
 pProp: The property to get.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -3923,8 +3925,8 @@ Summary: Sets properties for a Database Connection Object.
 Parameters:
 pProp: The property of the Connection to set.
 pValue: The value to set the property to.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 
@@ -3946,19 +3948,21 @@ Description:
 | `use ssl` | Set to true to connect to the database using SSL. Currently supported with MySQL and Valentina client. |
 
 Description:
-## Examples:
+Different vendor types have different options.
 
-```
+Example:
 ## SQLite Example
 dbconn_set "file", thePathToDatabaseFile
 dbconn_setVendor "sqlite", "options", "binary,extensions"
 
+Example:
 ## MySQL Example
 dbconn_set "host", "localhost"
 dbconn_set "username", "root"
 dbconn_set "password", empty
 dbconn_set "database name", "sql_yoga_test"
 
+Example:
 ## ODBC Example
 -- Note: When calling dbconn_createObject you pass in 3 parameters
 --                The 2nd is "odbc" and the 3rd is the type of database you are
@@ -3968,6 +3972,7 @@ dbconn_set "dsn", "sqlserver_odbc"
 dbconn_set "username", "odbc_user"
 dbconn_set "password", empty
 
+Example:
 ## Local Valentina Example
 dbconn_set "file", theDatabase
 dbconn_setVendor "valentina", "mac serial number", MyValMacSerialNumber
@@ -3975,13 +3980,13 @@ dbconn_setVendor "valentina", "win serial number", MyValWinSerialNumber
 dbconn_setVendor "valentina", "unix serial number", MyValUnixSerialNumber
 dbconn_setVendor "valentina", "encryption key", MyEncryptionKey
 
+Example:
 ## Valentina Client Example
 dbconn_set "host", "localhost"
 dbconn_set "username", "sa"
 dbconn_set "password", "sa"
 dbconn_set "use ssl", true
-dbconn_set "database name", "my database.vdb"</pre>
-```
+dbconn_set "database name", "my database.vdb"
 
 Returns: empty
 */
@@ -4092,8 +4097,8 @@ Parameters:
 pVendor: Name of vendor to set property for: `mysql`, `odbc`, `postgresql`, `sqlite`, `valentina`.
 pProp: Property to set.
 pValue: Value to set property to.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 
@@ -4153,8 +4158,8 @@ Summary: Gets vendor specific connection settings.
 Parameters:
 pVendor: Name of vendor to get property for: `mysql`, `odbc`, `postgresql`, `sqlite`, `valentina`.
 pProp: Property to get.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 See dbconn_setVendor for list of properties.
@@ -4200,8 +4205,8 @@ end dbconn_escapeString
 Summary: Returns the last inserted record id for a database.
 
 Parameters:
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: integer
 */
@@ -4285,9 +4290,9 @@ end dbconn_lastInsertedID
 Summary: Returns the representation of true/false for the database associated with the database connection.
 
 Parameters:
-[pBoolean]: `true` or `false`
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pBoolean: `true` or `false`
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: string
 */
@@ -4350,8 +4355,8 @@ end _sqlserver_lastInsertIDSQL
 Summary: Connects to a database using the Connection Objects connection settings.
 
 Parameters:
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 SQL Yoga will connect to a database if necessary whenever it tries to execute a query. This handler can be used
@@ -4586,8 +4591,8 @@ end dbconn_connect
 Summary: Disconnects from a database connection.
 
 Parameters:
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Error message
 */
@@ -4670,8 +4675,8 @@ Parameters:
  pSQL: SQL to execute.
  pBindingsA: Array of bindings to use with sql.
  pVendorParamsA: Array of parameters to use for executing the query. Valentina: location, lock type, direction.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 This command will try to reconnect to the database 1 time when certain error messages are returned from the RevDB driver.
@@ -4829,8 +4834,8 @@ Summary: Closes a cursor associated with a connection.
 
 Parameters:
 pCursor: Cursor id.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Error message
 */
@@ -4872,8 +4877,8 @@ Summary: Executes a SQL query against a database connection. Only execute querie
 
 Parameters:
 pSQL: SQL query to execute.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns:
 it: The affected rows
@@ -4896,14 +4901,14 @@ Summary: Begins a transaction in the database connection.
 
 Parameters:
 pParamsA: Not implemented. Included for possible future use.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 After calling this command no changes you make to the database will be saved until you call `dbconn_commitTransaction`. You can
 cancel any changes you made to the database by calling `dbconn_rollbackTransaction` rather than `dbconn_commitTransaction`.
 
-```
+Example:
 ## Start a transaction in the database.
 dbconn_beginTransaction
 
@@ -4916,7 +4921,6 @@ else
   ## Something went wrong, rollback to state database was in before calling dbconn_beginTransaction.
   dbconn_rollbackTransaction
 end if
-```
 
 Returns: Error message
 
@@ -4974,8 +4978,8 @@ Summary: Commits a transaction in the database connection.
 
 Parameters:
 pParamsA: Not implemented. Included for possible future use.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Error message
 
@@ -5036,8 +5040,8 @@ Summary: Rolls back a transaction in the database connection.
 
 Parameters:
 pParamsA: Not implemented. Included for possible future use.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Error message
 
@@ -5348,8 +5352,8 @@ Summary: Executes a SQL query using pValuesA as the binding array.
 Parameters:
 pSQL: SQL to execute.  Use placeholders (`:1`, `:2`) for binding.
 pBindingsA: Array of values to bind.  Keyed using integers.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Returns empty. Affected rows in `it`. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`
 */
@@ -5430,11 +5434,11 @@ Summary: Executes a SQL query against a database connection and returns the resu
 Parameters:
 pSQL: SQL query to execute.
 pBindingsA: Array of values to bind to pSQL.  Key `1` will replace `:1` in the query, etc. You can pass empty.
-@xOutData: Upon completion the data returned will be in this parameter.
-[pColDel]: Character to delimit columns in the returned text. Default is the default value for `revDataFromQuery` (tab character).
-[pRowDel]: Character to delimit rows in the returned text. Default is the default value for `revDataFromQuery` (return character).
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+xOutData: Upon completion the data returned will be in this parameter.
+pColDel: Character to delimit columns in the returned text. Default is the default value for `revDataFromQuery` (tab character).
+pRowDel: Character to delimit rows in the returned text. Default is the default value for `revDataFromQuery` (return character).
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`
 */
@@ -5540,23 +5544,22 @@ Parameters:
 pSQL: SQL query to execute.
 pVendorParamsA: Array of parameters to use for executing the query. All: report null. Valentina: location, lock type, direction.
 pBindingsA: Array of values to bind to pSQL.  Key `1` will replace `:1` in the query, etc. You can pass empty.
-@xOutArray: Results will be put into this array. If the array already contains numeric keys then the results will be appended.
-[pConnName]: The name of a Database Connection. The default is the `default connection` for the Database Object.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+xOutArray: Results will be put into this array. If the array already contains numeric keys then the results will be appended.
+pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 This handler will query a database and convert any returned records into a multi-dimensional array.
 Each row in the database cursor will be represented by a number in the first dimension. Each column
 in each row will be contained in the second dimension for that number.
 
-Example of what a cursor with 2 columns (name and email) and 2 rows:
+Example:
+# A cursor with 2 columns (name and email) and 2 rows:
 
-```
 theDataA[1]["name"]
 theDataA[1]["email"]
 theDataA[2]["name"]
 theDataA[2]["email"]
-```
 
 Returns: Error message
 */
@@ -5650,7 +5653,7 @@ Summary: Creates a Scope Object and attaches it to a Table Object.
 Parameters:
 pTableA: The name of the table to attach the scope to.
 pName: The name of the scope.
-[pDBKey]: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 Create a Scope Object to help you generate searches dynamically.
@@ -5835,7 +5838,7 @@ Summary: Retrieves properties of the Table Objects in a Database Object
 
 Parameters:
 pProp: The property to get.
-[pDBKey]: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -5892,7 +5895,7 @@ Summary: Determines whether a table object exists.
 
 Parameters:
 pTableName: Name of the table to get the reference array for.
-[pDBKey]: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Boolean
 */
@@ -5915,7 +5918,7 @@ Summary: Returns a Table Object reference array.
 
 Parameters:
 pTableName: Name of the table to get the reference array for.
-[pDBKey]: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Table reference array. Empty if no Table Object exists.
 */
@@ -5945,7 +5948,7 @@ Summary: Returns a Relationship object reference array.
 
 Parameters:
 pIndexOrName: The index of the relationship to retrieve. Alternatively you can pass in a name if you specified a name when creating the relationship.
-[pDBKey]: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object to target. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Relationship reference array.
 */
@@ -6001,8 +6004,8 @@ Summary: Creates a Table Object.
 
 Parameters:
 pName: The name of the Table Object to create.
-[pType]: "table" or "alias". Default is "table".
-[pDBKey]: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pType: "table" or "alias". Default is "table".
+pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 Creating a Table Object allows you to take advantage of a number of SQL Yoga features.
@@ -6107,7 +6110,7 @@ Summary: Deletes a Table Object.
 
 Parameters:
 pName: The name of the Table Object to delete.
-[pDBKey]: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Error message
 */
@@ -6153,7 +6156,7 @@ Summary: Retrieves properties of a Table Object.
 Parameters:
 pTableA: Name of the table to get a property for.
 pProp: The property to get.
-[pDBKey]: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -6352,7 +6355,7 @@ Parameters:
 pTableA: Name of the table to get a property for.
 pProp: The property to get.
 pValue: The value.
-[pDBKey]: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 | Property | Description |
@@ -6486,7 +6489,7 @@ Summary: Returns a Scope reference array.
 Parameters:
 pTableA: Table name or Table Reference array.
 pScopeName: Name of scope.
-[pDBKey]: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pTableA is a name and not a reference array.
+pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applies if pTableA is a name and not a reference array.
 
 Returns: Scope Reference array
 */
@@ -6557,8 +6560,8 @@ end _ResetRelationProperty
 Summary: Creates a Relationship Object.
 
 Parameters:
-[pName]: A name for the relationship.
-[pDBKey]: Database Object to associate relationship with.
+pName: A name for the relationship.
+pDBKey: Database Object to associate relationship with.
 
 Description:
 Internally relationships are stored used numerical indexes but if you would like to
@@ -6615,7 +6618,7 @@ Summary: Deletes a relationship object.
 
 Parameters:
 pRelationA: Relationship Reference array or relationship name.
-[pDBKey]: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
+pDBKey: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
 
 Returns: empty
 */
@@ -6643,7 +6646,7 @@ Summary: Retrieves a property of a Relationship Object.
 Parameters:
 pRelationA: Relationship name.
 pProp: Property to retrieve.
-[pDBKey]: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
+pDBKey: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
 
 Description:
 | Property | Description |
@@ -6814,7 +6817,7 @@ Parameters:
 pRelationA: Relationship Reference array or relationship name.
 pProp: Property to retrieve.
 pValue: Value to set property to.
-[pDBKey]: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
+pDBKey: Database Object relationship is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`. Only applicable if pRelationA is not a reference array.
 
 Description:
 | Property | Description |
@@ -6996,7 +6999,7 @@ end dbschema_set
 Summary: Returns info on a Database Objects internal database schema represenation.
 
 pProp: Property to retrieve.
-[pDBKey]: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 
@@ -7048,7 +7051,7 @@ end dbschema_get
 Summary: Clears the internal database schema representation for a Database Object.
 
 Parameters:
-[pDBKey]: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 When SQL Yoga connects to a database it checks to see if the internal database
@@ -7093,7 +7096,7 @@ Summary: Retreives the array that represents a table in the internal database sc
 
 Parameters:
 pTable: The name of the table
-[pDBKey]: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: Array
 */
@@ -7139,7 +7142,7 @@ Summary: Returns true if the table exists in the internal database schema.
 
 Parameters:
 pTable: The name of the table
-[pDBKey]: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object schema is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: List (CR delimited)
 */
@@ -7331,7 +7334,7 @@ Summary: Creates a SQL Query Template.
 
 Parameters:
 pName: The name of the SQL Query Template.
-[pDBKey]: Database Object SQL Query Template is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object SQL Query Template is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 A SQL Query Template allows you to preconfigure settings that can be used to create new SQL Query Objects.
@@ -7381,7 +7384,7 @@ Summary: Deletes a SQL Query Template.
 
 Parameters:
 pName: The name of the SQL Query Template or a SQL Query Template reference array.
-[pDBKey]: Database Object SQL Query Template is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pDBKey: Database Object SQL Query Template is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Returns: empty
 */
@@ -7404,7 +7407,7 @@ Summary: Retrieves a property for a SQL Query Template.
 Parameters:
 TemplateA: Name of SQL Query Template or SQL Query Template reference array.
 pProp: Property to get value for.
-[pDBKey]:
+pDBKey:
 
 Description:
 | Property | Description |
@@ -7599,8 +7602,8 @@ Summary: Creates a SQL Query Object from a SQL Query Template or a table.
 
 Parameters:
 pTemplateOrTableName: The name of a SQL Query Template or table in your database.
-[pConnName]: Name of the connection to attach the SQL Record to. Default is the default connection for the database object.
-[pDBKey]: The name of the database object to attach the SQL Record object to. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: Name of the connection to attach the SQL Record to. Default is the default connection for the database object.
+pDBKey: The name of the database object to attach the SQL Record object to. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 The returned array represents the SQL query. You should not modify this array yourself but rather use
@@ -7663,7 +7666,7 @@ end _CreateSQLQueryFromTable
 /**
 Summary: Sets properties on a SQL Query Object array.
 
-@xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
+xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
 pProp: The property to set.
 pValue: The value to set the property to.
 
@@ -8373,12 +8376,11 @@ pParamsA: An array of key value pairs used to create the record.
 Description:
 This command will perform a `CREATE` based on the parameters you pass in.
 
-```
+Example:
 ## Create lesson
 put 0 into theValuesA["draft"]
 sqlquery_create "lessons", theValuesA
 put the result into theError
-```
 
 Returns:
 it: Number of affected rows
@@ -8474,7 +8476,7 @@ Description:
 
 This command will perform an UPDATE based on the parameters you pass in.
 
-```
+Example:
 ## Update lesson with id of 2
 put 0 into theValuesA["draft"]
 sqlquery_update "lessons", 2, theValuesA
@@ -8489,7 +8491,6 @@ put "id is in :1" into theConditionsA["conditions"]
 put "12,15" into theConditionsA["condition bindings"][1]
 sqlquery_update "lessons", theConditionsA, theValuesA
 put the result into theError
-```
 
 Returns:
 it: Number of affected rows
@@ -8605,7 +8606,7 @@ end sqlquery_update
 Summary: Opens a database cursor for a SQL Query object.
 
 Parameters:
-@xQueryA: A SQL Query Object array as created using sqlquery_createObject().
+xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
 
 Description:
 Use this command to open a database cursor after setting the appropriate properties of
@@ -8647,19 +8648,21 @@ Summary: Executes a SQL Query Object query and returns the result as an array.
 
 Parameters:
 pQueryA: A SQL Query Object array as created using sqlquery_createObject().
-@xOutArray: Upon completion holds a numerically indexed array. The keys are column names and values are column values. If `xOutArray` already contains numerical indexes then this command will add the returned records to the end.
+xOutArray: Upon completion holds a numerically indexed array. The keys are column names and values are column values. If `xOutArray` already contains numerical indexes then this command will add the returned records to the end.
 
 Description:
-This handler will execute the query property of a SQL Query OBject and convert any returned records into a multi-dimensional array. Each row in the database cursor will be represented by a number in the first dimension. Each column in each row will be contained in the second dimension for that number.
+This handler will execute the query property of a SQL Query OBject and convert any returned
+records into a multi-dimensional array. Each row in the database cursor will be represented
+by a number in the first dimension. Each column in each row will be contained in the second
+dimension for that number.
 
-Example of what a cursor with 2 columns (name and email) and 2 rows:
+Example:
+# A cursor with 2 columns (name and email) and 2 rows:
 
-```
 theDataA[1]["name"]
 theDataA[1]["email"]
 theDataA[2]["name"]
 theDataA[2]["email"]
-```
 
 Returns: Error message
 */
@@ -8688,7 +8691,7 @@ Summary: Executes a SQL Query Object query and returns the result as data from t
 
 Parameters:
 pQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
-@xOutData: Upon completion the data returned will be in this parameter.
+xOutData: Upon completion the data returned will be in this parameter.
 
 Description:
 The 'column delimter' and 'row delimiter' properties of the SQL Query Object will be used to delimit columns and rows.
@@ -8719,15 +8722,18 @@ end sqlquery_retrieveAsData
 Summary: Executes a SQL Query Object query and returns the result as a Records array.
 
 Parameters:
-pQueryA: A SQL Query Object array as created using sqlquery_createObject().
-@xOutRecordsA: Upon completion holds a numerically indexed array. If you pass in an array that already has numerical indexes then the array will be added to.
+pQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
+xOutRecordsA: Upon completion holds a numerically indexed array. If you pass in an array that already has numerical indexes then the array will be added to.
 
 Description:
-When retreiving query results as records any relationships that have been defined using Table and Relationship  objects will be used to transform the flat SQL results into a hierarchy representing defined relationships. Each record will have a `@table` key in the array that contains the name of the table the record represents.
+When retreiving query results as records any relationships that have been defined using
+Table and Relationship  objects will be used to transform the flat SQL results into
+a hierarchy representing defined relationships. Each record will have a `@table` key
+in the array that contains the name of the table the record represents.
 
-An example of a Records array that has a lesson table with step table children:
+Example:
+# A Records array that has a lesson table with step table children:
 
-```
 theRecordsA[1]["@table"] = "lesson"
 theRecordsA[1]["id"] = "12"
 theRecordsA[1]["title"] = "my lesson title"
@@ -8737,7 +8743,6 @@ theRecordsA[1]["steps"][1]["title"] = "My step title"
 theRecordsA[1]["steps"][2]["@table"] = "steps"
 theRecordsA[1]["steps"][2]["id"] = "58"
 theRecordsA[1]["steps"][2]["title"] = "Another step title"
-```
 
 Returns: Error message
 */
@@ -8767,7 +8772,7 @@ end sqlquery_retrieveAsRecords
 Summary: Closes an open database cursor associated with a SQL Query Object.
 
 Parameters:
-@xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
+xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
 
 Returns: Error message
 */
@@ -8970,7 +8975,7 @@ end sqlquery_moveToRecord
 Summary: Converts a search string into the condition property of a SQL Query Object.
 
 Parameters:
-@xQueryA: A SQL Query Object array.
+xQueryA: A SQL Query Object array.
 pString: A string representing the terms a user wants to search for.
 pConditions: A string representing the SQL WHERE clause. :1 appears where you want to insert search terms. You do no need to wrap :1 in single quotes as this function always assumes you are searching for a string and wraps the strings in single quotes for you.
 pDefaultOperator: Default boolean operator to use between words that do not explicity state one. Options are `AND` (default) or `OR`.
@@ -9094,7 +9099,7 @@ end sqlquery_addCondition
 /**
 Summary: Adds an existing Scope object to a SQL Query Object.
 
-@xQueryA: A SQL Query Object array.
+xQueryA: A SQL Query Object array.
 pScope: The name of the Scope object to add to the query.
 pParamsDotDotDot: Pass in additional parameters for use with any binding entries in the scopes conditions. You can pass in strings or a numerically indexed array.
 
@@ -9107,13 +9112,12 @@ a **string** and **operater** key.
 
 If you are passing in multiple arrays for use in replacing the bindings used in
 the scope condition then each array MUST have the same number of numeric entries.
-The <b>string</b> key will only be used from the first array passed in however.
+The **string** key will only be used from the first array passed in however.
 
-```
+Example:
 put sqlquery_createObject("lessons") into theQueryA
 sqlquery_addScope theQueryA, "lessons linked to manuals"
 sqlquery_retrieveAsArray theQueryA, theDataA
-```
 
 Returns: empty
 */
@@ -9209,7 +9213,7 @@ Summary: Converts the current row of the SQL Query Object cursor to an array.
 
 Parameters:
 pQueryA: A SQL Query Object array.
-@xOutArrayA: Upon completion this will hold row values. The keys are column names and values are column values.
+xOutArrayA: Upon completion this will hold row values. The keys are column names and values are column values.
 
 Returns: empty
 */
@@ -9271,7 +9275,7 @@ Summary: Converts a SQL Object's open database cursor into an array.
 
 Parameters:
 pQueryA: A SQL Query Object array.
-@xOutArray: Upon completion holds a numerically indexed array. The keys are column names and values are column values. If xOutArray already contains numerical indexes then this command will add the returned records to the end.
+xOutArray: Upon completion holds a numerically indexed array. The keys are column names and values are column values. If xOutArray already contains numerical indexes then this command will add the returned records to the end.
 
 Returns: Error message.
 */
@@ -9331,17 +9335,17 @@ end sqlquery_convertToArray
 Summary: Converts a SQL Object's open database cursor into records.
 
 Parameters:
-@xQueryA: A SQL Query Object array.
-@xOutRecordsA" Upon completion holds a numerically indexed array. If you pass in an array that already has numerical indexes then the array will be added to.
+xQueryA: A SQL Query Object array.
+xOutRecordsA" Upon completion holds a numerically indexed array. If you pass in an array that already has numerical indexes then the array will be added to.
 
 Description:
 When converting a cursor to records any relationships that have been defined will be used to transform the flat
 SQL results into a hierarchy representing defined relationships. Each record will have a `@table` key in the array
 that contains the name of the table the record represents.
 
-An example of a Records array that has a lesson table with step table children:
+Example:
+# A Records array that has a lesson table with step table children:
 
-```
 theRecordsA[1]["@table"] = "lesson"
 theRecordsA[1]["id"] = "12"
 theRecordsA[1]["title"] = "my lesson title"
@@ -9351,7 +9355,6 @@ theRecordsA[1]["steps"][1]["title"] = "My step title"
 theRecordsA[1]["steps"][2]["@table"] = "steps"
 theRecordsA[1]["steps"][2]["id"] = "58"
 theRecordsA[1]["steps"][2]["title"] = "Another step title"
-```
 
 Returns: Error message.
 */
@@ -9384,8 +9387,8 @@ Summary: Creates a SQL Record object (represented as an array) for a table with 
 
 Parameters:
 pTable: Name of the table to create the Record array for.
-[pConnName]: Name of the connection to attach the SQL Record to. Default is the default connection for the database object.
-[pDBKey]: The name of the database object to attach the SQL Record object to. Default is name returned by `sqlyoga_getDefaultDatabase()`.
+pConnName: Name of the connection to attach the SQL Record to. Default is the default connection for the database object.
+pDBKey: The name of the database object to attach the SQL Record object to. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
 Description:
 A SQL Record object represents a table record. An array is used to hold the object values. You should always use `sqlrecord_set` to
@@ -9448,22 +9451,29 @@ end sqlrecord_initWithTable
 Summary: Finds records in the database and returns as SQL Record objects.
 
 pRecordA: Can be the name of a table or a SQL Record object. Pass in an object if you want to specify the connection and/or database to use. Otherwise default database and default database connection are assumed.
-pParamsA: Pass a string to search on the primary key field for the table. If primary key is composed of more than one field then pass in `name:value,name:value` pairs. Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
-@xRecordsA: [out] Contains the found record(s).
+pParamsA: Pass a string to search on the primary key field for the table.
+xRecordsA: [out] Contains the found record(s).
 
 Description:
+`pParamsA` has a number of options.
 
-```
+- Pass in the primary key value.
+- If the primary key for the table is composed of more than one field then pass in `name:value,name:value` pairs.
+- Pass in an array whose keys are properties of a SQL Query object for more control over results. In this case an array of SQL Record objects is returned.
+
+Example:
 ## Find lesson with id of 2 and store it in theRecordA
 sqlrecord_find "lessons", 2, theRecordA
 put the result into theError
 -- theRecordA contains a single SQL Record object
 
+Example:
 ## Find record using primary key composed of two fields (id_1 and id_2)
 sqlrecord_find "object", "id_1:53,id_2:25", theRecordA
 put the result into theError
 -- theRecordA contains a single SQL Record object
 
+Example:
 ## Find lessons with ids of 12 or 15 and order by id
 ## Store result in theRecordsA
 put "id is in :1" into theParamsA["conditions"]
@@ -9472,7 +9482,6 @@ put "id ASC" into theParamsA["order by"]
 sqlrecord_find "lessons", theParamsA, theRecordsA
 put the result into theError
 -- theRecordsA contains an array of SQL Records objects (numerically indexed)
-```
 
 Returns: Error message
 */
@@ -9663,7 +9672,7 @@ end sqlrecord_columnPassesThru
 Summary: Retrieves records from a table related to the Record object's table.
 
 Parameters:
-@xRecordsA: Record array that you want to get the property for.
+xRecordsA: Record array that you want to get the property for.
 pTable: The table whose related records should be retrieved.
 
 Description:
@@ -9717,7 +9726,7 @@ end sqlrecord_getRelated
 /**
 Summary: Sets a property of a SQL Record object.
 
-@xRecordA: SQL Record object that you want to set the property for.
+xRecordA: SQL Record object that you want to set the property for.
 pProp: The property to set.
 pValue: The value to set the property to.
 pPassThru: Set to true if SQL Yoga should not quote and escape the value you set. This is useful when setting the value of an expression or a value like CURRENT_TIMESTAMP. Default is false.
@@ -10141,14 +10150,13 @@ Description:
 This command updates records in the database based on the SQL Record objects you pass in. Note that the primary key
 column will NOT be updated.
 
-```
+Update callbacks in your Table Object definitions will be called and
+broadcasts will be sent to callbacks during this operation.
+
+Example:
 sqlrecord_find "lessons", theID, theRecordA
 sqlrecord_set theRecordA, "title", "A new title"
 sqlrecord_update theRecordA
-```
-
-Update callbacks in your Table Object definitions will be called and
-broadcasts will be sent to callbacks during this operation.
 
 Returns:
 it: Number of affected rows
@@ -10444,7 +10452,7 @@ Parameters:
 pTable: Name of table.
 pConnectionA: The active connection.
 pCallbackKey: The callback key to use (e.g. `before delete`)
-@xRecordA: The record that is being acted on. Callback may modify the record.
+xRecordA: The record that is being acted on. Callback may modify the record.
 
 Returns: Error message
 
@@ -10499,7 +10507,7 @@ end _tableCallbackHandlerName
 Summary This handler takes a records arrays and splits it up based on tables.
 
 pConnectionA:
-@xRecordsA:
+xRecordsA:
 @rTablesA:
 pEnforceKeyPresence:
 pParentTableKey:
@@ -10514,8 +10522,6 @@ Note: If table has no `primary key` field(s) defined then all included fields wi
 this supports `through` tables that might not have primary key defined.
 
 Example:
-
-```
 steps
   index: 7
   records
@@ -10527,9 +10533,8 @@ steps
           value:
           field name: id
       fields: id,instructions,lesson_id,title
- </pre>
 
-Returns:
+Returns: Error message
 */
 private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA, pEnforceKeyPresence, pParentTableKey
   -----
@@ -10651,24 +10656,23 @@ end _SplitRecordsIntoTablesIndex
 Summary: Deletes records in a database using the Record array(s) passed in.
 
 Parameters:
-@xRecordsA: Records array/array of Record arrays (numerically indexed) that has the primary key column for each record filled in.
+xRecordsA: Records array/array of Record arrays (numerically indexed) that has the primary key column for each record filled in.
 
 Description:
 This command deletes records from the database based on the Record array(s) passed in.
-
-```
-## Find lesson record in db with id of 12 and store in theRecordA
-sqlrecord_find "lessons", 12, theRecordA
-
-sqlrecord_delete theRecordA
-put the result into theError
-```
 
 Delete callbacks in your Table Object definitions will be called and
 broadcasts will be sent to callbacks during this operation.
 
 After this handler completes xRecordsA will only contain SQL Record(s) with the`"@table` key.
 Other keys will have been removed since the data no longer exists in the database.
+
+Example:
+## Find lesson record in db with id of 12 and store in theRecordA
+sqlrecord_find "lessons", 12, theRecordA
+
+sqlrecord_delete theRecordA
+put the result into theError
 
 Returns:
 it: Number of affected rows
@@ -10836,13 +10840,16 @@ end sqlrecord_delete
 Summary: Creates records in a database using a SQL Record object.
 
 Parameters:
-@xRecordsA: SQL Records object/array of SQL Record objects (numerically indexed).
+xRecordsA: SQL Records object/array of SQL Record objects (numerically indexed).
 pRefreshRecords: Pass in `false` if you do not want to refresh the records with data from the database after you create them.
 
 Description:
 This command creates records in the database based on the SQL Record object you pass in.
 
-```
+If you pass in empty values for any of the fields in the primary key for the table then they \
+will not be included in the `CREATE` statement.
+
+Example:
 put sqlrecord_createObject("lessons") into theRecordA
 sqlrecord_set theRecordA, "title", "A new title"
 sqlrecord_set theRecordA, "description", "It's a description."
@@ -10850,10 +10857,6 @@ sqlrecord_create theRecordA
 put the result into theError
 
 ## theRecordA["id"] is now filled in with new id in database for this record
-```
-
-If you pass in empty values for any of the fields in the primary key for the table then they \
-will not be included in the CREATE statement.
 
 Returns:
 it: Number of affected rows
@@ -10953,7 +10956,7 @@ Summary: Inserts a record into the database.
 pConnectionA:
 pQuotesA:
 pTablesA:
-@xRecordA:
+xRecordA:
 pUpdateRecordAfterCreate: Pass in true to update xRecordA with the db record contents after performing the insert.
 pSendCallbacks: Set to true to send `before/after create callbacks`.
 
@@ -11207,15 +11210,15 @@ end _RetrieveUpdatedRecordAfterDbMod
 Summary: Links two records represented by xRecord1A and xRecord2A together in the database.
 
 Parameters:
-@xRecord1A: The primary Record array.
-@xRecord2A: The Record array that should be linked to xRecord1A.
+xRecord1A: The primary Record array.
+xRecord2A: The Record array that should be linked to xRecord1A.
 
 Description:
 This handler will link two records together if you have defined a relationship between
 the two tables. You just need to fill in the column keys for each record that are
 needed to uniquely identify them.
 
-```
+Example:
 put sqlrecord_createObject("lessons") into theLessonA
 sqlrecord_set theLessonA, "id", 2
 
@@ -11223,7 +11226,6 @@ put sqlrecord_createObject("steps") into theStepA
 sqlrecord_set theStepA, "id", 15
 
 sqlrecord_link theLessonA, theStepA
-```
 
 Returns: Error message
 */
@@ -11254,15 +11256,15 @@ end sqlrecord_link
 Summary: Unlinks the two records represented by xRecord1A and xRecord2A in the database.
 
 Parameters:
-@xRecord1A: The primary Record array.
-@xRecord2A: The Record array that should be unlinked from xRecord1A.
+xRecord1A: The primary Record array.
+xRecord2A: The Record array that should be unlinked from xRecord1A.
 
 Description:
 This handler will unlink two records from each other if you have defined a relationship between
 the two tables. You just need to fill in the column keys for each record that are
 needed to uniquely identify them.
 
-```
+Example:
 put sqlrecord_createObject("lessons") into theLessonA
 sqlrecord_set theLessonA, "id", 2
 
@@ -11270,7 +11272,6 @@ put sqlrecord_createObject("steps") into theStepA
 sqlrecord_set theStepA, "id", 15
 
 sqlrecord_unlink theLessonA, theStepA
-```
 
 Returns: Error message
 */
