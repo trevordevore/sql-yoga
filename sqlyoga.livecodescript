@@ -1228,7 +1228,7 @@ private command _ConvertRowTableFieldsToArray pConnectionA, pRowA, pTable, @xOut
     ## many-to-many and one-to-one (note that cross-ref table is 'many-to-many cross reference') can
     ## only have one record so we don't store results in a indexed list [1], [2], etc. We store the result
     ## directly in the table key i.e. [steps][col1], [steps][col2], etc.
-    if xTableHierarchyA[pTable]["relationship to parent"] is among the items of "many-to-many,one-to-one" then
+    if xTableHierarchyA[pTable]["relationship to parent"] is among the items of "n-n,1-1" then
       put -1 into theIndex
     else
       if usingAnArray then
@@ -1331,21 +1331,28 @@ private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pPa
     ## put in parent
     put pParentTable into xHierarchyA[theTable]["parent"]
 
-    ## put in relationship to parent
+    ## put in relationship to parent and normalize
     put theRelationA["type"] into xHierarchyA[theTable]["relationship to parent"]
     switch theRelationA["type"]
       case "many-to-many"
+      case "n-n"
         if theTable is theRelationA["cross-reference table"] then
-          put "many-to-many cross reference" into xHierarchyA[theTable]["relationship to parent"]
+          put "n-n cross reference" into xHierarchyA[theTable]["relationship to parent"]
+        else
+          put "n-n" into xHierarchyA[theTable]["relationship to parent"]
         end if
         break
       case "one-to-many"
+      case "1-n"
         if theTable is theRelationA["right table"] then
-          put "many-to-one" into xHierarchyA[theTable]["relationship to parent"]
+          put "n-1" into xHierarchyA[theTable]["relationship to parent"]
+        else
+          put "1-n" into xHierarchyA[theTable]["relationship to parent"]
         end if
         break
       case "one-to-one"
-        -- nothing
+      case "1-1"
+        put "1-1" into xHierarchyA[theTable]["relationship to parent"]
         break
     end switch
 
@@ -1667,20 +1674,22 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
     -- put theRelationA["left table"]["key field indexes"] into theLeftFieldIndexes
 
     ## taint check
-    if (theRelationA["type"] is "many-to-many" and pRightTable is not theRelationA["cross-reference table"]) and \
-          (theRelationA["type"] is not "many-to-many" and pRightTable is not theRelationA["right table"])  then
+    if (theRelationA["type"] is among the items of "n-n,many-to-many" and pRightTable is not theRelationA["cross-reference table"]) and \
+          (theRelationA["type"] is not among the items of "n-n,many-to-many" and pRightTable is not theRelationA["right table"])  then
       _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
     end if
 
     ## Get fields
     switch theRelationA["type"]
       case "many-to-many"
+      case "n-n"
         -- put theRelationA["cross-reference table"]["keys"]["right table field indexes"] into theRightFieldIndexes
         put tblrelation_get(pRelationA, "cross-reference table key for left table") into theRightFields
         break
       case "one-to-one"
+      case "1-1"
         ## Enforce ownership rules for one-to-one
-        if theRelationA["owner"] is "right" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a one-to-one relationship with owner='right'"
+        if theRelationA["owner"] is "right" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='right'"
         put tblrelation_get(pRelationA, "right table key") into theRightFields
         break
       default
@@ -1693,20 +1702,22 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
     -- put theRelationA["right table"]["key field indexes"] into theLeftFieldIndexes
 
     ## taint check
-    if (theRelationA["type"] is "many-to-many" and pRightTable is not theRelationA["cross-reference table"]) or \
-          (theRelationA["type"] is not "many-to-many" and pRightTable is not theRelationA["left table"])  then
+    if (theRelationA["type"] is among the items of "n-n,many-to-many" and pRightTable is not theRelationA["cross-reference table"]) or \
+          (theRelationA["type"] is not among the items of "n-n,many-to-many" and pRightTable is not theRelationA["left table"])  then
       _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' for " & param(0)
     end if
 
     ## Get fields
     switch theRelationA["type"]
       case "many-to-many"
+      case "n-n"
         -- put theRelationA["cross-reference table"]["keys"]["left table field indexes"] into theRightFieldIndexes
         put tblrelation_get(pRelationA, "cross-reference table key for right table") into theRightFields
         break
       case "one-to-one"
+      case "1-1"
         ## Enforce ownership rules for one-to-one
-        if theRelationA["owner"] is "left" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a one-to-one relationship with owner='left'"
+        if theRelationA["owner"] is "left" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='left'"
         put tblrelation_get(pRelationA, "left table key") into theRightFields
         break
       default
@@ -1863,7 +1874,7 @@ private function _StringToJoins pRootTableA, pString
           end if
 
           ## If this is a many-to-many and the to table IS NOT the cross-reference table then add in the cross-ref table
-          if theRelationshipType is "many-to-many" and theToTable is not theCrossRefTable then
+          if theRelationshipType is among the items of "n-n,many-to-many" and theToTable is not theCrossRefTable then
             put theCrossRefTable into theJoinsA[ theJoinDynamicKeyA ]["table"]["name"]
             put theRelationsA[i]["index"] into theJoinsA[ theJoinDynamicKeyA ]["relationship index"]
 
@@ -2958,7 +2969,7 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
         tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
       end repeat
 
-      if tRelationshipsA[i]["type"] is "many-to-many" then
+      if tRelationshipsA[i]["type"] is among the items of "n-n,many-to-many" then
         repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
               "cross-reference table key for right table"
           tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
@@ -6725,7 +6736,7 @@ function tblrelation_get pRelationA, pProp, pDBKey
       end if
 
       ## field|field=value,...
-      if sDbsA[ theKeyA ]["type"] is "many-to-many" then
+      if sDbsA[ theKeyA ]["type"] is among the items of "n-n,many-to-many" then
         if word 1 of pProp is "left" then
           put "left to cross-reference" into theJoinType
           put "left" into theJoinKey
@@ -6845,13 +6856,13 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
   ## Set
   switch pProp
     case "type"
-      if pValue is not among the items of "one-to-many,one-to-one,many-to-many" then \
+      if pValue is not among the items of "one-to-many,1-n,one-to-one,1-1,many-to-many,n-n" then \
             _ThrowError kErrInvalidProperty, "invalid relationship type '" & pValue & "'"
 
       ## Reset joins if no longer valid
       if sDbsA[ theKeyA ]["type"] is not empty and \
-            ( (sDbsA[ theKeyA ]["type"] is "many-to-many" and pValue is not "many-to-many") or \
-            (pValue is "many-to-many" and sDbsA[ theKeyA ]["type"] is not "many-to-many") ) then
+            ( (sDbsA[ theKeyA ]["type"] is among the items of "n-n,many-to-many" and pValue is not among the items of "n-n,many-to-many") or \
+            (pValue is among the items of "n-n,many-to-many" and sDbsA[ theKeyA ]["type"] is not among the items of "n-n,many-to-many") ) then
         put empty into sDbsA[ theKeyA ]["joins"]
       end if
 
@@ -6860,9 +6871,11 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
       ## Enforce ownership rules
       switch pValue
         case "one-to-many"
+        case "1-n"
           put "left" into sDbsA[ theKeyA ]["owner"]
           break
         case "many-to-many"
+        case "n-n"
           put "none" into sDbsA[ theKeyA ]["owner"]
           break
       end switch
@@ -6870,7 +6883,8 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
 
     case "owner"
       if pValue is not among the items of "left,none,right" then _ThrowError kErrInvalidProperty, "invalid owner type '" & pValue & "'"
-      if (pValue is not "left" and sDbsA[ theKeyA ]["type"] is "one-to-many") or (pValue is not "none" and sDbsA[ theKeyA ]["type"] is "many-to-many") then
+      if (pValue is not "left" and sDbsA[ theKeyA ]["type"] is among the items of "1-n,one-to-many") \
+            or (pValue is not "none" and sDbsA[ theKeyA ]["type"] is among the items of "n-n,many-to-many") then
         _ThrowError kErrInvalidProperty, "invalid owner '" & pValue & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
       end if
       put pValue into sDbsA[ theKeyA ]["owner"]
@@ -6905,7 +6919,7 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
     case "right table key"
     case "cross-reference table key for left table"
     case "cross-reference table key for right table"
-      if sDbsA[ theKeyA ]["type"] is not "many-to-many" and \
+      if sDbsA[ theKeyA ]["type"] is not among the items of "n-n,many-to-many" and \
             word 1 of pProp is "cross-reference" then _ThrowError kErrInvalidProperty, "invalid property '" & pProp & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
 
       local theTable, theFieldNames, theIndex, theFieldIndex, theFieldName
@@ -6943,7 +6957,7 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
             put pValue[i] into sDBsA[ theKeyA ]["joins"]["right to cross-reference"][i]["cross-reference"]
           end if
         else
-          if sDbsA[ theKeyA ]["type"] is "many-to-many" then
+          if sDbsA[ theKeyA ]["type"] is among the items of "n-n,many-to-many" then
             if word 1 of pProp is "left" then
               put pValue[i] into sDBsA[ theKeyA ]["joins"]["left to cross-reference"][i]["left"]
             else
@@ -9979,7 +9993,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
     put pConnectionA["name"] into theRelationA["connection"] ## in order to get db quotes for field=value keys
     put tblrelation_get(theRelationA, "order by") into theOrderBy
 
-    if tblrelation_get(theRelationA, "type") is "many-to-many" then
+    if tblrelation_get(theRelationA, "type") is among the items of "n-n,many-to-many" then
       put tblrelation_get(theRelationA, "cross-reference table") into theCrossRefTable
 
       if pRelatedTable is tblrelation_get(theRelationA, "left table") then
@@ -11330,6 +11344,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
   if theError is empty then
     switch tblrelation_get(theRelationA, "type")
       case "many-to-many"
+      case "n-n"
         ## todo: do many-to-many
         if tblrelation_get(theRelationA, "cross-reference table") is among the items of (theTable1A["name"] & comma & theTable2A["name"]) then
           ## todo: add support for this
@@ -11427,7 +11442,9 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
         break
 
       case "one-to-one"
+      case "1-1"
       case "one-to-many"
+      case "1-n"
         ## Insert key value of left table record into key of right table record
         if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
           put xRecord1A into theLeftRecordA
