@@ -59,6 +59,8 @@ constant kDefaultJoinType = "inner"
 constant kDatabaseKeyNotFound = "database key %s%s%s was not found"
 constant kInvalidType = "invalid array type for"
 constant kInvalidCursor = "invalid database cursor"
+constant kErrorSQLExecution = "sqlyoga_executesql_err"
+constant kErrorSQLConnection = "sqlyoga_connection_err"
 
 local sDbsA
 local sConnectionsA
@@ -1102,7 +1104,7 @@ Summary: Converts a db cursor to a hierarchal array of Record objects based on r
 xQueryA: The SQL Query object that created the cursor.
 xOutArray: The resulting array of Record objects.
 
-Returns: Error
+Returns: Empty
 */
 private command _HierarchalCursorToArray @xQueryA, @xOutArray
   local theCursorFields, theType, theRowA
@@ -1115,69 +1117,65 @@ private command _HierarchalCursorToArray @xQueryA, @xOutArray
   put dbconn_get("type", xQueryA["connection"]) into theType
 
   ## Initialize
-  if theError is empty then
-    if theType is "valentina" then
-      put _ValentinaFieldsFromCursor(xQueryA["cursor id"]) into theCursorFields
-    else
-      put revDatabaseColumnNames(xQueryA["cursor id"]) into theCursorFields
-    end if
-    replace comma with cr in theCursorFields
-    put _QueryTableHierarchyStructure(xQueryA, theCursorFields) into theHierarchyA
+  if theType is "valentina" then
+    put _ValentinaFieldsFromCursor(xQueryA["cursor id"]) into theCursorFields
+  else
+    put revDatabaseColumnNames(xQueryA["cursor id"]) into theCursorFields
   end if
+  replace comma with cr in theCursorFields
+  put _QueryTableHierarchyStructure(xQueryA, theCursorFields) into theHierarchyA
 
   # We are converting a SQL cursor to a hierarchal data structure.  Each row represents multiple dimensions of
   # an array.  SQL results will include duplicates result sets of parent table data for each child table data
   # returned.  We store a list of unique keys that identify table records in each dimension.  This enables us
   # filter out duplicate entries.
-  if theError is empty then
-    put sqlquery_get(xQueryA, "table") into theRootTable
-    put sqlquery_get(xQueryA, "connection") into theConnectionA
+  put sqlquery_get(xQueryA, "table") into theRootTable
+  put sqlquery_get(xQueryA, "connection") into theConnectionA
 
-    if theType is "valentina" then
-      ##
-      ## VALENTINA
-      ##
-      if VCursor_FirstRecord(xQueryA["cursor id"]) then
-        repeat forever
-          add 1 to theIndex
-          _CursorRowToArray xQueryA, theCursorFields, theRowA, empty
+  if theType is "valentina" then
+    ##
+    ## VALENTINA
+    ##
+    if VCursor_FirstRecord(xQueryA["cursor id"]) then
+      repeat forever
+        add 1 to theIndex
+        _CursorRowToArray xQueryA, theCursorFields, theRowA, empty
 
-          ## move over any db/connection info
-          put xQueryA["database"] into theRowA["@database"]
-          put xQueryA["connection"] into theRowA["@connection"]
+        ## move over any db/connection info
+        put xQueryA["database"] into theRowA["@database"]
+        put xQueryA["connection"] into theRowA["@connection"]
 
-          ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
+        ## Convert to hierarchy
+        _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
 
-          get VCursor_NextRecord( xQueryA["cursor id"])
-          if not it then exit repeat
-        end repeat
-      end if
+        get VCursor_NextRecord( xQueryA["cursor id"])
+        if not it then exit repeat
+      end repeat
+    end if
 
-    else
-      ##
-      ## OTHER
-      ##
-      if not revQueryIsAtEnd(xQueryA["cursor id"]) then
-        repeat forever
-          add 1 to theIndex
-          _CursorRowToArray xQueryA, theCursorFields, theRowA, empty
+  else
+    ##
+    ## OTHER
+    ##
+    if not revQueryIsAtEnd(xQueryA["cursor id"]) then
+      repeat forever
+        add 1 to theIndex
+        _CursorRowToArray xQueryA, theCursorFields, theRowA, empty
 
-          ## move over any db/connection info
-          put xQueryA["database"] into theRowA["@database"]
-          put xQueryA["connection"] into theRowA["@connection"]
+        ## move over any db/connection info
+        put xQueryA["database"] into theRowA["@database"]
+        put xQueryA["connection"] into theRowA["@connection"]
 
-          ## Convert to hierarchy
-          _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
+        ## Convert to hierarchy
+        _ConvertRowTableFieldsToArray theConnectionA, theRowA, theRootTable, xOutArray, theHierarchyA, empty
 
-          revMoveToNextRecord xQueryA["cursor id"]
-          if not the result then exit repeat
-        end repeat
-      end if
+        revMoveToNextRecord xQueryA["cursor id"]
+        if not the result then exit repeat
+      end repeat
     end if
   end if
 
-  return theError
+  return empty
 end _HierarchalCursorToArray
 
 
@@ -1975,15 +1973,13 @@ end _DynamicKeyForRelationshipInJoin
 
 
 private command _VerifyTableJoins pParentTableA, @xJoinsA, pDynamicKeyA
-  -----
   local i, theCharNo, theAs
   local theChildTableA
   local theCount
-  local theError
   local theNextIndex
   local theRelationA
   local theTargetIndex
-  -----
+
   if pDynamicKeyA is not an array then
     put 1 into theTargetIndex
     put the number of elements of xJoinsA into theCount
@@ -2050,18 +2046,15 @@ private command _VerifyTableJoins pParentTableA, @xJoinsA, pDynamicKeyA
       add 1 to theNextIndex
       put "related table joins" into pDynamicKeyA[theNextIndex]
       _VerifyTableJoins theChildTableA, xJoinsA, pDynamicKeyA
-      put the result into theError
 
       ## Restore dynamica key for next iteration
       delete local pDynamicKeyA[theNextIndex]
     else
       put empty into xJoinsA[pDynamicKeyA]["related table joins"]
     end if
-
-    if theError is not empty then exit repeat
   end repeat
 
-  return theError
+  return empty
 end _VerifyTableJoins
 
 
@@ -2886,120 +2879,113 @@ schema:
             type:
 ```
 
-Returns: Error message
+Returns: empty
 */
 command dbobject_initialize pDbA, pRootFolder, pDBKey
-  local theError, tConnectionsA, tRelationshipsA, tScopesA, tTablesA
+  local tConnectionsA, tRelationshipsA, tScopesA, tTablesA
   local tKey, tTable, tField, tProp, tVendor, i
 
-  if theError is empty then
-    put pDbA["connections"] into tConnectionsA
-    put pDbA["relationships"] into tRelationshipsA
-    put pDbA["scopes"] into tScopesA
-    put pDbA["tables"] into tTablesA
+  put pDbA["connections"] into tConnectionsA
+  put pDbA["relationships"] into tRelationshipsA
+  put pDbA["scopes"] into tScopesA
+  put pDbA["tables"] into tTablesA
 
-    delete local pDbA["connections"]
-    delete local pDbA["relationships"]
-    delete local pDbA["scopes"]
-    delete local pDbA["tables"]
+  delete local pDbA["connections"]
+  delete local pDbA["relationships"]
+  delete local pDbA["scopes"]
+  delete local pDbA["tables"]
 
-    # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
-    repeat for each key tTable in pDbA["schema"]["tables"]
-      repeat for each key tField in pDbA["schema"]["tables"][tTable]["fields"]
-        put tField into pDbA["schema"]["tables"][tTable]["fields"][tField]["name"]
-      end repeat
+  # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
+  repeat for each key tTable in pDbA["schema"]["tables"]
+    repeat for each key tField in pDbA["schema"]["tables"][tTable]["fields"]
+      put tField into pDbA["schema"]["tables"][tTable]["fields"][tField]["name"]
     end repeat
+  end repeat
 
-    dbobject_createFromArray pDbA, pDBKey
-    put the result into theError
-  end if
+  dbobject_createFromArray pDbA, pDBKey
 
   # Set up connections
-  if theError is empty then
-    repeat for each key tKey in tConnectionsA
-      dbconn_createObject tKey, tConnectionsA[tKey]["adaptor"], tConnectionsA[tKey]["type"], pDBKey
+  repeat for each key tKey in tConnectionsA
+    dbconn_createObject tKey, tConnectionsA[tKey]["adaptor"], tConnectionsA[tKey]["type"], pDBKey
 
-      if tConnectionsA[tKey]["file"] is not empty then
-        put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
-        dbconn_set "file", tConnectionsA[tKey]["file"], tKey, pDBKey
-      else if tConnectionsA[tKey]["database name"] is not empty then
-        dbconn_set "database name", tConnectionsA[tKey]["database name"], tKey, pDBKey
-      end if
+    if tConnectionsA[tKey]["file"] is not empty then
+      put resolveFilenameReference(tConnectionsA[tKey]["file"], pRootFolder) into tConnectionsA[tKey]["file"]
+      dbconn_set "file", tConnectionsA[tKey]["file"], tKey, pDBKey
+    else if tConnectionsA[tKey]["database name"] is not empty then
+      dbconn_set "database name", tConnectionsA[tKey]["database name"], tKey, pDBKey
+    end if
 
-      repeat for each item tProp in "host,port,username,password,use ssl,dsn,quote identifiers"
-        if tConnectionsA[tKey][tProp] is empty then next repeat
+    repeat for each item tProp in "host,port,username,password,use ssl,dsn,quote identifiers"
+      if tConnectionsA[tKey][tProp] is empty then next repeat
 
-        dbconn_set tProp, tConnectionsA[tKey][tProp], tKey, pDBKey
-      end repeat
+      dbconn_set tProp, tConnectionsA[tKey][tProp], tKey, pDBKey
+    end repeat
 
-      repeat for each key tVendor in tConnectionsA[tKey]["vendor"]
-        repeat for each key tProp in tConnectionsA[tKey]["vendor"][tVendor]
-          dbconn_setVendor tVendor, tProp, tConnectionsA[tKey]["vendor"][tVendor][tProp], tKey, pDBKey
-        end repeat
+    repeat for each key tVendor in tConnectionsA[tKey]["vendor"]
+      repeat for each key tProp in tConnectionsA[tKey]["vendor"][tVendor]
+        dbconn_setVendor tVendor, tProp, tConnectionsA[tKey]["vendor"][tVendor][tProp], tKey, pDBKey
       end repeat
     end repeat
-  end if
+  end repeat
 
   # Set up tables, scopes, and relationships
-  if theError is empty then
-    repeat with i = 1 to the number of elements of tTablesA
-      if not tableobjects_tableExists(tTablesA[i]["name"], pDBKey) then
-        tableobj_createObject tTablesA[i]["name"], "table", pDBKey
-      end if
+  repeat with i = 1 to the number of elements of tTablesA
+    if not tableobjects_tableExists(tTablesA[i]["name"], pDBKey) then
+      tableobj_createObject tTablesA[i]["name"], "table", pDBKey
+    end if
 
-      repeat for each item tKey in "type,name,alias for table,conditions,primary key"
-        if tKey is among the keys of tTablesA[i] then
-          tableobj_set tTablesA[i]["name"], tKey, tTablesA[i][tKey], pDBKey
-        end if
-      end repeat
+    repeat for each item tKey in "type,name,alias for table,conditions,primary key"
+      if tKey is among the keys of tTablesA[i] then
+        tableobj_set tTablesA[i]["name"], tKey, tTablesA[i][tKey], pDBKey
+      end if
+    end repeat
+  end repeat
+
+  repeat with i = 1 to the number of elements of tRelationshipsA
+    tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
+
+    repeat for each item tKey in "left table,right table,cross-reference table"
+      if tRelationshipsA[i][tKey] is not empty \
+            and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
+        tableobj_createObject tRelationshipsA[i][tKey], "table", pDBKey
+      end if
     end repeat
 
-    repeat with i = 1 to the number of elements of tRelationshipsA
-      tblrelation_createObject tRelationshipsA[i]["name"], pDBKey
+    repeat for each item tKey in "type,left table,left table key," & \
+          "right table,right table key,order by,delete action,update action"
+      tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
+    end repeat
 
-      repeat for each item tKey in "left table,right table,cross-reference table"
-        if tRelationshipsA[i][tKey] is not empty \
-              and not tableobjects_tableExists(tRelationshipsA[i][tKey], pDBKey) then
-          tableobj_createObject tRelationshipsA[i][tKey], "table", pDBKey
-        end if
-      end repeat
-
-      repeat for each item tKey in "type,left table,left table key," & \
-            "right table,right table key,order by,delete action,update action"
+    if tRelationshipsA[i]["type"] is among the items of "n-n,many-to-many" then
+      repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
+            "cross-reference table key for right table"
         tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
       end repeat
+    end if
+  end repeat
 
-      if tRelationshipsA[i]["type"] is among the items of "n-n,many-to-many" then
-        repeat for each item tKey in "cross-reference table,cross-reference table key for left table," & \
-              "cross-reference table key for right table"
-          tblrelation_set tRelationshipsA[i]["name"], tKey, tRelationshipsA[i][tKey]
-        end repeat
+  local tScopeA
+
+  repeat for each key tTable in tScopesA
+    if not tableobjects_tableExists(tTable, pDBKey) then
+      tableobj_createObject tTable, "table", pDBKey
+    end if
+
+    repeat with i = 1 to the number of elements of tScopesA[tTable]
+      tblscope_createObject tTable, tScopesA[tTable][i]["name"], pDBKey
+      put it into tScopeA
+
+      if "joins" is among the keys of tScopesA[tTable][i] then
+        put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
       end if
-    end repeat
 
-    local tScopeA
-
-    repeat for each key tTable in tScopesA
-      if not tableobjects_tableExists(tTable, pDBKey) then
-        tableobj_createObject tTable, "table", pDBKey
-      end if
-
-      repeat with i = 1 to the number of elements of tScopesA[tTable]
-        tblscope_createObject tTable, tScopesA[tTable][i]["name"], pDBKey
-        put it into tScopeA
-
-        if "joins" is among the keys of tScopesA[tTable][i] then
-          put tScopesA[tTable][i]["joins"] into tScopesA[tTable][i]["related table joins"]
-        end if
-
-        repeat for each item tKey in "related table joins,conditions"
-          tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
-        end repeat
+      repeat for each item tKey in "related table joins,conditions"
+        tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
       end repeat
     end repeat
-  end if
+  end repeat
 
-  return theError
+  return empty
 end dbobject_initialize
 
 
@@ -3013,10 +2999,10 @@ pDBKey: Database Object to store created Database Object in. Default is name ret
 Description:
 If you are using SQL Yoga with Levure you will not use this command. Levure uses the YAML configuration files.
 
-Returns: Error message
+Returns: Empty
 */
 command dbobject_createFromObject pObjectID, pDBKey
-  local theDatabaseArray, theError
+  local theDatabaseArray
 
   _ValidateKey pDBKey
   _ValidateDatabaseObject pObjectID
@@ -3024,14 +3010,11 @@ command dbobject_createFromObject pObjectID, pDBKey
   put the uSQLDatabaseObject of pObjectID into theDatabaseArray
   if theDatabaseArray is an array then
     dbobject_createFromArray theDatabaseArray, pDBKey
-    put the result into theError
   end if
 
-  if theError is empty then
-    dbobject_set "storage object", pObjectID, pDBKey
-  end if
+  dbobject_set "storage object", pObjectID, pDBKey
 
-  return theError
+  return empty
 end dbobject_createFromObject
 
 
@@ -3061,7 +3044,6 @@ command dbobject_createFromFile pFile, pDBKey
 
     if theError is empty and it is not empty then
       dbobject_createFromArray arrayDecode(it), pDBKey
-      put the result into theError
     end if
 
     close file pFile
@@ -3085,11 +3067,9 @@ pDBKey: Database Object to store created Database Object in. Default is name ret
 Description:
 If you are using SQL Yoga with Levure you will not use this command. Levure uses the YAML configuration files.
 
-Returns: Error message
+Returns: Empty
 */
 command dbobject_createFromArray pArray, pDBKey
-  local theError
-
   _ValidateKey pDBKey
   _ValidateDatabaseArray pArray
 
@@ -3101,7 +3081,7 @@ command dbobject_createFromArray pArray, pDBKey
 
   put pArray into sDbsA[pDBKey]
 
-  return theError
+  return empty
 end dbobject_createFromArray
 
 
@@ -3187,7 +3167,7 @@ Description:
 Call this handler when you change your database schema and need to tell SQL Yoga about the change.
 You should call dbobject_save after calling this handler so that the updated schema is saved.
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_connection_err,ERROR`.
 */
 command dbobject_reloadSchema pDBKey
   local theError, theConnection
@@ -3197,16 +3177,14 @@ command dbobject_reloadSchema pDBKey
 
   put dbobject_get("default connection", pDBKey) into theConnection
 
-  ## Reset then call connect which reloads the schema
-  if theConnection is not empty then
-    dbschema_reset pDBKey
-    dbconn_connect theConnection, pDBKey
-    put the result into theError
-  else
-    put "no default connection defined for database object" into theError
-  end if
+  # Don't proceed if no connection.
+  _ValidateConnectionExistence pDBKey, theConnection
 
-  return theError
+  ## Reset then call connect which reloads the schema
+  dbschema_reset pDBKey
+  dbconn_connect theConnection, pDBKey
+
+  return empty
 end dbobject_reloadSchema
 
 
@@ -3255,12 +3233,11 @@ Description:
 Returns: Value
 */
 function dbobject_get pProperty, pDBKey
-  -----
   local theA,theKey
   local theArray
   local theIndex
   local theKeys
-  -----
+
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
 
@@ -3338,13 +3315,11 @@ Description:
 | `storage file` | The path to the file to store your database object in. This allows the object to persist across sessions by using `dbobject_createFromFile`. (Not used in conjuction with Levure.) |
 | `storage object` | The long id of the LiveCode control that you would like to save your database object in (as a custom property). This allows the object to persist across sessions by using `dbobject_createFromObject`. (Not used in conjuction with Levure.) |
 
-Returns: Error message
+Returns: Empty
 
 References: dbobject_createFromObject (command), dbobject_createFromFile (command)
 */
 command dbobject_set pProperty, pValue, pDBKey
-  local theError
-
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
 
@@ -3389,7 +3364,7 @@ command dbobject_set pProperty, pValue, pDBKey
       end if
   end switch
 
-  return theError
+  return empty
 end dbobject_set
 
 
@@ -3471,7 +3446,7 @@ function dbobject_getQueryTemplate pTemplateName, pDBKey
     put pDBKey into theA["database"]
     put pTemplateName into theA["name"]
   catch e
-    ## connection doesn't exist
+    ## query template doesn't exist
   end try
 
   return theA
@@ -3487,36 +3462,32 @@ pDBKey: Database Object to create. Default is name returned by `sqlyoga_getDefau
 Description:
 Calling this command will create a new Database Object.
 
-Returns: Error messsage
+Returns: Empty
 */
 command dbobject_createObject pDBKey
-  -----
   local theA
-  local theError
   local theMigrationStamp
-  -----
+
   _ValidateKey pDBKey
 
   if pDBKey is among the keys of sDbsA then
     _ThrowError kErrObjectNameTaken, "database '" & pDBKey & "' already exists"
   end if
 
-  if theError is empty then
-    ## Create root keys
-    put empty into theA["default connection"]
+  ## Create root keys
+  put empty into theA["default connection"]
 
-    put empty into theA["connections"]
-    put empty into theA["query templates"]
-    put empty into theA["schema"]
-    put empty into theA["schema migrations"]
+  put empty into theA["connections"]
+  put empty into theA["query templates"]
+  put empty into theA["schema"]
+  put empty into theA["schema migrations"]
 
-    ## Create table objects
-    put empty into theA["table objects"] --["tables"] / ["relationships"]
+  ## Create table objects
+  put empty into theA["table objects"] --["tables"] / ["relationships"]
 
-    put theA into sDbsA[pDBKey]
-  end if
+  put theA into sDbsA[pDBKey]
 
-  return theError
+  return empty
 end dbobject_createObject
 
 
@@ -3636,18 +3607,17 @@ as simple as:
 dbobject_setprop "default connection", "development"
 ```
 
-Returns: Error message
+Returns: Empty
 */
 command dbconn_createObject pName, pAdaptor, pType, pDBKey
-  -----
   local theA
   local theConnectionA
-  local theError
   local theNextIndex
   local theProp
-  -----
+
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
+
   if word 1 to -1 of pName is empty then  _ThrowError kErrObjectNameTaken, "connection name cannot be empty"
   if pName is among the keys of sDbsA[pDBKey]["connections"] then  _ThrowError kErrObjectNameTaken, "connection '" & pName & "' already exists"
 
@@ -3660,30 +3630,28 @@ command dbconn_createObject pName, pAdaptor, pType, pDBKey
     put pAdaptor into pType
   end if
 
-  if theError is empty then
-    local theTempKeyA
+  local theTempKeyA
 
-    put toLower(pAdaptor) into theA["adaptor"]
-    put toLower(pType) into theA["type"]
-    put pDBKey into theTempKeyA[1]
-    put pName into theTempKeyA[2]
+  put toLower(pAdaptor) into theA["adaptor"]
+  put toLower(pType) into theA["type"]
+  put pDBKey into theTempKeyA[1]
+  put pName into theTempKeyA[2]
 
-    -- repeat for each item theProp in "version,host,database name,username,password,port"
-    -- put empty into theA[theProp]
-    -- end repeat
+  -- repeat for each item theProp in "version,host,database name,username,password,port"
+  -- put empty into theA[theProp]
+  -- end repeat
 
-    put false into theA["quote identifiers"]
+  put false into theA["quote identifiers"]
 
-    ## store it
-    put theA into sDbsA[pDBKey]["connections"][pName]
-  end if
+  ## store it
+  put theA into sDbsA[pDBKey]["connections"][pName]
 
   ## Set as default if empty
   if sDbsA[pDBKey]["default connection"] is empty then
     dbobject_set "default connection", pName, pDBKey
   end if
 
-  return theError
+  return empty
 end dbconn_createObject
 
 
@@ -4219,12 +4187,13 @@ Parameters:
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: integer
+Returns:
+it: Last inserted id
+the result: Empty
 */
 command dbconn_lastInsertedID pConnName, pDBKey
-  local theConnectionA, theConnectionID
+  local theError, theConnectionA, theConnectionID
   local theDo, theID
-  local theError
   local theKeyA
 
   _ValidateKey pDBKey
@@ -4234,66 +4203,60 @@ command dbconn_lastInsertedID pConnName, pDBKey
   put sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["connection id"] into theConnectionID
 
   if theConnectionID <= 0 then
-    put "invalid connection id" into theError
+    _ThrowError kErrorSQLConnection, "invalid connection id"
   end if
 
   if sDbsA[ theKeyA ]["type"] is "valentina" then
     put VDatabase_LastInsertedRecID(theConnectionID) into theID
-    put _valentinaError(theConnectionID) into theError
+    _valentinaError theConnectionID
   else
     local theSQL
 
     ## Generate adaptor specific SQL
-    if theError is empty then
-      local theType
+    local theType
 
-       try
-        put sDbsA[ theKeyA ]["type"] into theType
-        replace space with empty in theType
-        put "put _" & theType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
-        do theDO
-      catch e
-        _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
-      end try
-    end if
+    try
+      put sDbsA[ theKeyA ]["type"] into theType
+      replace space with empty in theType
+      put "put _" & theType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
+      do theDO
+    catch e
+      _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
+    end try
 
-    if theError is empty then
-      dbconn_set "last executed sql", theSQL, theConnectionA
+    dbconn_set "last executed sql", theSQL, theConnectionA
 
-      repeat with queryAttempts = 1 to 2
-        put revDataFromQuery(,, theConnectionID, theSQL) into theID
-        if theID begins with "revdberr," then
-          put theID into theError
-          delete char 1 to length("revdberr,") of theError
-        end if
+    repeat with queryAttempts = 1 to 2
+      put revDataFromQuery(,, theConnectionID, theSQL) into theID
+      if theID begins with "revdberr," then
+        put theID into theError
+        delete char 1 to length("revdberr,") of theError
+      end if
 
-        if theError is not empty then
-          if queryAttempts is 1 then ## Try reconnecting 1 time
-            local theNewConnectionID
+      if theError is not empty then
+        if queryAttempts is 1 then ## Try reconnecting 1 time
+          local theNewConnectionID
 
-            put _TryConnectingAgainBasedOnError(theConnectionA, theError) into theNewConnectionID
-            if theNewConnectionID > 0 then
-              ## try query again with new connection id
-              put theNewConnectionID into theConnectionID
-              put empty into theError
-            else
-              exit repeat
-            end if
+          put _TryConnectingAgainBasedOnError(theConnectionA, theError) into theNewConnectionID
+          if theNewConnectionID > 0 then
+            ## try query again with new connection id
+            put theNewConnectionID into theConnectionID
+            put empty into theError
+          else
+            exit repeat
           end if
-        else
-          exit repeat
         end if
-      end repeat
-    end if
+      else
+        exit repeat
+      end if
+    end repeat
   end if
 
-  _dbconnSetLastError theConnectionA, theError
-
-  if theError is empty then
-    return theID for value
-  else
-    return theError for error
+  if theError is not empty then
+    _ThrowError kErrorSQLExecution, theError && "(" & theSQL & ")"
   end if
+
+  return theID for value
 end dbconn_lastInsertedID
 
 
@@ -4328,11 +4291,6 @@ function dbconn_getBooleanValue pBoolean, pConnName, pDBKey
 
   return theBoolean
 end dbconn_getBooleanValue
-
-
-private command _dbconnSetLastError pConnectionA, pError
-  put pError into sConnectionsA[ pConnectionA["database"] ][ pConnectionA["name"] ]["last error"]
-end _dbconnSetLastError
 
 
 function _sqlite_lastInsertIDSQL pConnectionA
@@ -4373,7 +4331,9 @@ Description:
 SQL Yoga will connect to a database if necessary whenever it tries to execute a query. This handler can be used
 if you need to connect before using a SQL Yoga API call that automatically connects.
 
-Returns: Returns empty. Connection id in `it`. Any errors will be thrown: `sqlyoga_connection_err,ERROR`
+Returns:
+it: Connection id
+the result: Empty. Any errors will be thrown: `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_connect pConnName, pDBKey
   -----
@@ -4485,7 +4445,7 @@ command dbconn_connect pConnName, pDBKey
           end if
         end if
 
-        put _valentinaError(theConnectionID) into theError
+        _valentinaError theConnectionID
 
         if theError is not empty then
           if theConnectionID > 0 and VDatabase_IsOpen(theConnectionID) then
@@ -4580,18 +4540,13 @@ command dbconn_connect pConnName, pDBKey
   end if
 
   if theError is not empty then
-    _ThrowError "sqlyoga_connection_err", theError
+    _ThrowError kErrorSQLConnection, theError
   end if
 
   ## Read in schema if we don't have it
   if _IsPositiveInteger(theConnectionID) and sDbsA[ theConnectionA["database"] ]["schema"]["tables"] is not an array \
         and theConnectionA["import schema"] is not false then
     dbsynch_schemaWithDatabase theConnectionA
-    put the result into theError
-
-    if theError is not empty then
-      _ThrowError "sqlyoga_connection_err", theError
-    end if
   end if
 
   return theConnectionID for value
@@ -4605,27 +4560,20 @@ Parameters:
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_disconnect pConnName, pDBKey
-  -----
   local theConnectionA, theConnectionID
   local theCursor, theCursors
   local theError
   local theKeyA, theTempKeyA
-  -----
-  _ValidateKey pDBKey
-  -- try
-  put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
-  -- catch e
-  -- ## in case no connection exists
-  -- end try
 
-  -- if pConnectionA is an array then
+  _ValidateKey pDBKey
+  put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
+
   put _KeyArrayForConnection(theConnectionA) into theKeyA
   put _KeyArrayForTempConnection(theConnectionA) into theTempKeyA
   put sConnectionsA[ theTempKeyA ]["connection id"] into theConnectionID
-  -- end if
 
   if theConnectionID > 0 then
     set the wholeMatches to true
@@ -4673,8 +4621,11 @@ command dbconn_disconnect pConnName, pDBKey
     delete char 1 to length("revdberr,") of theError
   end if
 
-  _dbconnSetLastError theConnectionA, theError
-  return theError
+  if theError is not empty then
+    _ThrowError kErrorSQLConnection, theError
+  end if
+
+  return empty
 end dbconn_disconnect
 
 
@@ -4694,27 +4645,24 @@ This command will try to reconnect to the database 1 time when certain error mes
 For MySQL this occurs when the error is 'MySQL server has gone away'. For SQLite this occurs
 when the driver returns an error with 'the database file is locked' or 'some kind of disk i/o error occurred'.
 
-Returns: Returns empty. Cursor id in `it`. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`
+Returns:
+it: Cursor id
+the result: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_openCursor pSQL, pBindingsA, pVendorParamsA, pConnName, pDBKey
-  -----
   local theConnectionA, theConnectionID
   local theCursor
   local theError
   local theKeyA, theTempKeyA
-  -----
+
   _ValidateKey pDBKey
 
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
 
   dbconn_connect theConnectionA
-  put the result into theError
-
-  if theError is empty then
-    put it into theConnectionID
-    put _KeyArrayForConnection(theConnectionA) into theKeyA
-    put _KeyArrayForTempConnection(theConnectionA) into theTempKeyA
-  end if
+  put it into theConnectionID
+  put _KeyArrayForConnection(theConnectionA) into theKeyA
+  put _KeyArrayForTempConnection(theConnectionA) into theTempKeyA
 
   if theError is empty then
     dbconn_set "last executed sql", pSQL, theConnectionA
@@ -4798,11 +4746,11 @@ command dbconn_openCursor pSQL, pBindingsA, pVendorParamsA, pConnName, pDBKey
           end if
         end repeat
         break
-    end SWITCH
+    end switch
   end if
 
   if theError is not empty then
-    _ThrowError "sqlyoga_executesql_err", theError && "(" & pSQL & ")"
+    _ThrowError kErrorSQLExecution, theError && "(" & pSQL & ")"
   end if
 
   return theCursor for value
@@ -4848,12 +4796,11 @@ pCursor: Cursor id.
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`.
 */
 command dbconn_closeCursor pCursor, pConnName, pDBKey
-  -----
   local theError, theConnectionA, theKeyA
-  -----
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
 
   put _KeyArrayForConnection(theConnectionA) into theKeyA
@@ -4872,11 +4819,13 @@ command dbconn_closeCursor pCursor, pConnName, pDBKey
         ## we don't care if it wasn't a valid cursor
       end try
       break
-  end SWITCH
+  end switch
 
-  _dbconnSetLastError theConnectionA, theError
+  if theError is not empty then
+    _ThrowError "sqlyoga_executesql_err", theError
+  end if
 
-  return theError
+  return empty
 end dbconn_closeCursor pCursor
 
 
@@ -4893,17 +4842,13 @@ pDBKey: Database Object connection is associated with. Default is name returned 
 
 Returns:
 it: The affected rows
-the result: Error message
+the result: empty
 */
 command dbconn_executeSQL pSQL, pConnName, pDBKey
   local theDataA
 
   dbconn_executeWBindings pSQL, theDataA, pConnName, pDBKey
-  if the result is empty then
-    return it for value
-  else
-    return the result for error
-  end if
+  return it for value
 end dbconn_executeSQL
 
 
@@ -4919,11 +4864,15 @@ Description:
 After calling this command no changes you make to the database will be saved until you call `dbconn_commitTransaction`. You can
 cancel any changes you made to the database by calling `dbconn_rollbackTransaction` rather than `dbconn_commitTransaction`.
 
+Since SQL Yoga will throw errors that occur you need to take that into consideration when
+implementing error handling while a transaction is open.
+
 Example:
 ## Start a transaction in the database.
 dbconn_beginTransaction
 
-# Modify database, checking for errors along the way.
+# Perform multiple calls that modify the database.
+...
 
 ## If nothing went wrong then commit the changes you made.
 if tError is empty then
@@ -4933,15 +4882,14 @@ else
   dbconn_rollbackTransaction
 end if
 
-Returns: Error message
+Returns: empty
 
 References: dbconn_commitTransaction (command), dbconn_rollbackTransaction (command)
 */
 command dbconn_beginTransaction pParamsA, pConnName, pDBKey
-  -----
   local i, theConnectionA
-  local theKeyA, theType, theError
-  -----
+  local theKeyA, theType
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
@@ -4962,25 +4910,16 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
         put "put _" & theType & "_beginTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
         do theDO
       catch e
-        put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
+        _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
       end try
 
-      if theError is empty then
-        try
-          dbconn_executeSQL theSQL, theConnectionA
-          put the result into theError
-        catch e
-          put e into theError
-        end try
-      end if
+      dbconn_executeSQL theSQL, theConnectionA
     end if
   end if
 
-  if theError is empty then
-    add 1 to sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"]
-  end if
+  add 1 to sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"]
 
-  return theError
+  return empty
 end dbconn_beginTransaction
 
 
@@ -5009,7 +4948,7 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
   if sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"] is 1 then
     if sDbsA[ theKeyA ]["type"] is "valentina" then
       get VDatabase_Flush( sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["connection id"] )
-      put _valentinaError( sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["connection id"] ) into theError
+      _valentinaError sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["connection id"]
     else if sDbsA[ theKeyA ]["adaptor"] is "odbc" then
 
     else
@@ -5190,7 +5129,7 @@ private function _filemaker_getBooleanValue pValue
 end _filemaker_getBooleanValue
 
 
-private function _valentinaError pConnID
+private command _valentinaError pConnID
   local theError, theErrNum
 
   put VDatabase_ErrNumber( pConnID ) into theErrNum
@@ -5199,7 +5138,11 @@ private function _valentinaError pConnID
   else if theErrNum < 0 then
     put "OS error ("& theErrNum &")" into theError
   end if
-  return theError
+
+  if theError is not empty then
+    _ThrowError kErrorSQLExecution, theError
+  end if
+  return empty
 end _valentinaError
 
 
@@ -5366,10 +5309,12 @@ pBindingsA: Array of values to bind.  Keyed using integers.
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Returns empty. Affected rows in `it`. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`
+Returns:
+it: Number of affected rows.
+the result: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
-  local theError, theConnectionA, theKeyA, theConnectionID
+  local theConnectionA, theKeyA, theConnectionID
 
   # This might be a good place to add replication.
   # A connection object could have a list of other connection objects that should be replicated to.
@@ -5378,11 +5323,7 @@ command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
   dbconn_connect theConnectionA
-  put the result into theError
-
-  if theError is empty then
-    put it into theConnectionID
-  end if
+  put it into theConnectionID
 
   ## Log last SQL statement
   dbconn_set "last executed sql", pSQL, theConnectionA
@@ -5395,7 +5336,7 @@ command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
     else
       put VDatabase_SqlExecute( theConnectionID, pSQL) into theAffectedRows
     end if
-    put _valentinaError(theConnectionID) into theError
+    _valentinaError theConnectionID
   else
     ##
     ## try reconnecting once
@@ -5430,9 +5371,8 @@ command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
     end repeat
   end if
 
-  --> CHECK FOR ERRORS
   if theAffectedRows is not an integer then
-    _ThrowError "sqlyoga_executesql_err", theAffectedRows && "(" & pSQL & ")"
+    _ThrowError kErrorSQLExecution, theAffectedRows && "(" & pSQL & ")"
   end if
 
   return theAffectedRows for value
@@ -5451,97 +5391,79 @@ pRowDel: Character to delimit rows in the returned text. Default is the default 
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR`
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_retrieveQueryAsData pSQL, pBindingsA, @xOutData, pColDel, pRowDel, pConnName, pDBKey
-  -----
   local theConnectionA, theConnectionID, theKeyA
   local theError
   local theExtraError
-  -----
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
   dbconn_connect theConnectionA
-  put the result into theError
+  put it into theConnectionID
 
-  if theError is empty then
-    put it into theConnectionID
+  local theLocation
+
+  dbconn_set "last executed sql", pSQL, theConnectionA
+
+  if sDbsA[ theKeyA ]["type"] is "valentina" then
+    --   put VDatabase_SqlSelectRecords( mDatabase, "SELECT a1 FROM T1 WHERE a1 = 1 or a1 = 2", \
+        -- "kServerSide", "kReadWrite",, 1, 3, " ", " ", "<td>", "</td>" , "<tr>", "</tr>") into res
+    if sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["valentina client connection id"] > 0 then
+      put "kServerSide" into theLocation
+    else
+      put "kClientSide" into theLocation
+    end if
+    if the keys of pBindingsA is not empty then
+      put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "pBindingsA", 1, -1, \
+            pColDel, pRowDel, "", "", "", "") into xOutData
+    else
+      put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "", 1, -1, \
+            pColDel, pRowDel, "", "", "", "") into xOutData
+    end if
+    _valentinaError theConnectionID
+  else
+    repeat with queryAttempts = 1 to 2
+      if the keys of pBindingsA is not empty then
+        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL, pBindingsA) into xOutData
+      else
+        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL) into xOutData
+      end if
+      if char 1 to 9 of xOutData is "revdberr," then
+        delete char 1 to 9 of xOutData
+        put xOutData into theError
+        put empty into xOutData
+
+        set the itemDelimiter to ":"
+        if item 1 of theError is "Database Error" then
+          delete item 1 of theError
+          put word 1 to -1 of theError into theError
+        end if
+      end if
+
+      if theError is not empty then
+        if queryAttempts is 1 then ## Try reconnecting once
+          local theNewConnectionID
+
+          put _TryConnectingAgainBasedOnError(theConnectionA, theError) into theNewConnectionID
+          if theNewConnectionID > 0 then
+            ## Try query again using new connection id
+            put theNewConnectionID into theConnectionID
+            put empty into theError
+          else
+            exit repeat
+          end if
+        end if
+      else
+        exit repeat
+      end if
+    end repeat
   end if
 
-  if theError is empty then
-    local theLocation
-
-    dbconn_set "last executed sql", pSQL, theConnectionA
-
-    if sDbsA[ theKeyA ]["type"] is "valentina" then
-      --   put VDatabase_SqlSelectRecords( mDatabase, "SELECT a1 FROM T1 WHERE a1 = 1 or a1 = 2", \
-          -- "kServerSide", "kReadWrite",, 1, 3, " ", " ", "<td>", "</td>" , "<tr>", "</tr>") into res
-      if sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["valentina client connection id"] > 0 then
-        put "kServerSide" into theLocation
-      else
-        put "kClientSide" into theLocation
-      end if
-      if the keys of pBindingsA is not empty then
-        put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "pBindingsA", 1, -1, \
-              pColDel, pRowDel, "", "", "", "") into xOutData
-      else
-        put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "", 1, -1, \
-              pColDel, pRowDel, "", "", "", "") into xOutData
-      end if
-      put _valentinaError(theConnectionID) into theError
-    else
-      repeat with queryAttempts = 1 to 2
-        if the keys of pBindingsA is not empty then
-          put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL, pBindingsA) into xOutData
-        else
-          put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL) into xOutData
-        end if
-        if char 1 to 9 of xOutData is "revdberr," then
-          delete char 1 to 9 of xOutData
-          put xOutData into theError
-          put empty into xOutData
-
-          set the itemDelimiter to ":"
-          if item 1 of theError is "Database Error" then
-            delete item 1 of theError
-            put word 1 to -1 of theError into theError
-            -- put line 2 to -1 of theError into theExtraError
-            -- put line 1 of theError into theError
-            -- if the environment is "development" then
-            -- if theExtraError is not empty then
-            -- put "Extra error information for" && param(0) && ":" && theExtraError
-            -- end if
-            -- end if
-          end if
-        end if
-
-        if theError is not empty then
-          if queryAttempts is 1 then ## Try reconnecting once
-            local theNewConnectionID
-
-            put _TryConnectingAgainBasedOnError(theConnectionA, theError) into theNewConnectionID
-            if theNewConnectionID > 0 then
-              ## Try query again using new connection id
-              put theNewConnectionID into theConnectionID
-              put empty into theError
-            else
-              exit repeat
-            end if
-          end if
-        else
-          exit repeat
-        end if
-
-      end repeat
-
-    end if
-
-    if theError is not empty then
-      ## New throw behavior
-      _ThrowError "sqlyoga_executesql_err", theError && "(" & pSQL & ")"
-      -- throw "sqlyoga_executesql_err," & theError && "(" & pSQL & ")"
-    end if
+  if theError is not empty then
+    _ThrowError kErrorSQLExecution, theError && "(" & pSQL & ")"
   end if
 
   return empty
@@ -5572,7 +5494,7 @@ theDataA[1]["email"]
 theDataA[2]["name"]
 theDataA[2]["email"]
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command dbconn_retrieveQueryAsArray pSQL, pVendorParamsA, pBindingsA, @xOutArray, pConnName, pDBKey
   -----
@@ -5589,48 +5511,39 @@ command dbconn_retrieveQueryAsArray pSQL, pVendorParamsA, pBindingsA, @xOutArray
   if theIndex is not an integer then put 0 into theIndex
 
   dbconn_connect theConnectionA
-  put the result into theError
+  put it into theConnectionID
 
-  if theError is empty then
-    put it into theConnectionID
-  end if
+  dbconn_openCursor pSQL, pBindingsA, pVendorParamsA, theConnectionA
+  put it into theQueryA["cursor id"]
 
-  if theError is empty then
-    dbconn_openCursor pSQL, pBindingsA, pVendorParamsA, theConnectionA
-    put the result into theError
-    put it into theQueryA["cursor id"]
-  end if
+  put theConnectionA["database"] into theQueryA["database"]
+  put theConnectionA["name"] into theQueryA["connection"]
+  put pVendorParamsA["report null"] into theQueryA["report null"]
 
-  if theError is empty then
-    put theConnectionA["database"] into theQueryA["database"]
-    put theConnectionA["name"] into theQueryA["connection"]
-    put pVendorParamsA["report null"] into theQueryA["report null"]
+  if dbconn_get("type", theConnectionA) is "valentina" then
+    put _ValentinaFieldsFromCursor(theQueryA["cursor id"]) into theFields
 
-    if dbconn_get("type", theConnectionA) is "valentina" then
-      put _ValentinaFieldsFromCursor(theQueryA["cursor id"]) into theFields
+    if VCursor_FirstRecord(theQueryA["cursor id"]) then
+      repeat forever
+        add 1 to theIndex
+        put theIndex into theDynamicKeyA[1]
+        _CursorRowToArray theQueryA, theFields, xOutArray, theDynamicKeyA
+        get VCursor_NextRecord( theQueryA["cursor id"] )
+        if not it then exit repeat
+      end repeat
+    end if
 
-      if VCursor_FirstRecord(theQueryA["cursor id"]) then
-        repeat forever
-          add 1 to theIndex
-          put theIndex into theDynamicKeyA[1]
-          _CursorRowToArray theQueryA, theFields, xOutArray, theDynamicKeyA
-          get VCursor_NextRecord( theQueryA["cursor id"] )
-          if not it then exit repeat
-        end repeat
-      end if
+  else
+    if not revQueryIsAtEnd(theQueryA["cursor id"]) then
+      put revDatabaseColumnNames(theQueryA["cursor id"]) into theFields
 
-    else
-      if not revQueryIsAtEnd(theQueryA["cursor id"]) then
-        put revDatabaseColumnNames(theQueryA["cursor id"]) into theFields
-
-        repeat forever
-          add 1 to theIndex
-          put theIndex into theDynamicKeyA[1]
-          _CursorRowToArray theQueryA, theFields, xOutArray, theDynamicKeyA
-          revMoveToNextRecord theQueryA["cursor id"]
-          if not the result then exit repeat
-        end repeat
-      end if
+      repeat forever
+        add 1 to theIndex
+        put theIndex into theDynamicKeyA[1]
+        _CursorRowToArray theQueryA, theFields, xOutArray, theDynamicKeyA
+        revMoveToNextRecord theQueryA["cursor id"]
+        if not the result then exit repeat
+      end repeat
     end if
   end if
 
@@ -5638,7 +5551,7 @@ command dbconn_retrieveQueryAsArray pSQL, pVendorParamsA, pBindingsA, @xOutArray
     dbconn_closeCursor theQueryA["cursor id"], theConnectionA
   end if
 
-  return theError
+  return empty
 end dbconn_retrieveQueryAsArray
 
 
@@ -5711,7 +5624,7 @@ Summary: Deletes a Scope Object from a Table Object.
 Parameters:
 pScopeA: Scope reference array. See `tableobj_getScope()`.
 
-Returns: Error message.
+Returns: Empty.
 
 References: tableobj_getScope (function)
 */
@@ -6044,14 +5957,12 @@ the `attributes` table and to add `type="region"` to the WHERE condition.
 
 Returns:
 it: Table Object reference array
-the result: Error message
+the result: Empty
 */
 command tableobj_createObject pName, pType, pDBKey
-  -----
   local theA
-  local theError
   local theProp
-  -----
+
   _ValidateKey pDBKey
 
   if pType is empty then put "table" into pType
@@ -6083,11 +5994,7 @@ command tableobj_createObject pName, pType, pDBKey
   put pDBKey into theA["database"]
   put pName into theA["name"]
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theA for value
-  end if
+  return theA for value
 end tableobj_createObject
 
 
@@ -6123,7 +6030,7 @@ Parameters:
 pName: The name of the Table Object to delete.
 pDBKey: Database Object table is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Error message
+Returns: Empty.
 */
 command tableobj_deleteObject pTableA, pDBKey
   local theKeyA, theRelationA, theRelationIndex, theRelationProp
@@ -6585,11 +6492,9 @@ it: Relationship Reference array
 the result: Error message
 */
 command tblrelation_createObject pName, pDBKey
-  -----
   local theA, theExistingIndex, theNextIndex
-  local theError
   local theProp
-  -----
+
   _ValidateKey pDBKey
 
   if pName is empty then _ThrowError kErrObjectNameTaken, "relationship name cannot be empty"
@@ -6616,11 +6521,7 @@ command tblrelation_createObject pName, pDBKey
   put pDBKey into theA["database"]
   put theNextIndex into theA["index"]
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theA for value
-  end if
+  return theA for value
 end tblrelation_createObject
 
 
@@ -7184,11 +7085,9 @@ end _KeyArrayForIndex
 
 
 command dbindex_create pTableA, pName
-  -----
   local theA, theNextIndex
-  local theError
   local theProp
-  -----
+
   put _CreateTableArray(pTableA, param(3)) into pTableA
 
   put pName into theA["name"]
@@ -7212,11 +7111,7 @@ command dbindex_create pTableA, pName
   put pTableA["index"] into theA["table"]
   put theNextIndex into theA["index"]
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theA for value
-  end if
+  return theA for value
 end dbindex_create
 
 
@@ -7353,21 +7248,18 @@ pDBKey: Database Object SQL Query Template is associated with. Default is name r
 Description:
 A SQL Query Template allows you to preconfigure settings that can be used to create new SQL Query Objects.
 
-
 Returns:
 it: SQL Query Template reference array
-the result: Error message
+the result: empty
 */
 command sqlquerytmpl_createObject pName, pDBKey
-  -----
   local theA
-  local theError
   local theProp
-  -----
+
   _ValidateKey pDBKey
 
   if pName is among the keys of sDbsA[pDBKey]["query templates"] then
-    put "query template '" & pName & "' already exists in database object '" & pDBKey & "'" into theError
+    _ThrowError kErrObjectNameTaken, "query template '" & pName & "' already exists in database object '" & pDBKey & "'"
   else
     repeat for each item theProp in sSQLQuerySetProps
       put empty into theA[theProp]
@@ -7385,11 +7277,7 @@ command sqlquerytmpl_createObject pName, pDBKey
     put pName into theA["name"]
   end if
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theA for value
-  end if
+  return theA for value
 end sqlquerytmpl_createObject
 
 
@@ -8394,16 +8282,14 @@ Example:
 ## Create lesson
 put 0 into theValuesA["draft"]
 sqlquery_create "lessons", theValuesA
-put the result into theError
 
 Returns:
 it: Number of affected rows
-the result: Error string
+the result: empty
 */
 command sqlquery_create pTable, pParamsA, pConnName, pDBKey
   local theAffectedRows
   local theQueryA
-  local theError
 
   ## Get query object
   if pTable is not an array then
@@ -8460,21 +8346,14 @@ command sqlquery_create pTable, pParamsA, pConnName, pDBKey
 
   put 0 into theAffectedRows
 
-  if theError is empty then
-    local updateRecordAfterCreate
+  local updateRecordAfterCreate
 
-    ## Perform the update
-    put false into updateRecordAfterCreate
-    _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, false
-    put the result into theError
-    put it into theAffectedRows
-  end if
+  ## Perform the update
+  put false into updateRecordAfterCreate
+  _InsertRecordIntoTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterCreate, false
+  put it into theAffectedRows
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theAffectedRows for value
-  end if
+  return theAffectedRows for value
 end sqlquery_create
 
 
@@ -8494,26 +8373,22 @@ Example:
 ## Update lesson with id of 2
 put 0 into theValuesA["draft"]
 sqlquery_update "lessons", 2, theValuesA
-put the result into theError
 
 ## Update lesson with id of 2
 sqlquery_update "lessons", "id = 2", theValuesA
-put the result into theError
 
 ## Update lessons with an id of 12 and 15
 put "id is in :1" into theConditionsA["conditions"]
 put "12,15" into theConditionsA["condition bindings"][1]
 sqlquery_update "lessons", theConditionsA, theValuesA
-put the result into theError
 
 Returns:
 it: Number of affected rows
-the result: Error string\
+the result: enpty.
 */
 command sqlquery_update pTable, pConditions, pParamsA, pConnName, pDBKey
   local theResolvedTable, theTableA, theAffectedRows
   local thePrimaryKey, theQueryA, theAliasWhere
-  local theError
 
   ## Get query object
   if pTable is not an array then
@@ -8598,21 +8473,14 @@ command sqlquery_update pTable, pConditions, pParamsA, pConnName, pDBKey
 
   put 0 into theAffectedRows
 
-  if theError is empty then
-    ## Perform the update
-    local updateRecordAfterUpdate
+  ## Perform the update
+  local updateRecordAfterUpdate
 
-    put false into updateRecordAfterUpdate
-    _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, false
-    put the result into theError
-    put it into theAffectedRows
-  end if
+  put false into updateRecordAfterUpdate
+  _UpdateRecordInTable theConnectionA, theQs, theTablesA, theRecordA, updateRecordAfterUpdate, false
+  put it into theAffectedRows
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theAffectedRows for value
-  end if
+  return theAffectedRows for value
 end sqlquery_update
 
 
@@ -8628,7 +8496,7 @@ a SQL Query Object. After opening a cursor you can interact with the cursor usin
 
 Returns:
 it: Cursor id
-the result: Error string
+the result: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 
 References: sqlquery_close (command), sqlquery_convertToArray (command), sqlquery_convertToArray (command), sqlquery_currentRowToArray (command), sqlquery_moveToFirstRecord (command), sqlquery_moveToLastRecord (command), sqlquery_moveToNextRecord (command), sqlquery_moveToPreviousRecord (command)
 */
@@ -8645,15 +8513,9 @@ command sqlquery_retrieve @xQueryA
   put sqlquery_get(xQueryA, "query") into theQuery
   put sqlquery_get(xQueryA, "condition bindings") into theBindingsA
   dbconn_openCursor theQuery, theBindingsA, xQueryA["database parameters"], theConnectionA
-  put the result into theError
 
-  if theError is empty then
-    put it into xQueryA["cursor id"]
-    return it for value
-  else
-    put 0 into xQueryA["cursor id"]
-    return theError for error
-  end if
+  put it into xQueryA["cursor id"]
+  return it for value
 end sqlquery_retrieve
 
 
@@ -8678,25 +8540,13 @@ theDataA[1]["email"]
 theDataA[2]["name"]
 theDataA[2]["email"]
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command sqlquery_retrieveAsArray pQueryA, @xOutArray
-  local tError
-
   sqlquery_retrieve pQueryA
-  put the result into tError
-
-  if tError is empty then
-    sqlquery_convertToArray pQueryA, xOutArray
-    put the result into tError
-
-    sqlquery_close pQueryA
-    if tError is empty then
-      put the result into tError
-    end if
-  end if
-
-  return tError
+  sqlquery_convertToArray pQueryA, xOutArray
+  sqlquery_close pQueryA
+  return empty
 end sqlquery_retrieveAsArray
 
 
@@ -8710,7 +8560,7 @@ xOutData: Upon completion the data returned will be in this parameter.
 Description:
 The 'column delimter' and 'row delimiter' properties of the SQL Query Object will be used to delimit columns and rows.
 
-Returns: Error message
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command sqlquery_retrieveAsData pQueryA, @xOutData
   local theQuery, theBindingsA, theError
@@ -8726,9 +8576,7 @@ command sqlquery_retrieveAsData pQueryA, @xOutData
   dbconn_retrieveQueryAsData theQuery, theBindingsA, xOutData, \
         sqlquery_get(pQueryA, "column delimiter"), sqlquery_get(pQueryA, "row delimiter"), \
         theConnectionA
-  put the result into theError
-  _dbconnSetLastError theConnectionA, theError
-  return theError
+  return empty
 end sqlquery_retrieveAsData
 
 
@@ -8758,27 +8606,16 @@ theRecordsA[1]["steps"][2]["@table"] = "steps"
 theRecordsA[1]["steps"][2]["id"] = "58"
 theRecordsA[1]["steps"][2]["title"] = "Another step title"
 
-Returns: Error message
+Returns: Empty
 */
 command sqlquery_retrieveAsRecords pQueryA, @xOutRecordsA
-  local tError
-
   sqlquery_set pQueryA, "column names length", "long"
 
   sqlquery_retrieve pQueryA
-  put the result into tError
+  sqlquery_convertToRecords pQueryA, xOutRecordsA
+  sqlquery_close pQueryA
 
-  if tError is empty then
-    sqlquery_convertToRecords pQueryA, xOutRecordsA
-    put the result into tError
-
-    sqlquery_close pQueryA
-    if tError is empty then
-      put the result into tError
-    end if
-  end if
-
-  return tError
+  return empty
 end sqlquery_retrieveAsRecords
 
 
@@ -8788,21 +8625,14 @@ Summary: Closes an open database cursor associated with a SQL Query Object.
 Parameters:
 xQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
 
-Returns: Error message
+Returns: Empty
 */
 command sqlquery_close @xQueryA
-  -----
-  local theError
-  -----
   _ValidateQueryArray xQueryA
   dbconn_closeCursor xQueryA["cursor id"], xQueryA["connection"], xQueryA["database"]
-  put the result into theError
+  put 0 into xQueryA["cursor id"]
 
-  if theError is empty then
-    put 0 into xQueryA["cursor id"]
-  end if
-
-  return theError
+  return empty
 end sqlquery_close
 
 
@@ -8814,17 +8644,15 @@ pQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
 
 Returns:
 it: Number of affected rows
-the result: Error message
+the result: Empty
 */
 command sqlquery_delete pQueryA
-  -----
   local theAffectedRows
   local theConnectionA, theTransA
   local theError
   local theQs,theSQL
   local theWhere
-  local rethrowTheError
-  -----
+
   put sqlquery_get(pQueryA, "connection") into theConnectionA
   _ValidateConnectionArray theConnectionA
 
@@ -8832,25 +8660,19 @@ command sqlquery_delete pQueryA
 
   put _internalTransactionName() into theTransA["name"]
   dbconn_beginTransaction theTransA, theConnectionA
-  put the result into theError
 
   try
-    if theError is empty then
-      local theQueryA
+    local theQueryA
 
-      put pQueryA into theQueryA
-      put false into theQueryA["use long form for alias conditions"]
-      put sqlquery_get(theQueryA, "where clause") into theWhere
-      put "DELETE FROM %s%s%s WHERE %s" into theSQL
-      put format(theSQL, theQs["left"], _ResolvedTableName(theQueryA["database"], theQueryA["table"]["name"]), theQs["right"], theWhere) into theSQL
+    put pQueryA into theQueryA
+    put false into theQueryA["use long form for alias conditions"]
+    put sqlquery_get(theQueryA, "where clause") into theWhere
+    put "DELETE FROM %s%s%s WHERE %s" into theSQL
+    put format(theSQL, theQs["left"], _ResolvedTableName(theQueryA["database"], theQueryA["table"]["name"]), theQs["right"], theWhere) into theSQL
 
-      dbconn_executeSQL theSQL, theConnectionA
-      put the result into theError
-      put it into theAffectedRows
-    end if
-  catch e
-    put e into theError
-    put true into rethrowTheError
+    dbconn_executeSQL theSQL, theConnectionA
+    put it into theAffectedRows
+  catch theError
   end try
 
   if theError is empty then
@@ -8858,8 +8680,7 @@ command sqlquery_delete pQueryA
     return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, theConnectionA
-    if rethrowTheError then throw theError
-    else return theError for error
+    throw theError
   end if
 end sqlquery_delete
 
@@ -9044,21 +8865,18 @@ WHERE (food.name LIKE  '%cheese pizza%' OR food.name LIKE '%tacos%')
 
 You can see that the WHERE clause searches the name field of the food table for both terms.
 
-Returns: Error message.
+Returns: Empty.
 
 References: sqlyoga_splitUserSearchString (function)
 */
 command sqlquery_setConditionsFromUserSearchString @xQueryA, pString, pConditions, pDefaultOperator
-  -----
   local i
   local theConditions
   local theConnectionA
   local theDbType
-  local theError
   local theFindCriteria
   local theSearchA
-  -----
-  put empty into theError
+
   put sqlquery_get(xQueryA, "connection") into theConnectionA
 
   put dbconn_get("type", theConnectionA) into theDbType
@@ -9083,7 +8901,7 @@ command sqlquery_setConditionsFromUserSearchString @xQueryA, pString, pCondition
 
   sqlquery_set xQueryA, "conditions", theFindCriteria
 
-  return theError
+  return empty
 end sqlquery_setConditionsFromUserSearchString
 
 
@@ -9291,57 +9109,55 @@ Parameters:
 pQueryA: A SQL Query Object array.
 xOutArray: Upon completion holds a numerically indexed array. The keys are column names and values are column values. If xOutArray already contains numerical indexes then this command will add the returned records to the end.
 
-Returns: Error message.
+Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
 command sqlquery_convertToArray pQueryA, @xOutArray
-  -----
   local theIndex, theDynamicKeyA
-  local theError
   local theFields
-  -----
+
   put the number of elements of xOutArray into theIndex
   if theIndex is not an integer then put 0 into theIndex
 
   _ValidateQueryArray pQueryA
-  if pQueryA["cursor id"] < 1 then put kInvalidCursor into theError
-
-  if theError is empty then
-    switch sDbsA[ pQueryA["database"] ]["connections"][ pQueryA["connection"] ]["type"]
-      case "valentina"
-        if VCursor_FirstRecord(pQueryA["cursor id"]) then
-          put _ValentinaFieldsFromCursor( pQueryA["cursor id"] ) into theFields
-
-          repeat forever
-            add 1 to theIndex
-            put theIndex into theDynamicKeyA[1]
-            _CursorRowToArray pQueryA, theFields, xOutArray, theDynamicKeyA
-            get VCursor_NextRecord( pQueryA["cursor id"] )
-            if not it then exit repeat
-          end repeat
-        end if
-        break
-
-      default
-        if not revQueryIsAtEnd(pQueryA["cursor id"]) then
-          put _CursorFieldNames(pQueryA["cursor id"]) into theFields
-
-          repeat forever
-            add 1 to theIndex
-            put theIndex into theDynamicKeyA[1]
-            _CursorRowToArray pQueryA, theFields, xOutArray, theDynamicKeyA
-            revMoveToNextRecord pQueryA["cursor id"]
-            if not the result then exit repeat
-          end repeat
-        end if
-    end switch
+  if pQueryA["cursor id"] < 1 then
+    _ThrowError kErrorSQLExecution, kInvalidCursor
   end if
+
+  switch sDbsA[ pQueryA["database"] ]["connections"][ pQueryA["connection"] ]["type"]
+    case "valentina"
+      if VCursor_FirstRecord(pQueryA["cursor id"]) then
+        put _ValentinaFieldsFromCursor( pQueryA["cursor id"] ) into theFields
+
+        repeat forever
+          add 1 to theIndex
+          put theIndex into theDynamicKeyA[1]
+          _CursorRowToArray pQueryA, theFields, xOutArray, theDynamicKeyA
+          get VCursor_NextRecord( pQueryA["cursor id"] )
+          if not it then exit repeat
+        end repeat
+      end if
+      break
+
+    default
+      if not revQueryIsAtEnd(pQueryA["cursor id"]) then
+        put _CursorFieldNames(pQueryA["cursor id"]) into theFields
+
+        repeat forever
+          add 1 to theIndex
+          put theIndex into theDynamicKeyA[1]
+          _CursorRowToArray pQueryA, theFields, xOutArray, theDynamicKeyA
+          revMoveToNextRecord pQueryA["cursor id"]
+          if not the result then exit repeat
+        end repeat
+      end if
+  end switch
 
   ## Using find only returns a single record
   if pQueryA["find"] is not empty then
     put xOutArray[1] into xOutArray
   end if
 
-  return theError
+  return empty
 end sqlquery_convertToArray
 
 
@@ -9370,26 +9186,22 @@ theRecordsA[1]["steps"][2]["@table"] = "steps"
 theRecordsA[1]["steps"][2]["id"] = "58"
 theRecordsA[1]["steps"][2]["title"] = "Another step title"
 
-Returns: Error message.
+Returns: Empty.
 */
 command sqlquery_convertToRecords @xQueryA, @xOutRecordsA
-  -----
-  local theError
-  -----
   _ValidateQueryArray xQueryA
-  if xQueryA["cursor id"] < 1 then put kInvalidCursor into theError
-
-  if theError is empty then
-    _HierarchalCursorToArray xQueryA, xOutRecordsA
-    put the result into theError
+  if xQueryA["cursor id"] < 1 then
+    _ThrowError kErrorSQLExecution, kInvalidCursor
   end if
+
+  _HierarchalCursorToArray xQueryA, xOutRecordsA
 
   ## return single instance
   if xQueryA["find"] is not empty then
     put xOutRecordsA[1] into xOutRecordsA
   end if
 
-  return theError
+  return empty
 end sqlquery_convertToRecords
 
 
@@ -9478,13 +9290,11 @@ Description:
 Example:
 ## Find lesson with id of 2 and store it in theRecordA
 sqlrecord_find "lessons", 2, theRecordA
-put the result into theError
 -- theRecordA contains a single SQL Record object
 
 Example:
 ## Find record using primary key composed of two fields (id_1 and id_2)
 sqlrecord_find "object", "id_1:53,id_2:25", theRecordA
-put the result into theError
 -- theRecordA contains a single SQL Record object
 
 Example:
@@ -9494,14 +9304,12 @@ put "id is in :1" into theParamsA["conditions"]
 put "12,15" into theParamsA["condition bindings"][1]
 put "id ASC" into theParamsA["order by"]
 sqlrecord_find "lessons", theParamsA, theRecordsA
-put the result into theError
 -- theRecordsA contains an array of SQL Records objects (numerically indexed)
 
-Returns: Error message
+Returns: Empty
 */
 command sqlrecord_find pRecordA, pParamsA, @xRecordsA
   local theQueryA, theFields, theField
-  local theError
 
   put empty into xRecordsA
 
@@ -9573,9 +9381,8 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
 
   ## Retrieve as records
   sqlquery_retrieveAsRecords theQueryA, xRecordsA
-  put the result into theError
 
-  return theError
+  return empty
 end sqlrecord_find
 
 
@@ -9695,14 +9502,11 @@ from the database and stored in `xRecordsA[TABLE_NAME]`.
 Note that `xRecordsA` can be a numerically indexed array of Record arrays if you want
 to retrieve related records for many records at once.
 
-Returns: Error message
+Returns: Empty
 */
 command sqlrecord_getRelated @xRecordsA, pTable
-  -----
   local theConnectionA, i
-  local theError
   local theDudA
-  -----
 
   if "@table" is among the keys of xRecordsA then
     put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
@@ -9716,24 +9520,19 @@ command sqlrecord_getRelated @xRecordsA, pTable
     ## single record
     ## Get related table records
     _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA, pTable
-    put the result into theError
   else
     ## multiple records
     ## todo: Optimize with a single query that then puts results into the array
     repeat with i = 1 to the number of elements of xRecordsA
       if "@table" is not among the keys of xRecordsA[i] then
         _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
-        -- put kInvalidType && "record" into theError
       else
         _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA[i], pTable
-        put the result into theError
       end if
-
-      if theError is not empty then exit repeat
     end repeat
   end if
 
-  return theError
+  return empty
 end sqlrecord_getRelated
 
 
@@ -9769,10 +9568,10 @@ function lessons_setSearchTerms pRecordA, pValue
 end lessons_setSearchTerms
 ```
 
-Returns: Error message
+Returns: Empty
 */
 command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
-  local theConnectionA, theError
+  local theConnectionA
   local theValue
 
   put _CreateConnectionArray(xRecordA["@connection"], xRecordA["@database"]) into theConnectionA
@@ -9840,10 +9639,8 @@ end sqlrecord_set
 
 
 private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePrimaryKeysOnly, pDynamicKeyA
-  -----
   local i
   local isValidField
-  local theError
   local theFieldIndex, theFieldName
   local theNextIndex
   local theQueryA
@@ -9852,7 +9649,7 @@ private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePri
   local theWhere
   local usingArray
   local theBindingsA
-  -----
+
   put pDynamicKeyA is an array into usingArray
   put the number of elements of pDynamicKeyA + 1 into theNextIndex
 
@@ -9912,49 +9709,39 @@ private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePri
     sqlquery_set theQueryA, "conditions", theWhere
   end if
 
-  if theError is empty then
-    sqlquery_retrieve theQueryA
-    put the result into theError
+  sqlquery_retrieve theQueryA
+
+  local theRecordA
+
+  sqlquery_convertToRecords theQueryA, theRecordA
+
+  sqlquery_close theQueryA
+
+  if theRecordA is not an array then
+    _ThrowError kErrCantFindObject, "no matching record found"
   end if
 
-  if theError is empty then
-    local theRecordA
-
-    sqlquery_convertToRecords theQueryA, theRecordA
-    put the result into theError
-
-    sqlquery_close theQueryA
-
-    if theRecordA is not an array then
-      put "no matching record found" into theError
-    end if
+  put theRecordA[1] into theRecordA
+  if the keys of theRecordA is not empty then
+    put xRecordsA[pDynamicKeyA] into theRecordA["@table"]
   end if
 
-  if theError is empty then
-    put theRecordA[1] into theRecordA
-    if the keys of theRecordA is not empty then
-      put xRecordsA[pDynamicKeyA] into theRecordA["@table"]
-    end if
-
-    if usingArray then
-      delete local pDynamicKeyA[theNextIndex]
-      put theRecordA into xRecordsA[pDynamicKeyA]
-    else
-      put theRecordA into xRecordsA
-    end if
+  if usingArray then
+    delete local pDynamicKeyA[theNextIndex]
+    put theRecordA into xRecordsA[pDynamicKeyA]
+  else
+    put theRecordA into xRecordsA
   end if
 
-  return theError
+  return empty
 end _FillInTableRecordFromDatabase
 
 
 private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelatedTable
-  -----
   local theArrayTableKey, theCrossRefPropKeys, theCrossRefRecordKeys, theDBKey, thePropKeyFields, theRecordKeyFields
   local theCrossRefTable
   local theDataA
   local theDbType
-  local theError
   local theField, theFieldEntry
   local theJoinA
   local theQueryA
@@ -9962,194 +9749,176 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
   local theRelationA
   local theTable1A, theTable2A
   local theWhere, theFind, theOrderBy
-  -----
+
   put xRecordA["@table"] into theRecordTable
   put pConnectionA["database"] into theDBKey
 
-  if theError is empty then
-    put dbconn_get("type", pConnectionA) into theDbType
-  end if
+  put dbconn_get("type", pConnectionA) into theDbType
 
   ## Find relationship
-  if theError is empty then
-    put kTableReference into theTable1A["type"]
-    put pConnectionA["database"] into theTable1A["database"]
-    put theRecordTable into theTable1A["name"]
-    put kTableReference into theTable2A["type"]
-    put pConnectionA["database"] into theTable2A["database"]
-    put pRelatedTable into theTable2A["name"]
-    put _FindRelationshipBetweenTables(theTable1A, theTable2A) into theRelationA
+  put kTableReference into theTable1A["type"]
+  put pConnectionA["database"] into theTable1A["database"]
+  put theRecordTable into theTable1A["name"]
+  put kTableReference into theTable2A["type"]
+  put pConnectionA["database"] into theTable2A["database"]
+  put pRelatedTable into theTable2A["name"]
+  put _FindRelationshipBetweenTables(theTable1A, theTable2A) into theRelationA
 
-    ## Filter could return empty if the record didn't contain a matching field
-    if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
-      put "'" & pRelatedTable & "' is not directly related to '" & theRecordTable & "'" into theError
-    else
-      put theRelationA[1] into theRelationA
-    end if
+  ## Filter could return empty if the record didn't contain a matching field
+  if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
+    _ThrowError kErrCantFindObject, "'" & pRelatedTable & "' is not directly related to '" & theRecordTable & "'"
+  else
+    put theRelationA[1] into theRelationA
   end if
 
   ## Build WHERE
-  if theError is empty then
-    put pConnectionA["name"] into theRelationA["connection"] ## in order to get db quotes for field=value keys
-    put tblrelation_get(theRelationA, "order by") into theOrderBy
+  put pConnectionA["name"] into theRelationA["connection"] ## in order to get db quotes for field=value keys
+  put tblrelation_get(theRelationA, "order by") into theOrderBy
 
-    if tblrelation_get(theRelationA, "type") is among the items of "n-n,many-to-many" then
-      put tblrelation_get(theRelationA, "cross-reference table") into theCrossRefTable
+  if tblrelation_get(theRelationA, "type") is among the items of "n-n,many-to-many" then
+    put tblrelation_get(theRelationA, "cross-reference table") into theCrossRefTable
 
-      if pRelatedTable is tblrelation_get(theRelationA, "left table") then
-        ## extract right table key from xRecordA and assign to left table key in search
-        put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
-        put tblrelation_get(theRelationA, "left table key") into thePropKeyFields
-        if theRecordTable is not theCrossRefTable then
-          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefPropKeys
-          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefRecordKeys
-        else
-          # If the record table is the cross-ref table then skip the join and flatten the result
-          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theRecordKeyFields
-          put empty into theOrderBy
-          put "first" into theFind
-        end if
-
-      else if pRelatedTable is tblrelation_get(theRelationA, "right table") then
-        ## extract right table key from xRecordA and assign to left table key in search
-        put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
-        put tblrelation_get(theRelationA, "right table key") into thePropKeyFields
-        if theRecordTable is not theCrossRefTable then
-          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefPropKeys
-          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefRecordKeys
-        else
-          # If the record table is the cross-ref table then skip the join and flatten the result
-          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theRecordKeyFields
-          put empty into theOrderBy
-          put "first" into theFind
-        end if
-
+    if pRelatedTable is tblrelation_get(theRelationA, "left table") then
+      ## extract right table key from xRecordA and assign to left table key in search
+      put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
+      put tblrelation_get(theRelationA, "left table key") into thePropKeyFields
+      if theRecordTable is not theCrossRefTable then
+        put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefPropKeys
+        put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefRecordKeys
       else
-        ## the cross-ref table
-        if theRecordTable is tblrelation_get(theRelationA, "left table") then
-          put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
-          put tblrelation_get(theRelationA, "cross-reference table key for left table") into thePropKeyFields
-        else
-          put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
-          put tblrelation_get(theRelationA, "cross-reference table key for right table") into thePropKeyFields
-        end if
+        # If the record table is the cross-ref table then skip the join and flatten the result
+        put tblrelation_get(theRelationA, "cross-reference table key for left table") into theRecordKeyFields
+        put empty into theOrderBy
+        put "first" into theFind
+      end if
+
+    else if pRelatedTable is tblrelation_get(theRelationA, "right table") then
+      ## extract right table key from xRecordA and assign to left table key in search
+      put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
+      put tblrelation_get(theRelationA, "right table key") into thePropKeyFields
+      if theRecordTable is not theCrossRefTable then
+        put tblrelation_get(theRelationA, "cross-reference table key for right table") into theCrossRefPropKeys
+        put tblrelation_get(theRelationA, "cross-reference table key for left table") into theCrossRefRecordKeys
+      else
+        # If the record table is the cross-ref table then skip the join and flatten the result
+        put tblrelation_get(theRelationA, "cross-reference table key for right table") into theRecordKeyFields
+        put empty into theOrderBy
+        put "first" into theFind
       end if
 
     else
-      if pRelatedTable is tblrelation_get(theRelationA, "left table") then
-        ## extract right table key from xRecordA and assign to left table key in search
-        put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
-        put tblrelation_get(theRelationA, "left table key") into thePropKeyFields
-
-      else -- if pRelatedTable is tblrelation_get(theRelationA, "right table") then
-        ## extract right table key from xRecordA and assign to left table key in search
+      ## the cross-ref table
+      if theRecordTable is tblrelation_get(theRelationA, "left table") then
         put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
-        put tblrelation_get(theRelationA, "right table key") into thePropKeyFields
+        put tblrelation_get(theRelationA, "cross-reference table key for left table") into thePropKeyFields
+      else
+        put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
+        put tblrelation_get(theRelationA, "cross-reference table key for right table") into thePropKeyFields
       end if
-
     end if
+
+  else
+    if pRelatedTable is tblrelation_get(theRelationA, "left table") then
+      ## extract right table key from xRecordA and assign to left table key in search
+      put tblrelation_get(theRelationA, "right table key") into theRecordKeyFields
+      put tblrelation_get(theRelationA, "left table key") into thePropKeyFields
+
+    else -- if pRelatedTable is tblrelation_get(theRelationA, "right table") then
+      ## extract right table key from xRecordA and assign to left table key in search
+      put tblrelation_get(theRelationA, "left table key") into theRecordKeyFields
+      put tblrelation_get(theRelationA, "right table key") into thePropKeyFields
+    end if
+
   end if
 
-  if theError is empty then
-    local tField
+  local tField
 
-    if theCrossRefRecordKeys is not empty then
-      local theResolvedCrossRefTable, i
+  if theCrossRefRecordKeys is not empty then
+    local theResolvedCrossRefTable, i
 
-      ## Requires a JOIN
-      put _ResolvedTableName( pConnectionA["database"], theCrossRefTable) into theResolvedCrossRefTable
+    ## Requires a JOIN
+    put _ResolvedTableName( pConnectionA["database"], theCrossRefTable) into theResolvedCrossRefTable
 
-      repeat for each item theFieldEntry in theCrossRefRecordKeys
-        add 1 to i
-        put theFieldEntry into theField
-        split theField by "=" ## in case of field=value key
+    repeat for each item theFieldEntry in theCrossRefRecordKeys
+      add 1 to i
+      put theFieldEntry into theField
+      split theField by "=" ## in case of field=value key
 
-        if the number of elements of theField is 2 then
-          put theCrossRefTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
+      if the number of elements of theField is 2 then
+        put theCrossRefTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
+      else
+        put item i of theRecordKeyFields into tField
+        if xRecordA[tField] is empty then
+          _ThrowError kErrCantFindObject, "key field '" & tField & "' was not found in the record"
         else
-          put item i of theRecordKeyFields into tField
-          if xRecordA[tField] is empty then
-            put "key field '" & tField &"' was not found in the record" into theError
+          if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedCrossRefTable ]["fields"][ theField[1] ]["meta type"] \
+                is not among the items of kDontQuoteTypes then
+            put theCrossRefTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
           else
-            if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedCrossRefTable ]["fields"][ theField[1] ]["meta type"] \
-                  is not among the items of kDontQuoteTypes then
-              put theCrossRefTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
-            else
-              put theCrossRefTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
-            end if
+            put theCrossRefTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
           end if
         end if
-        if theError is not empty then exit repeat
-      end repeat
-      delete the last word of theWhere
+      end if
+    end repeat
+    delete the last word of theWhere
 
-      put _CreateSQLQueryFromTable(pConnectionA, theCrossRefTable) into theQueryA
-      put pRelatedTable into theJoinA[1]["table"]["name"]
-      put theRelationA["index"] into theJoinA[1]["relationship index"]
-      put "inner" into theJoinA[1]["join type"]
-      sqlquery_set theQueryA, "related table joins", theJoinA
+    put _CreateSQLQueryFromTable(pConnectionA, theCrossRefTable) into theQueryA
+    put pRelatedTable into theJoinA[1]["table"]["name"]
+    put theRelationA["index"] into theJoinA[1]["relationship index"]
+    put "inner" into theJoinA[1]["join type"]
+    sqlquery_set theQueryA, "related table joins", theJoinA
 
-      put theCrossRefTable into theArrayTableKey
+    put theCrossRefTable into theArrayTableKey
 
-    else
-      ## No JOIN
-      local theResolvedRelatedTable
+  else
+    ## No JOIN
+    local theResolvedRelatedTable
 
-      put _ResolvedTableName( pConnectionA["database"], pRelatedTable) into theResolvedRelatedTable
-      repeat for each item theFieldEntry in thePropKeyFields
-        add 1 to i
-        put theFieldEntry into theField
-        split theField by "=" ## in case of field=value key
+    put _ResolvedTableName( pConnectionA["database"], pRelatedTable) into theResolvedRelatedTable
+    repeat for each item theFieldEntry in thePropKeyFields
+      add 1 to i
+      put theFieldEntry into theField
+      split theField by "=" ## in case of field=value key
 
-        if the number of elements of theField is 2 then
-          put pRelatedTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
+      if the number of elements of theField is 2 then
+        put pRelatedTable & "." & theField[1] && "=" && "'" & _EscapeDbString(theDbType, theField[2]) & "'" & " AND " after theWhere
+      else
+        put item i of theRecordKeyFields into tField
+        if xRecordA[tField] is empty then
+          _ThrowError kErrCantFindObject, "key field '" & item i of theRecordKeyFields & "' was not found in the record"
         else
-          put item i of theRecordKeyFields into tField
-          if xRecordA[tField] is empty then
-            put "key field '" & item i of theRecordKeyFields &"' was not found in the record" into theError
+          if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedRelatedTable ]["fields"][ theField[1] ]["meta type"] \
+                is not among the items of kDontQuoteTypes then
+            put pRelatedTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
           else
-            if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedRelatedTable ]["fields"][ theField[1] ]["meta type"] \
-                  is not among the items of kDontQuoteTypes then
-              put pRelatedTable & "." & theField[1] & " = " & "'" & _EscapeDbString(theDbType, xRecordA[tField]) & "'" & " AND " after theWhere
-            else
-              put pRelatedTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
-            end if
+            put pRelatedTable & "." & theField[1] & " = " & xRecordA[tField] & " AND " after theWhere
           end if
         end if
-        if theError is not empty then exit repeat
-      end repeat
-      delete the last word of theWhere
+      end if
+    end repeat
+    delete the last word of theWhere
 
-      put _CreateSQLQueryFromTable(pConnectionA, pRelatedTable) into theQueryA
-      put pRelatedTable into theArrayTableKey
-    end if
+    put _CreateSQLQueryFromTable(pConnectionA, pRelatedTable) into theQueryA
+    put pRelatedTable into theArrayTableKey
   end if
 
   ## Execute
-  if theError is empty then
-    sqlquery_set theQueryA, "order by", theOrderBy
-    sqlquery_set theQueryA, "conditions", theWhere
-    sqlquery_set theQueryA, "find", theFind
-    sqlquery_set theQueryA, "column names length", "long"
-    put true into theQueryA["ignore alias conditions"] ## internal property as relationships already contain alias WHERE
-    sqlquery_retrieve theQueryA
-    put the result into theError
-  end if
+  sqlquery_set theQueryA, "order by", theOrderBy
+  sqlquery_set theQueryA, "conditions", theWhere
+  sqlquery_set theQueryA, "find", theFind
+  sqlquery_set theQueryA, "column names length", "long"
+  put true into theQueryA["ignore alias conditions"] ## internal property as relationships already contain alias WHERE
+  sqlquery_retrieve theQueryA
 
-  if theError is empty then
-    put empty into theDataA
-    sqlquery_convertToRecords theQueryA, theDataA
-    put the result into theError
+  put empty into theDataA
+  sqlquery_convertToRecords theQueryA, theDataA
 
-    sqlquery_close theQueryA
-  end if
+  sqlquery_close theQueryA
 
   ## Store in table subkey
-  if theError is empty then
-    put theDataA into xRecordA[theArrayTableKey]
-  end if
+  put theDataA into xRecordA[theArrayTableKey]
 
-  return theError
+  return empty
 end _RetrieveRecordsRelatedtoRecord
 
 
@@ -10174,19 +9943,17 @@ sqlrecord_update theRecordA
 
 Returns:
 it: Number of affected rows
-the result: Error message
+the result: Empty
 
 References: sqlrecord_find (command)
 */
 command sqlrecord_update @xRecordsA, pRefreshRecords
-  -----
   local i,theQs, theTablesA
   local theConnectionA
   local theAffectedRows
   local theError
   local theTablesIndexA
   local rethrowTheError
-  -----
 
   put pRefreshRecords is true into pRefreshRecords
 
@@ -10202,7 +9969,6 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
 
   put empty into theTablesA
   _SplitRecordsIntoTablesIndex theConnectionA, xRecordsA, theTablesA, true
-  put the result into theError
 
   ## We now have an array of:
   ## TABLE 'primary key'
@@ -10213,7 +9979,6 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
 
   put _internalTransactionName() into theTransA["name"]
   dbconn_beginTransaction theTransA, theConnectionA
-  put the result into theError
   put 0 into theAffectedRows
 
   ##
@@ -10226,33 +9991,22 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
   ##
   ##
   try
-    if theError is empty then
-      if "@table" is among the keys of xRecordsA then
-        ## single record
-        _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
-        put the result into theError
-        put it into theAffectedRows
-      else
-        ## multiple records
-        repeat with i = 1 to the number of elements of xRecordsA
-          if "@table" is not among the keys of xRecordsA[i] then
-            put kInvalidType && "record" into theError
-          else
-            _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
-            put the result into theError
-
-            if theError is empty then
-              add it to theAffectedRows
-            end if
-          end if
-
-          if theError is not empty then exit repeat
-        end repeat
-      end if
+    if "@table" is among the keys of xRecordsA then
+      ## single record
+      _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
+      put it into theAffectedRows
+    else
+      ## multiple records
+      repeat with i = 1 to the number of elements of xRecordsA
+        if "@table" is not among the keys of xRecordsA[i] then
+          _ThrowError kErrInvalidProperty, kInvalidType && "record"
+        else
+          _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
+          add it to theAffectedRows
+        end if
+      end repeat
     end if
-  catch e
-    put e into theError
-    put true into rethrowTheError
+  catch theError
   end try
 
   if theError is empty then
@@ -10260,19 +10014,16 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
     return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, theConnectionA
-    if rethrowTheError then throw theError
-    else return theError for error
+    throw theError
   end if
 end sqlrecord_update
 
 
 private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterUpdate, pSendCallbacks
-  -----
   local i,theSQL, theType, isBoolean
   local theAffectedRows
   local theBaseSQL
   local theBindingsA
-  local theError
   local theField, theFields
   local theKeysWithChildRecords
   local theNextKeyIndex
@@ -10282,180 +10033,149 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   local theTablesIndexA
   local theUpdateClause
   local theWhere
-  -----
 
   put pSendCallbacks is true into pSendCallbacks
   put xRecordA["@table"] into theTable
 
   ## VALIDATION CALLBACKS
   _dispatchValidationCheck xRecordA, "update"
-  put the result into theError
   put the keys of xRecordA into theFields
 
-  ## Validation error, prefix with something
-  if theError is not empty then
-    -- ... Should library prefix or just pass through the error message?
+  filter theFields without "@*"
+
+  ## Error checking
+  if the number of items of pTablesA[ theTable ]["primary key"] < 1 \
+        and "@where" is not among the keys of xRecordA then
+    _ThrowError kErrInvalidProperty, "cannot update table '" & theTable & "' as no primary key is defined"
   end if
 
-  if theError is empty then
-    filter theFields without "@*"
-
-    ## Error checking
-    if the number of items of pTablesA[ theTable ]["primary key"] < 1 \
-          and "@where" is not among the keys of xRecordA then
-      _ThrowError kErrInvalidProperty, "cannot update table '" & theTable & "' as no primary key is defined"
-      -- put "cannot update table '" & theTable & "' as no primary key is defined" into theError
-    end if
-  end if
-
-  if theError is empty and pSendCallbacks then
+  if pSendCallbacks then
     _dispatchTableObjectEventListener theTable, pConnectionA, "before update", xRecordA
-    put the result into theError
   end if
 
-  if theError is empty then
-    ## Perform UPDATE
-    put "UPDATE %s%s%s SET %s" into theBaseSQL
+  ## Perform UPDATE
+  put "UPDATE %s%s%s SET %s" into theBaseSQL
 
-    ## WHERE clause
-    put dbconn_get("type", pConnectionA) into theType
-    repeat for each item theField in pTablesA[ theTable ]["primary key"]
-      put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
+  ## WHERE clause
+  put dbconn_get("type", pConnectionA) into theType
+  repeat for each item theField in pTablesA[ theTable ]["primary key"]
+    put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
 
-      ## Strings like '01' are reported as integers so make sure and check defined type.
-      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is not among the items of kDontQuoteTypes then
-        put pQuotesA["left"] & theField & pQuotesA["right"] & " = '" & _EscapeDbString(theType, xRecordA[theField]) & "' AND " after theWhere
-      else
-        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & " AND " after theWhere
-        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & " AND " after theWhere
-      end if
-
-      put theField & comma after thePrimaryKeys
-    end repeat
-    delete the last word of theWhere
-    delete the last char of thePrimaryKeys
-
-    ## sqlquery_update passes in a WHERE clause as it can be more complex
-    if "@where" is among the keys of xRecordA then
-      put xRecordA["@where"] into theWhere
+    ## Strings like '01' are reported as integers so make sure and check defined type.
+    if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is not among the items of kDontQuoteTypes then
+      put pQuotesA["left"] & theField & pQuotesA["right"] & " = '" & _EscapeDbString(theType, xRecordA[theField]) & "' AND " after theWhere
+    else
+      if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & " AND " after theWhere
+      else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & " AND " after theWhere
     end if
 
-    local thePassThruFields, theMetaType, theConnType
-    local theFieldIndex
+    put theField & comma after thePrimaryKeys
+  end repeat
+  delete the last word of theWhere
+  delete the last char of thePrimaryKeys
 
-    put xRecordA["@passthru"] into thePassThruFields
-    set the wholeMatches to true
-
-    ## UPDATE clause
-    repeat for each line theField in theFields
-      if theField is among the items of thePrimaryKeys then next repeat
-      if theField is not among the items of pTablesA[ theTable ]["fields"] then
-        if xRecordA[ theField ] is an array then
-          ## This is a list of fields that are possible related record arrays.
-          ## After we finish updating this record we need to find the
-          ## relationship between the two, add the forign key field value
-          ## and update the record. Just make recursive call.
-          put theField & comma after theKeysWithChildRecords
-        end if
-        next repeat
-      end if
-
-      put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
-      put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
-      put dbconn_get("type", pConnectionA) into theConnType
-
-      if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
-        ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
-        put pQuotesA["left"] & theField & pQuotesA["right"] & " = NULL" & comma after theUpdateClause
-      else if theField is among the items of thePassThruFields then
-        ## some fields just pass through values to the db
-        if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & "," after theUpdateClause
-        else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & comma after theUpdateClause
-      else
-        add 1 to theFieldIndex
-        put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & ":" & theFieldIndex & comma after theUpdateClause
-
-        if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
-          put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
-        else
-          if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
-          else put xRecordA[theField] into theBindingsA[theFieldIndex]
-        end if
-      end if
-    end repeat
-    delete the last char of theUpdateClause
-    delete the last char of theKeysWithChildRecords
-
-    put format(theBaseSQL, pQuotesA["left"], theTable, pQuotesA["right"], theUpdateClause) into theSQL
-    if theWhere is not empty then
-      put " WHERE " & theWhere after theSQL
-    end if
-    dbconn_executeWBindings theSQL, theBindingsA, pConnectionA
-    put the result into theError
-    put it into theAffectedRows
+  ## sqlquery_update passes in a WHERE clause as it can be more complex
+  if "@where" is among the keys of xRecordA then
+    put xRecordA["@where"] into theWhere
   end if
+
+  local thePassThruFields, theMetaType, theConnType
+  local theFieldIndex
+
+  put xRecordA["@passthru"] into thePassThruFields
+  set the wholeMatches to true
+
+  ## UPDATE clause
+  repeat for each line theField in theFields
+    if theField is among the items of thePrimaryKeys then next repeat
+    if theField is not among the items of pTablesA[ theTable ]["fields"] then
+      if xRecordA[ theField ] is an array then
+        ## This is a list of fields that are possible related record arrays.
+        ## After we finish updating this record we need to find the
+        ## relationship between the two, add the forign key field value
+        ## and update the record. Just make recursive call.
+        put theField & comma after theKeysWithChildRecords
+      end if
+      next repeat
+    end if
+
+    put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
+    put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
+    put dbconn_get("type", pConnectionA) into theConnType
+
+    if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
+      ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
+      put pQuotesA["left"] & theField & pQuotesA["right"] & " = NULL" & comma after theUpdateClause
+    else if theField is among the items of thePassThruFields then
+      ## some fields just pass through values to the db
+      if isBoolean then put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & _getBooleanValue(xRecordA[theField], pConnectionA) & "," after theUpdateClause
+      else put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & xRecordA[theField] & comma after theUpdateClause
+    else
+      add 1 to theFieldIndex
+      put pQuotesA["left"] & theField & pQuotesA["right"] & " = " & ":" & theFieldIndex & comma after theUpdateClause
+
+      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
+        put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
+      else
+        if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
+        else put xRecordA[theField] into theBindingsA[theFieldIndex]
+      end if
+    end if
+  end repeat
+  delete the last char of theUpdateClause
+  delete the last char of theKeysWithChildRecords
+
+  put format(theBaseSQL, pQuotesA["left"], theTable, pQuotesA["right"], theUpdateClause) into theSQL
+  if theWhere is not empty then
+    put " WHERE " & theWhere after theSQL
+  end if
+  dbconn_executeWBindings theSQL, theBindingsA, pConnectionA
+  put it into theAffectedRows
 
   ## Fetch record from db and put back into array
-  if theError is empty \
-        and pUpdateRecordAfterUpdate \
+  if pUpdateRecordAfterUpdate \
         and pTablesA[ theTable ]["primary key"] is not empty then
     local theOutRecordA
 
     _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
-    put the result into theError
 
-    if theError is empty then
-      delete local xRecordA["@passthru"]
+    delete local xRecordA["@passthru"]
 
-      ## Update record one field at a time so we don't overwrite any related tables
-      repeat for each key theField in theOutRecordA
-        put theOutRecordA[theField] into xRecordA[theField]
-      end repeat
-    end if
-  end if
-
-  if theError is empty and pSendCallbacks then
-    _dispatchTableObjectEventListener theTable, pConnectionA, "after update", xRecordA
-    put the result into theError
-  end if
-
-  ## Recursively process any children records
-  if theError is empty then
-    local theTablesA
-
-    repeat for each item theTableKey in theKeysWithChildRecords
-      put empty into theTablesIndexA
-      _SplitRecordsIntoTablesIndex pConnectionA, xRecordA[theTableKey], theTablesA, true, theTable
-      put the result into theError
-
-      if theError is empty then
-        if line 1 of the keys of xRecordA[ theTableKey ] is an integer then
-          ## array of records
-          repeat with i = 1 to the number of elements of xRecordA[ theTableKey ]
-            if "@table" is among the keys of xRecordA[ theTableKey ][i] then
-              _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ][i], pUpdateRecordAfterUpdate, pSendCallbacks
-              put the result into theError
-            end if
-            if theError is not empty then exit repeat
-          end repeat
-        else
-          ## just a record
-          if "@table" is among the keys of xRecordA[ theTableKey ] then
-            _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ], pUpdateRecordAfterUpdate, pSendCallbacks
-            put the result into theError
-          end if
-        end if
-      end if
-
-      if theError is not empty then exit repeat
+    ## Update record one field at a time so we don't overwrite any related tables
+    repeat for each key theField in theOutRecordA
+      put theOutRecordA[theField] into xRecordA[theField]
     end repeat
   end if
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theAffectedRows for value
+  if pSendCallbacks then
+    _dispatchTableObjectEventListener theTable, pConnectionA, "after update", xRecordA
   end if
+
+  ## Recursively process any children records
+  local theTablesA
+
+  repeat for each item theTableKey in theKeysWithChildRecords
+    put empty into theTablesIndexA
+    _SplitRecordsIntoTablesIndex pConnectionA, xRecordA[theTableKey], theTablesA, true, theTable
+
+    if line 1 of the keys of xRecordA[ theTableKey ] is an integer then
+      ## array of records
+      repeat with i = 1 to the number of elements of xRecordA[ theTableKey ]
+        if "@table" is among the keys of xRecordA[ theTableKey ][i] then
+          _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ][i], pUpdateRecordAfterUpdate, pSendCallbacks
+          add it to theAffectedRows
+        end if
+      end repeat
+    else
+      ## just a record
+      if "@table" is among the keys of xRecordA[ theTableKey ] then
+        _UpdateRecordInTable pConnectionA, pQuotesA, theTablesA, xRecordA[ theTableKey ], pUpdateRecordAfterUpdate, pSendCallbacks
+        add it to theAffectedRows
+      end if
+    end if
+  end repeat
+
+  return theAffectedRows for value
 end _UpdateRecordInTable
 
 
@@ -10468,7 +10188,7 @@ pConnectionA: The active connection.
 pCallbackKey: The callback key to use (e.g. `before delete`)
 xRecordA: The record that is being acted on. Callback may modify the record.
 
-Returns: Error message
+Returns: Empty
 
 */
 private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbackType, @xRecordA
@@ -10480,12 +10200,9 @@ private command _dispatchTableObjectEventListener pTable, pConnectionA, pCallbac
     put _tableCallbackHandlerName(pTable, pCallbackType) into tCallbackHandler
 
     dispatch tCallbackHandler to stack tBehaviorStack with xRecordA, pConnectionA
-    if it is "handled" then
-      put the result into tError
-    end if
   end if
 
-  return tError
+  return empty
 end _dispatchTableObjectEventListener
 
 
@@ -10502,7 +10219,11 @@ private command _dispatchValidationCheck @xRecordA, pEventType
     end if
   end if
 
-  return tError
+  if tError is not empty then
+    _ThrowError kErrInvalidProperty, tError
+  end if
+
+  return empty
 end _dispatchValidationCheck
 
 
@@ -10548,17 +10269,15 @@ steps
           field name: id
       fields: id,instructions,lesson_id,title
 
-Returns: Error message
+Returns: empty
 */
 private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA, pEnforceKeyPresence, pParentTableKey
-  -----
   local isAnArray, isSingleRecord, theNextIndex, i
-  local theError
   local theTable, theField
   local thePrimaryKey, theIndex
   local theCount, theKeys
   local theTableA, theLookupKeyA, tLookupIndex
-  -----
+
   put kTableReference into theTableA["type"]
   put "@table" is among the keys of xRecordsA into isSingleRecord
 
@@ -10604,7 +10323,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
     repeat for each item theFieldName in thePrimaryKey
       if pEnforceKeyPresence and \
             theFieldName is not among the keys of xRecordsA then
-        put "primary key field '" & theFieldName & "' was not found in the record array" into theError
+        _ThrowError kErrCantFindObject, "primary key field '" & theFieldName & "' was not found in the record array"
       else
         put xRecordsA[theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
       end if
@@ -10619,50 +10338,49 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
 
       put i into theLookupKeyA[tLookupIndex]
 
-      if theTable is empty then put kInvalidType && "record" into theError
+      if theTable is empty then
+        _ThrowError kErrInvalidProperty, kInvalidType && "record"
+      end if
       add 1 to theIndex
 
-      if theError is empty then
-        put theTable into rTablesA[ theTable ]["name"]
-        if tableobjects_tableExists(theTable, pConnectionA["database"]) then
-          put tableobjects_getTable(theTable, pConnectionA["database"]) into theTableA
-          put tableobj_get(theTableA, "primary key") into rTablesA[ theTable ]["primary key"]
-          put tableobj_get(theTableA, "fields") into rTablesA[ theTable ]["fields"]
-        else
-          put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["primary key"] into rTablesA[ theTable ]["primary key"]
-          put dbschema_tableGet(theTable, "fields", pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
-        end if
-        replace cr with comma in rTablesA[ theTable ]["fields"]
+      put theTable into rTablesA[ theTable ]["name"]
+      if tableobjects_tableExists(theTable, pConnectionA["database"]) then
+        put tableobjects_getTable(theTable, pConnectionA["database"]) into theTableA
+        put tableobj_get(theTableA, "primary key") into rTablesA[ theTable ]["primary key"]
+        put tableobj_get(theTableA, "fields") into rTablesA[ theTable ]["fields"]
+      else
+        put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["primary key"] into rTablesA[ theTable ]["primary key"]
+        put dbschema_tableGet(theTable, "fields", pConnectionA["database"]) into rTablesA[ theTable ]["fields"]
+      end if
+      replace cr with comma in rTablesA[ theTable ]["fields"]
 
-        ## So others can look up entry in xRecordsA
-        put theLookupKeyA into rTablesA[ theTable ]["records"][theIndex]["index array"]
+      ## So others can look up entry in xRecordsA
+      put theLookupKeyA into rTablesA[ theTable ]["records"][theIndex]["index array"]
 
-        ## No primary key defined for table?
-        ## Use all included fields
-        put rTablesA[ theTable ]["primary key"] into thePrimaryKey
-        if thePrimaryKey is empty then
-          repeat for each item theFieldName in rTablesA[ theTable ]["fields"]
-            if theFieldName is among the keys of xRecordsA[i] then
-              put theFieldName & comma after thePrimaryKey
-            end if
-          end repeat
-          delete the last char of thePrimaryKey
-        end if
-
-        repeat for each item theFieldName in thePrimaryKey
-          if pEnforceKeyPresence and theFieldName is not among the keys of xRecordsA[i] then
-            put "primary key field '" & theFieldName & "' was not found in the record array" into theError
-          else
-            put xRecordsA[i][theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
+      ## No primary key defined for table?
+      ## Use all included fields
+      put rTablesA[ theTable ]["primary key"] into thePrimaryKey
+      if thePrimaryKey is empty then
+        repeat for each item theFieldName in rTablesA[ theTable ]["fields"]
+          if theFieldName is among the keys of xRecordsA[i] then
+            put theFieldName & comma after thePrimaryKey
           end if
         end repeat
+        delete the last char of thePrimaryKey
       end if
 
-      if theError is not empty then exit repeat
+      repeat for each item theFieldName in thePrimaryKey
+        if pEnforceKeyPresence and theFieldName is not among the keys of xRecordsA[i] then
+          _ThrowError kErrPropDoesntExist, "primary key field '" & theFieldName & "' was not found in the record array"
+        else
+          put xRecordsA[i][theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
+        end if
+      end repeat
+
     end repeat
   end if
 
-  return theError
+  return empty
 end _SplitRecordsIntoTablesIndex
 
 
@@ -10686,24 +10404,20 @@ Example:
 sqlrecord_find "lessons", 12, theRecordA
 
 sqlrecord_delete theRecordA
-put the result into theError
 
 Returns:
 it: Number of affected rows
-the result: Error message
+the result: empty
 */
 command sqlrecord_delete @xRecordsA
-  -----
   local i,j,theIds, theConnectionA
   local theAffectedRows, theBaseSQL
-  local theError
   local theFields
+  local theError
   local theFieldName
   local theQs,theSQL
   local theTable, theTableA, theTablesA
   local theWhere, theTransA
-  local rethrowTheError
-  -----
 
   if "@table" is among the keys of xRecordsA then
     put _CreateConnectionArray(xRecordsA["@connection"], xRecordsA["@database"]) into theConnectionA
@@ -10716,7 +10430,6 @@ command sqlrecord_delete @xRecordsA
   put dbconn_get("effective quotes", theConnectionA) into theQs
 
   _SplitRecordsIntoTablesIndex theConnectionA, xRecordsA, theTablesA, true
-  put the result into theError
 
   ## We now have an array of:
   ## TABLE 'primary key'
@@ -10725,118 +10438,101 @@ command sqlrecord_delete @xRecordsA
   ## TABLE 'records' INDEX FIELD2
   put _internalTransactionName() into theTransA["name"]
   dbconn_beginTransaction theTransA, theConnectionA
-  put the result into theError
 
   try
     local theType
 
-    if theError is empty then
-      repeat for each key theTable in theTablesA
-        if tableobjects_tableExists(theTable, theConnectionA["database"]) then
-          put tableobjects_getTable(theTable, theConnectionA["database"]) into theTableA
-        end if
+    repeat for each key theTable in theTablesA
+      if tableobjects_tableExists(theTable, theConnectionA["database"]) then
+        put tableobjects_getTable(theTable, theConnectionA["database"]) into theTableA
+      end if
 
-        put "DELETE FROM %s%s%s WHERE " into theBaseSQL
-        put format(theBaseSQL, theQs["left"], theTable, theQs["right"]) into theBaseSQL
+      put "DELETE FROM %s%s%s WHERE " into theBaseSQL
+      put format(theBaseSQL, theQs["left"], theTable, theQs["right"]) into theBaseSQL
 
-        ## One delete at a time until we can confirm if RevDB supports multiple statements at once
-        repeat with i = 1 to the number of elements of theTablesA[theTable]["records"]
-          ## Build where statement
-          put empty into theWhere
-          put dbconn_get("type", theConnectionA) into theType
+      ## One delete at a time until we can confirm if RevDB supports multiple statements at once
+      repeat with i = 1 to the number of elements of theTablesA[theTable]["records"]
+        ## Build where statement
+        put empty into theWhere
+        put dbconn_get("type", theConnectionA) into theType
 
-          ## Take into account 'through' table for many-to-many that might not
-          ## have primary key defined
-          if theTablesA[theTable]["primary key"] is not empty then
-            ## Verify that all primary key fields are included
-            ## If not use all included fields
-            repeat for each item theFieldName in theTablesA[theTable]["primary key"]
-              if theFieldName is not among the items of theTablesA[theTable]["fields"] then
-                put theTablesA[theTable]["fields"] into theFields
-                exit repeat
-              end if
-            end repeat
-
-            ## All primary keys are present. Use them.
-            if theFields is empty then
-              put theTablesA[theTable]["primary key"] into theFields
-            end if
-          else
-            put theTablesA[theTable]["fields"] into theFields
-          end if
-
-          local isBoolean, theRecordIndexArray
-
-          ## So we can look up record
-          put theTablesA[theTable]["records"][i]["index array"] into theRecordIndexArray
-
-          ## Loop through fields being used to uniquly identify record
-          repeat for each item theFieldName in theFields
-            ## Strings like '01' are reported as integers. Make sure and check defined type.
-            if sDbsA[ theConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theFieldName ]["meta type"] is not among the items of kDontQuoteTypes then
-              -- if theTablesA[theTable]["records"][i][theFieldName] is not an integer then
-              put theQs["left"] & theFieldName & theQs["right"] & \
-                    " = '" & _EscapeDbString(theType, theTablesA[theTable]["records"][i][theFieldName]) & "' AND " after theWhere
-            else
-              put sDbsA[ theConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theFieldName ]["meta type"] into isBoolean
-
-              if isBoolean then put theQs["left"] & theFieldName & theQs["right"] & " = " & _getBooleanValue(xRecordsA[theRecordIndexArray], theConnectionA) & " AND " after theWhere
-              put theQs["left"] & theFieldName & theQs["right"] & " = " & theTablesA[theTable]["records"][i][theFieldName] & " AND " after theWhere
+        ## Take into account 'through' table for many-to-many that might not
+        ## have primary key defined
+        if theTablesA[theTable]["primary key"] is not empty then
+          ## Verify that all primary key fields are included
+          ## If not use all included fields
+          repeat for each item theFieldName in theTablesA[theTable]["primary key"]
+            if theFieldName is not among the items of theTablesA[theTable]["fields"] then
+              put theTablesA[theTable]["fields"] into theFields
+              exit repeat
             end if
           end repeat
-          delete the last word of theWhere
-          put theBaseSQL & theWhere into theSQL
 
-          ##
-          ## Before callbacks
-          ##
-          if theTableA is an array then
-            if theRecordIndexArray is an array then
-              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA[theRecordIndexArray]
-            else
-              _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA
-            end if
-            put the result into theError
+          ## All primary keys are present. Use them.
+          if theFields is empty then
+            put theTablesA[theTable]["primary key"] into theFields
           end if
+        else
+          put theTablesA[theTable]["fields"] into theFields
+        end if
 
-          if theError is empty then
-            dbconn_executeSQL theSQL, theConnectionA
-            put the result into theError
-            add it to theAffectedRows
+        local isBoolean, theRecordIndexArray
 
-            if theError is empty then
-              if theTableA is an array then
-                if theRecordIndexArray is an array then
-                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA[theRecordIndexArray]
-                else
-                  _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA
-                end if
-                put the result into theError
-              end if
-            end if
+        ## So we can look up record
+        put theTablesA[theTable]["records"][i]["index array"] into theRecordIndexArray
 
-            ## Clear out SQL Record object
-            if theError is empty then
-              get theTablesA[theTable]["records"][i]["index array"]
-              if it is an array then
-                put empty into xRecordsA[it]
-                put theTable into xRecordsA[it]["@table"]
-              else
-                put empty into xRecordsA
-                put theTable into xRecordsA["@table"]
-              end if
-            end if
+        ## Loop through fields being used to uniquly identify record
+        repeat for each item theFieldName in theFields
+          ## Strings like '01' are reported as integers. Make sure and check defined type.
+          if sDbsA[ theConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theFieldName ]["meta type"] is not among the items of kDontQuoteTypes then
+            -- if theTablesA[theTable]["records"][i][theFieldName] is not an integer then
+            put theQs["left"] & theFieldName & theQs["right"] & \
+                  " = '" & _EscapeDbString(theType, theTablesA[theTable]["records"][i][theFieldName]) & "' AND " after theWhere
+          else
+            put sDbsA[ theConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theFieldName ]["meta type"] into isBoolean
+
+            if isBoolean then put theQs["left"] & theFieldName & theQs["right"] & " = " & _getBooleanValue(xRecordsA[theRecordIndexArray], theConnectionA) & " AND " after theWhere
+            put theQs["left"] & theFieldName & theQs["right"] & " = " & theTablesA[theTable]["records"][i][theFieldName] & " AND " after theWhere
           end if
-
-          if theError is not empty then exit repeat
         end repeat
+        delete the last word of theWhere
+        put theBaseSQL & theWhere into theSQL
 
-        if theError is not empty then exit repeat
+        ##
+        ## Before callbacks
+        ##
+        if theTableA is an array then
+          if theRecordIndexArray is an array then
+            _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA[theRecordIndexArray]
+          else
+            _dispatchTableObjectEventListener theTable, theConnectionA, "before delete", xRecordsA
+          end if
+        end if
+
+        dbconn_executeSQL theSQL, theConnectionA
+        add it to theAffectedRows
+
+        if theTableA is an array then
+          if theRecordIndexArray is an array then
+            _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA[theRecordIndexArray]
+          else
+            _dispatchTableObjectEventListener theTable, theConnectionA, "after delete", xRecordsA
+          end if
+        end if
+
+        ## Clear out SQL Record object
+        get theTablesA[theTable]["records"][i]["index array"]
+        if it is an array then
+          put empty into xRecordsA[it]
+          put theTable into xRecordsA[it]["@table"]
+        else
+          put empty into xRecordsA
+          put theTable into xRecordsA["@table"]
+        end if
       end repeat
-    end if
+    end repeat
   catch e
     put e into theError
-    put true into rethrowTheError
   end try
 
   if theError is empty then
@@ -10844,8 +10540,7 @@ command sqlrecord_delete @xRecordsA
     return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, theConnectionA
-    if rethrowTheError then throw theError
-    else return theError for error
+    throw theError
   end if
 end sqlrecord_delete
 
@@ -10868,22 +10563,18 @@ put sqlrecord_createObject("lessons") into theRecordA
 sqlrecord_set theRecordA, "title", "A new title"
 sqlrecord_set theRecordA, "description", "It's a description."
 sqlrecord_create theRecordA
-put the result into theError
 
 ## theRecordA["id"] is now filled in with new id in database for this record
 
 Returns:
 it: Number of affected rows
-the result: Error message
+the result: Empty
 */
 command sqlrecord_create @xRecordsA, pRefreshRecords
-  -----
   local i,theQs
   local theConnectionA, theTablesA
   local theAffectedRows
   local theError
-  local rethrowTheError
-  -----
 
   put pRefreshRecords is not false into pRefreshRecords
 
@@ -10899,7 +10590,6 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
 
   put empty into theTablesA
   _SplitRecordsIntoTablesIndex theConnectionA, xRecordsA, theTablesA, false
-  put the result into theError
 
   ## We now have an array of:
   ## TABLE 'primary key'
@@ -10913,44 +10603,32 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
 
   put _internalTransactionName() into theTransA["name"]
   dbconn_beginTransaction theTransA, theConnectionA
-  put the result into theError
 
   put 0 into theAffectedRows
 
   try
-    if theError is empty then
-      if "@table" is among the keys of xRecordsA then
-        ## single record
-        _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
-        put the result into theError
-        put it into theAffectedRows
+    if "@table" is among the keys of xRecordsA then
+      ## single record
+      _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA, pRefreshRecords, true
+      put it into theAffectedRows
+    else
+      put the number of elements of xRecordsA into theRecordCount
+
+      ## multiple records
+      if theRecordCount > 0 then
+        repeat with i = 1 to the number of elements of xRecordsA
+          if "@table" is not among the keys of xRecordsA[i] then
+            _ThrowError kErrInvalidProperty, kInvalidType && "record"
+          else
+            _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
+            add it to theAffectedRows
+          end if
+        end repeat
       else
-        put the number of elements of xRecordsA into theRecordCount
-
-        ## multiple records
-        if theRecordCount > 0 then
-          repeat with i = 1 to the number of elements of xRecordsA
-            if "@table" is not among the keys of xRecordsA[i] then
-              put kInvalidType && "record" into theError
-            else
-              _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
-              put the result into theError
-
-              if theError is empty then
-                add it to theAffectedRows
-              end if
-            end if
-
-            if theError is not empty then exit repeat
-          end repeat
-        else
-          put kInvalidType && "record" into theError
-        end if
+        _ThrowError kErrInvalidProperty, kInvalidType && "record"
       end if
     end if
-  catch e
-    put e into theError
-    put true into rethrowTheError
+  catch theError
   end try
 
   if theError is empty then
@@ -10958,8 +10636,7 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
     return theAffectedRows for value
   else
     dbconn_rollbackTransaction theTransA, theConnectionA
-    if rethrowTheError then throw theError
-    else return theError for error
+    throw theError
   end if
 end sqlrecord_create
 
@@ -10978,190 +10655,162 @@ Description:
 
 Returns:
 it: Number of affected rows
-the result: Error message
+the result: empty
 */
 private command _InsertRecordIntoTable pConnectionA, pQuotesA, pTablesA, @xRecordA, pUpdateRecordAfterCreate, pSendCallbacks
-  -----
   local theAffectedRows
   local theBaseSQL
   local theBindingsA
-  local theError
   local theField, theFields, theFieldsToInsert
   local theSQL
   local theTable
   local theValuesToInsert
   local insertingAPrimaryKeyValue = "false"
-  -----
 
   put pSendCallbacks is true into pSendCallbacks
 
   ##
   ## VALIDATION CALLBACKS
   _dispatchValidationCheck xRecordA, "create"
-  put the result into theError
 
   put the keys of xRecordA into theFields
 
-  ## Validation error, prefix with something
-  if theError is not empty then
-    -- ... Should library prefix or just pass through the error message?
-  end if
-
   ## Validation could have generated error
-  if theError is empty then
+  filter theFields without "@*"
 
-    filter theFields without "@*"
+  put xRecordA["@table"] into theTable
 
-    put xRecordA["@table"] into theTable
-
-    if pSendCallbacks then
-      _dispatchTableObjectEventListener theTable, pConnectionA, "before create", xRecordA
-      put the result into theError
-    end if
+  if pSendCallbacks then
+    _dispatchTableObjectEventListener theTable, pConnectionA, "before create", xRecordA
   end if
 
-  if theError is empty then
-    ##
-    ## Perform INSERT
-    ##
-    local thePassThruFields, theConnType, isBoolean, theMetaType
-    local theKeysWithChildRecords, theFieldIndex
+  ##
+  ## Perform INSERT
+  ##
+  local thePassThruFields, theConnType, isBoolean, theMetaType
+  local theKeysWithChildRecords, theFieldIndex
 
-    put "INSERT INTO %s%s%s" into theBaseSQL
+  put "INSERT INTO %s%s%s" into theBaseSQL
 
-    put xRecordA["@passthru"] into thePassThruFields
-    set the wholeMatches to true
+  put xRecordA["@passthru"] into thePassThruFields
+  set the wholeMatches to true
 
-    put dbconn_get("type", pConnectionA) into theConnType
+  put dbconn_get("type", pConnectionA) into theConnType
 
-    ## VALUES
-    repeat for each line theField in theFields
-      put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
-      put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
+  ## VALUES
+  repeat for each line theField in theFields
+    put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "boolean" into isBoolean
+    put sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] into theMetaType
 
-      if theField is not among the items of pTablesA[ theTable ]["fields"] then
-        if xRecordA[theField] is an array then
-          ## This is a list of fields that are possible related record arrays.
-          ## After we finish updating this record we need to find the
-          ## relationship between the two, add the forign key field value
-          ## and update the record. Just make recursive call.
-          ## Note: Currently not supported. Don't know that we ever will.
-          put theField & comma after theKeysWithChildRecords
-        end if
+    if theField is not among the items of pTablesA[ theTable ]["fields"] then
+      if xRecordA[theField] is an array then
+        ## This is a list of fields that are possible related record arrays.
+        ## After we finish updating this record we need to find the
+        ## relationship between the two, add the forign key field value
+        ## and update the record. Just make recursive call.
+        ## Note: Currently not supported. Don't know that we ever will.
+        put theField & comma after theKeysWithChildRecords
+      end if
+      next repeat
+    else if theField is among the items of pTablesA[ theTable ]["primary key"] then
+      if xRecordA[theField] is empty or xRecordA[theField] is NULL or xRecordA[theField] is "NULL" then
+        ## fields that are primary key fields with no values get skipped
         next repeat
-      else if theField is among the items of pTablesA[ theTable ]["primary key"] then
-        if xRecordA[theField] is empty or xRecordA[theField] is NULL or xRecordA[theField] is "NULL" then
-          ## fields that are primary key fields with no values get skipped
-          next repeat
-        else
-          ## primary key has value. Flag so that dbs that need to specificly allow insertion of primary keys can do so.
-          if insertingAPrimaryKeyValue is false and theMetaType is "sequence" then ## only set once
-            put true into insertingAPrimaryKeyValue
-          end if
-        end if
-      end if
-
-      put pQuotesA["left"] & theField & pQuotesA["right"] & comma after theFieldsToInsert
-
-      if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
-        ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
-        put "NULL" & comma after theValuesToInsert
-      else if theField is among the items of thePassThruFields then
-        ## Some fields should just be passed directly to the database
-        if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) & comma after theValuesToInsert
-        else put xRecordA[theField] & comma after theValuesToInsert
       else
-        add 1 to theFieldIndex
-        put ":" & theFieldIndex & comma after theValuesToInsert
-
-        ## Prepend "*b" to key name if binary
-        --            if the shiftkey is down then answer sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["encoding"]
-        if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
-          put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
-        else
-          if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
-          else
-            put xRecordA[theField] into theBindingsA[theFieldIndex]
-          end if
+        ## primary key has value. Flag so that dbs that need to specificly allow insertion of primary keys can do so.
+        if insertingAPrimaryKeyValue is false and theMetaType is "sequence" then ## only set once
+          put true into insertingAPrimaryKeyValue
         end if
-      end if
-    end repeat
-    delete the last char of theFieldsToInsert
-    delete the last char of theValuesToInsert
-
-    if insertingAPrimaryKeyValue then
-      if theConnType is "sql server" then
-        local thePrefixSQL, theSuffixSQL
-
-        put format("SET IDENTITY_INSERT %s%s%s ON;", pQuotesA["left"], theTable, pQuotesA["right"]) into thePrefixSQL
-        put format(";SET IDENTITY_INSERT %s%s%s OFF", pQuotesA["left"], theTable, pQuotesA["right"]) into theSuffixSQL
       end if
     end if
 
-    put format(theBaseSQL, pQuotesA["left"], theTable, pQuotesA["right"]) into theBaseSQL
-    put format("%s%s (%s) VALUES(%s)%s", thePrefixSQL, theBaseSQL, theFieldsToInsert, theValuesToInsert, theSuffixSQL) into theSQL
-    dbconn_executeWBindings theSQL, theBindingsA, pConnectionA
-    put the result into theError
-    put it into theAffectedRows
+    put pQuotesA["left"] & theField & pQuotesA["right"] & comma after theFieldsToInsert
+
+    if xRecordA[theField] is NULL OR (theConnType is "sql server" AND theMetaType is among the items of "text,binary,decimal" AND xRecordA[theField] is empty) then
+      ## ODBC (at least with SQL Server) will not take an empty string in columns that are character, decimal or binary
+      put "NULL" & comma after theValuesToInsert
+    else if theField is among the items of thePassThruFields then
+      ## Some fields should just be passed directly to the database
+      if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) & comma after theValuesToInsert
+      else put xRecordA[theField] & comma after theValuesToInsert
+    else
+      add 1 to theFieldIndex
+      put ":" & theFieldIndex & comma after theValuesToInsert
+
+      ## Prepend "*b" to key name if binary
+      --            if the shiftkey is down then answer sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["encoding"]
+      if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theTable ]["fields"][ theField ]["meta type"] is "binary" then
+        put xRecordA[theField] into theBindingsA["*b" & theFieldIndex]
+      else
+        if isBoolean then put _getBooleanValue(xRecordA[theField], pConnectionA) into theBindingsA[theFieldIndex]
+        else
+          put xRecordA[theField] into theBindingsA[theFieldIndex]
+        end if
+      end if
+    end if
+  end repeat
+  delete the last char of theFieldsToInsert
+  delete the last char of theValuesToInsert
+
+  if insertingAPrimaryKeyValue then
+    if theConnType is "sql server" then
+      local thePrefixSQL, theSuffixSQL
+
+      put format("SET IDENTITY_INSERT %s%s%s ON;", pQuotesA["left"], theTable, pQuotesA["right"]) into thePrefixSQL
+      put format(";SET IDENTITY_INSERT %s%s%s OFF", pQuotesA["left"], theTable, pQuotesA["right"]) into theSuffixSQL
+    end if
   end if
+
+  put format(theBaseSQL, pQuotesA["left"], theTable, pQuotesA["right"]) into theBaseSQL
+  put format("%s%s (%s) VALUES(%s)%s", thePrefixSQL, theBaseSQL, theFieldsToInsert, theValuesToInsert, theSuffixSQL) into theSQL
+  dbconn_executeWBindings theSQL, theBindingsA, pConnectionA
+  put it into theAffectedRows
 
   -- if the shiftkey is down and theError is not empty then answer theSQL & cr & theAffectedRows & cr & theError & cr & printKeys(theBindingsA)
 
   ## Fetch record from db and put back into array
-  if theError is empty then
-    local theValue, insertLastID, theLastID
+  local theValue, insertLastID, theLastID
 
-    ## Just fill in primary key field if single and empty
-    ## Some dbs may return id when inserting but I don't think revDB supports that
-    if the number of items of pTablesA[ theTable ]["primary key"] is 1 then
-      put xRecordA[ pTablesA[ theTable ]["primary key"] ] into theValue
-      put theValue is empty or theValue is NULL or theValue is "NULL" into insertLastID
+  ## Just fill in primary key field if single and empty
+  ## Some dbs may return id when inserting but I don't think revDB supports that
+  if the number of items of pTablesA[ theTable ]["primary key"] is 1 then
+    put xRecordA[ pTablesA[ theTable ]["primary key"] ] into theValue
+    put theValue is empty or theValue is NULL or theValue is "NULL" into insertLastID
 
-      if insertLastID then
-        put dbconn_get("last inserted id", pConnectionA) into theLastID
-        put theLastID into xRecordA[ pTablesA[ theTable ]["primary key"] ]
-      end if
-    end if
-
-    if pUpdateRecordAfterCreate then
-      local theOutRecordA
-
-      _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
-      put the result into theError
-
-      if theError is empty then
-        delete local xRecordA["@passthru"]
-
-        ## Update record one field at a time so we don't overwrite any related tables
-        repeat for each key theField in theOutRecordA
-          put theOutRecordA[theField] into xRecordA[theField]
-        end repeat
-      end if
+    if insertLastID then
+      put dbconn_get("last inserted id", pConnectionA) into theLastID
+      put theLastID into xRecordA[ pTablesA[ theTable ]["primary key"] ]
     end if
   end if
 
-  if theError is empty and pSendCallbacks then
+  if pUpdateRecordAfterCreate then
+    local theOutRecordA
+
+    _RetrieveUpdatedRecordAfterDbMod theOutRecordA, pConnectionA, xRecordA, pTablesA[ theTable ]["primary key"]
+
+    delete local xRecordA["@passthru"]
+
+    ## Update record one field at a time so we don't overwrite any related tables
+    repeat for each key theField in theOutRecordA
+      put theOutRecordA[theField] into xRecordA[theField]
+    end repeat
+  end if
+
+  if pSendCallbacks then
     _dispatchTableObjectEventListener theTable, pConnectionA, "after create", xRecordA
-    put the result into theError
   end if
 
-  if theError is not empty then
-    return theError for error
-  else
-    return theAffectedRows for value
-  end if
+  return theAffectedRows for value
 end _InsertRecordIntoTable
 
 
 private command _RetrieveUpdatedRecordAfterDbMod @xOutRecordA, pConnectionA, pRecordA, pTablePrimaryKeys
-  -----
   local theDbType, allPrimaryKeysIncluded
-  local theError
   local theField
   local theLastID
   local theQueryA
   local theWhere
-  -----
+
   put dbconn_get("type", pConnectionA) into theDbType
 
   ## Were all primary key included in the create?
@@ -11176,7 +10825,7 @@ private command _RetrieveUpdatedRecordAfterDbMod @xOutRecordA, pConnectionA, pRe
   put empty into theWhere
   if not allPrimaryKeysIncluded then
     if the number of items of pTablePrimaryKeys > 1 then
-      put "insert did not include all of the necessary primary keys for table '" & pRecordA["@table"] & "'" into theError
+      _ThrowError kErrCantFindObject, "insert did not include all of the necessary primary keys for table '" & pRecordA["@table"] & "'"
     else
       ## one primary key, try to fetch
       put dbconn_get("last inserted id", pConnectionA) into theLastID
@@ -11196,27 +10845,19 @@ private command _RetrieveUpdatedRecordAfterDbMod @xOutRecordA, pConnectionA, pRe
   end if
 
   ## Now perform actual fetch
-  if theError is empty then
-    put _CreateSQLQueryFromTable(pConnectionA, pRecordA["@table"]) into theQueryA
-    sqlquery_set theQueryA, "conditions", theWhere
-    sqlquery_retrieve theQueryA
-    put the result into theError
+  put _CreateSQLQueryFromTable(pConnectionA, pRecordA["@table"]) into theQueryA
+  sqlquery_set theQueryA, "conditions", theWhere
+  sqlquery_retrieve theQueryA
 
-    if theError is empty then
-      put empty into xOutRecordA
-      sqlquery_convertToArray theQueryA, xOutRecordA
-      put the result into theError
+  put empty into xOutRecordA
+  sqlquery_convertToArray theQueryA, xOutRecordA
 
-      if theError is empty then
-        put xOutRecordA[1] into xOutRecordA
-        put pRecordA["@table"] into xOutRecordA["@table"]
-      end if
+  put xOutRecordA[1] into xOutRecordA
+  put pRecordA["@table"] into xOutRecordA["@table"]
 
-      sqlquery_close theQueryA
-    end if
-  end if
+  sqlquery_close theQueryA
 
-  return theError
+  return empty
 end _RetrieveUpdatedRecordAfterDbMod
 
 
@@ -11241,7 +10882,7 @@ sqlrecord_set theStepA, "id", 15
 
 sqlrecord_link theLessonA, theStepA
 
-Returns: Error message
+Returns: Empty
 */
 command sqlrecord_link @xRecord1A, @xRecord2A
   -----
@@ -11257,12 +10898,11 @@ command sqlrecord_link @xRecord1A, @xRecord2A
 
     ## single record
     _LinkUnlinkRecords "link", theConnectionA, xRecord1A, xRecord2A, empty
-    put the result into theError
   else
-    put "invalid record arrays passed to " & param(0) into theError
+    _ThrowError kErrInvalidArray, "invalid record arrays passed to " & param(0)
   end if
 
-  return theError
+  return empty
 end sqlrecord_link
 
 
@@ -11287,7 +10927,7 @@ sqlrecord_set theStepA, "id", 15
 
 sqlrecord_unlink theLessonA, theStepA
 
-Returns: Error message
+Returns: Empty
 */
 command sqlrecord_unlink @xRecord1A, @xRecord2A
   -----
@@ -11303,19 +10943,16 @@ command sqlrecord_unlink @xRecord1A, @xRecord2A
 
     ## single record
     _LinkUnlinkRecords "unlink", theConnectionA, xRecord1A, xRecord2A, empty
-    put the result into theError
   else
-    put "invalid record arrays passed to " & param(0) into theError
+    _ThrowError kErrInvalidArray, "invalid record arrays passed to " & param(0)
   end if
 
-  return theError
+  return empty
 end sqlrecord_unlink
 
 
 private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
-  -----
   local i
-  local theError
   local theField
   local theLeftField, theLeftKey
   local theLeftRecordA, theRecordA
@@ -11325,213 +10962,187 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
   local theRelationA
   local theRightField, theRightKey, theRightRecordA, theRightRefKey
   local theRightTableA, theTable1A, theTable2A
-  -----
-  ## Find relation between the two
-  if theError is empty then
-    put dbconn_get("effective quotes", pConnectionA) into theQuotesA
-    put tableobjects_getTable(xRecord1A["@table"], pConnectionA["database"]) into theTable1A
-    put tableobjects_getTable(xRecord2A["@table"], pConnectionA["database"]) into theTable2A
 
-    put _FindRelationshipBetweenTables(theTable1A, theTable2A) into theRelationA
-    if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
-      put "'" & xRecord1A["@table"] & "' is not directly related to '" & xRecord2A["@table"] & "'" into theError
-    else
-      put theRelationA[1] into theRelationA
-    end if
+  ## Find relation between the two
+  put dbconn_get("effective quotes", pConnectionA) into theQuotesA
+  put tableobjects_getTable(xRecord1A["@table"], pConnectionA["database"]) into theTable1A
+  put tableobjects_getTable(xRecord2A["@table"], pConnectionA["database"]) into theTable2A
+
+  put _FindRelationshipBetweenTables(theTable1A, theTable2A) into theRelationA
+  if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
+    _ThrowError kErrInvalidProperty, "'" & xRecord1A["@table"] & "' is not directly related to '" & xRecord2A["@table"] & "'"
+  else
+    put theRelationA[1] into theRelationA
   end if
 
   ## Determine keys
-  if theError is empty then
-    switch tblrelation_get(theRelationA, "type")
-      case "many-to-many"
-      case "n-n"
-        ## todo: do many-to-many
-        if tblrelation_get(theRelationA, "cross-reference table") is among the items of (theTable1A["name"] & comma & theTable2A["name"]) then
-          ## todo: add support for this
-          put "unable to link directly to the cross-reference table" into theError
-        end if
+  switch tblrelation_get(theRelationA, "type")
+    case "many-to-many"
+    case "n-n"
+      ## todo: do many-to-many
+      if tblrelation_get(theRelationA, "cross-reference table") is among the items of (theTable1A["name"] & comma & theTable2A["name"]) then
+        ## todo: add support for this
+        _ThrowError kErrInvalidProperty, "unable to link directly to the cross-reference table"
+      end if
 
-        if theError is empty then
-          if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
-            put xRecord1A into theLeftRecordA
-            put xRecord2A into theRightRecordA
-          else
-            put xRecord2A into theLeftRecordA
-            put xRecord1A into theRightRecordA
-          end if
-        end if
+      if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
+        put xRecord1A into theLeftRecordA
+        put xRecord2A into theRightRecordA
+      else
+        put xRecord2A into theLeftRecordA
+        put xRecord1A into theRightRecordA
+      end if
 
-        put tblrelation_get(theRelationA, "left table key") into theLeftKey
-        put tblrelation_get(theRelationA, "right table key") into theRightKey
+      put tblrelation_get(theRelationA, "left table key") into theLeftKey
+      put tblrelation_get(theRelationA, "right table key") into theRightKey
 
-        ## Create record to use for insertion
-        put tblrelation_get(theRelationA, "cross-reference table") into theRecordA["@table"]
+      ## Create record to use for insertion
+      put tblrelation_get(theRelationA, "cross-reference table") into theRecordA["@table"]
 
-        ## Insert fields linking to left table
-        if theError is empty then
-          put tblrelation_get(theRelationA, "cross-reference table key for left table") into theLeftRefKey
-          repeat with i = 1 to max(the number of items of theLeftKey, the number of items of theLeftRefKey)
-            put item i of theLeftKey into theLeftField
-            put item i of theLeftRefKey into theRightField
-            split theLeftField by "="
-            split theRightField by "=" ## account for field=value in relationship (alias tables)
+      ## Insert fields linking to left table
+      put tblrelation_get(theRelationA, "cross-reference table key for left table") into theLeftRefKey
+      repeat with i = 1 to max(the number of items of theLeftKey, the number of items of theLeftRefKey)
+        put item i of theLeftKey into theLeftField
+        put item i of theLeftRefKey into theRightField
+        split theLeftField by "="
+        split theRightField by "=" ## account for field=value in relationship (alias tables)
 
-            if the number of elements of theLeftField > 1 then
-              put theLeftField[2] into theRecordA[ theLeftField[1] ]
-            else if the number of elements of theRightField > 1 then
-              put theRightField[2] into theRecordA[ theRightField[1] ]
-            else
-              ## straight up fields
-              if theLeftField[1] is among the keys of theLeftRecordA then
-                put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
-              else
-                put "required field '" & theLeftField[1] & "' is not present in the record" into theError
-                exit repeat
-              end if
-            end if
-          end repeat
-        end if
-
-        ## Insert fields linking to right table
-        if theError is empty then
-          put tblrelation_get(theRelationA, "cross-reference table key for right table") into theRightRefKey
-          repeat with i = 1 to max(the number of items of theRightKey, the number of items of theRightRefKey)
-            put item i of theRightRefKey into theLeftField
-            put item i of theRightKey into theRightField
-            split theLeftField by "="
-            split theRightField by "=" ## account for field=value in relationship (alias tables)
-
-            if the number of elements of theLeftField > 1 then
-              put theLeftField[2] into theRecordA[ theLeftField[1] ]
-            else if the number of elements of theRightField > 1 then
-              put theRightField[2] into theRecordA[ theRightField[1] ]
-            else
-              ## straight up fields
-              if theRightField[1] is among the keys of theRightRecordA then
-                put theRightRecordA[ theRightField[1] ] into theRecordA[ theLeftField[1] ]
-              else
-                put "required field '" & theRightField[1] & "' is not present in the record" into theError
-                exit repeat
-              end if
-            end if
-          end repeat
-        end if
-
-        if pAction is "link" then
-          ## Create update structures
-          if theError is empty then
-            local theTablesA
-
-            _SplitRecordsIntoTablesIndex pConnectionA, theRecordA, theTablesA, true
-            put the result into theError
-          end if
-
-          ## Update
-          if theError is empty then
-            _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true, true
-            put the result into theError
-          end if
-
-        else ## Unlink
-          if theError is empty then
-            sqlrecord_delete theRecordA, pConnectionA
-            put the result into theError
-          end if
-        end if
-
-        break
-
-      case "one-to-one"
-      case "1-1"
-      case "one-to-many"
-      case "1-n"
-        ## Insert key value of left table record into key of right table record
-        if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
-          put xRecord1A into theLeftRecordA
-          put xRecord2A into theRightRecordA
-          put theTable2A into theRightTableA
+        if the number of elements of theLeftField > 1 then
+          put theLeftField[2] into theRecordA[ theLeftField[1] ]
+        else if the number of elements of theRightField > 1 then
+          put theRightField[2] into theRecordA[ theRightField[1] ]
         else
-          put xRecord2A into theLeftRecordA
-          put xRecord1A into theRightRecordA
-          put theTable1A into theRightTableA
-        end if
-
-        put tblrelation_get(theRelationA, "left table key") into theLeftKey
-        put tblrelation_get(theRelationA, "right table key") into theRightKey
-
-        ## Start filling in record that we will use to update with
-        put theRightRecordA["@table"] into theRecordA["@table"]
-
-        ## get primary key values from theRightRecordA
-        put tableobj_get(theRightTableA, "primary key") into thePrimaryKey
-        repeat for each item theField in thePrimaryKey
-          put theRightRecordA[theField] into theRecordA[theField]
-        end repeat
-
-        ## Insert link values into record
-        repeat with i = 1 to max(the number of items of theLeftKey, the number of items of theRightKey)
-          put item i of theLeftKey into theLeftField
-          put item i of theRightKey into theRightField
-          split theLeftField by "="
-          split theRightField by "=" ## account for field=value in relationship (alias tables)
-
-          if the number of elements of theLeftField > 1 then
-            put theLeftField[2] into theRecordA[ theLeftField[1] ]
-          else if the number of elements of theRightField > 1 then
-            put theRightField[2] into theRecordA[ theRightField[1] ]
+          ## straight up fields
+          if theLeftField[1] is among the keys of theLeftRecordA then
+            put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
           else
-            ## straight up fields
-            if pAction is "link" then
-              if theLeftField[1] is among the keys of theLeftRecordA then
-                put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
-              else
-                put "required field '" & theLeftField[1] & "' is not present in the record" into theError
-                exit repeat
-              end if
-
-            else ## unlink
-              ## Set to Null, 0 or empty
-              local theFieldA
-
-              put sDbsA[ theRightTableA["database"] ]["schema"]["tables"][ theRightTableA["name"] ]["fields"][ theRightField[1] ] into theFieldA
-              if theFieldA["accepts null"] then
-                put NULL into theRecordA[ theRightField[1] ]
-              else if theFieldA["type"] is among the items of kDontQuoteTypes then
-                put 0 into theRecordA[ theRightField[1] ]
-              else
-                put empty into theRecordA[ theRightField[1] ]
-              end if
-            end if
+            _ThrowError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
+            exit repeat
           end if
-        end repeat
-
-        ## Create update structures
-        if theError is empty then
-          _SplitRecordsIntoTablesIndex pConnectionA, theRecordA, theTablesA, true
-          put the result into theError
         end if
+      end repeat
+
+      ## Insert fields linking to right table
+      put tblrelation_get(theRelationA, "cross-reference table key for right table") into theRightRefKey
+      repeat with i = 1 to max(the number of items of theRightKey, the number of items of theRightRefKey)
+        put item i of theRightRefKey into theLeftField
+        put item i of theRightKey into theRightField
+        split theLeftField by "="
+        split theRightField by "=" ## account for field=value in relationship (alias tables)
+
+        if the number of elements of theLeftField > 1 then
+          put theLeftField[2] into theRecordA[ theLeftField[1] ]
+        else if the number of elements of theRightField > 1 then
+          put theRightField[2] into theRecordA[ theRightField[1] ]
+        else
+          ## straight up fields
+          if theRightField[1] is among the keys of theRightRecordA then
+            put theRightRecordA[ theRightField[1] ] into theRecordA[ theLeftField[1] ]
+          else
+            _ThrowError kErrInvalidProperty, "required field '" & theRightField[1] & "' is not present in the record"
+            exit repeat
+          end if
+        end if
+      end repeat
+
+      if pAction is "link" then
+        ## Create update structures
+        local theTablesA
+
+        _SplitRecordsIntoTablesIndex pConnectionA, theRecordA, theTablesA, true
 
         ## Update
-        if theError is empty then
-          local updateRecordAfterUpdate = "false" ## in case we ever need some sort of refresh in the future
-          _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate, true
-          put the result into theError
+        _InsertRecordIntoTable pConnectionA, theQuotesA, theTablesA, theRecordA, true, true
+      else ## Unlink
+        sqlrecord_delete theRecordA, pConnectionA
+      end if
 
-          ## Update record passed in so it has new id
-          if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
-            ## update pRecordA2
-            put theRecordA into xRecord2A
-          else
-            ## update pRecordA1
-            put theRecordA into xRecord1A
+      break
+
+    case "one-to-one"
+    case "1-1"
+    case "one-to-many"
+    case "1-n"
+      ## Insert key value of left table record into key of right table record
+      if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
+        put xRecord1A into theLeftRecordA
+        put xRecord2A into theRightRecordA
+        put theTable2A into theRightTableA
+      else
+        put xRecord2A into theLeftRecordA
+        put xRecord1A into theRightRecordA
+        put theTable1A into theRightTableA
+      end if
+
+      put tblrelation_get(theRelationA, "left table key") into theLeftKey
+      put tblrelation_get(theRelationA, "right table key") into theRightKey
+
+      ## Start filling in record that we will use to update with
+      put theRightRecordA["@table"] into theRecordA["@table"]
+
+      ## get primary key values from theRightRecordA
+      put tableobj_get(theRightTableA, "primary key") into thePrimaryKey
+      repeat for each item theField in thePrimaryKey
+        put theRightRecordA[theField] into theRecordA[theField]
+      end repeat
+
+      ## Insert link values into record
+      repeat with i = 1 to max(the number of items of theLeftKey, the number of items of theRightKey)
+        put item i of theLeftKey into theLeftField
+        put item i of theRightKey into theRightField
+        split theLeftField by "="
+        split theRightField by "=" ## account for field=value in relationship (alias tables)
+
+        if the number of elements of theLeftField > 1 then
+          put theLeftField[2] into theRecordA[ theLeftField[1] ]
+        else if the number of elements of theRightField > 1 then
+          put theRightField[2] into theRecordA[ theRightField[1] ]
+        else
+          ## straight up fields
+          if pAction is "link" then
+            if theLeftField[1] is among the keys of theLeftRecordA then
+              put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
+            else
+              _ThrowError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
+              exit repeat
+            end if
+
+          else ## unlink
+            ## Set to Null, 0 or empty
+            local theFieldA
+
+            put sDbsA[ theRightTableA["database"] ]["schema"]["tables"][ theRightTableA["name"] ]["fields"][ theRightField[1] ] into theFieldA
+            if theFieldA["accepts null"] then
+              put NULL into theRecordA[ theRightField[1] ]
+            else if theFieldA["type"] is among the items of kDontQuoteTypes then
+              put 0 into theRecordA[ theRightField[1] ]
+            else
+              put empty into theRecordA[ theRightField[1] ]
+            end if
           end if
         end if
+      end repeat
 
-        break
-    end switch
-  end if
+      ## Create update structures
+      _SplitRecordsIntoTablesIndex pConnectionA, theRecordA, theTablesA, true
 
-  return theError
+      ## Update
+      local updateRecordAfterUpdate = "false" ## in case we ever need some sort of refresh in the future
+      _UpdateRecordInTable pConnectionA, theQuotesA, theTablesA, theRecordA, updateRecordAfterUpdate, true
+
+      ## Update record passed in so it has new id
+      if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
+        ## update pRecordA2
+        put theRecordA into xRecord2A
+      else
+        ## update pRecordA1
+        put theRecordA into xRecord1A
+      end if
+
+      break
+  end switch
+
+  return empty
 end _LinkUnlinkRecords
 
 
