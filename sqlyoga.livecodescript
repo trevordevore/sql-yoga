@@ -3849,6 +3849,7 @@ function dbconn_get pProp, pConnName, pDBKey
       return theA
       break
     case "quote identifiers"
+    case "use ssl"
       return sDbsA[ theKeyA ][pProp] is true
       break
     case "schema version" ## undocumented
@@ -3924,7 +3925,7 @@ Description:
 | `quote identifiers` | Set to true to have SQL Yoga add quotes around every table/field name in queries. Default is false. |
 | `type` | The type of database that this connection is associated with. Only applies if the adaptor is set to "odbc": sql server, mysql, postgresql. |
 | `username` | Username used to connect to the database. |
-| `use ssl` | Set to true to connect to the database using SSL. Currently supported with MySQL and Valentina client. |
+| `use ssl` | Set to `true` to connect to the database using SSL. Currently supported with MySQL and Valentina client. |
 
 Description:
 Different vendor types have different options.
@@ -4004,7 +4005,9 @@ command dbconn_set pProp, pValue, pConnName, pDBKey
     case "port"
       dbconn_disconnect theConnectionA
       break
-      -- sDbsA[ theKeyA ]["vendor"][ sDbsA[ theKeyA ]["type"] ]["use ssl"]
+    case "use ssl"
+    case "quote identifiers"
+      put pProp is true into pProp
   end switch
 
   switch pProp
