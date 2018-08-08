@@ -123,14 +123,12 @@ command _runMigrations pMigrationFolder, pConnectionName, pDBKey
 
       if tError is empty then
         dbschema_processMigrationArray tMigrationVersion, tMigrateA, pConnectionName, pDBKey
-        put the result into tError
       end if
     else if tFile ends with ".livecodescript" or tFile ends with ".livecode" then
         dbschema_processMigrationFile tMigrationVersion, pMigrationFolder & "/" & tFile, pConnectionName, pDBKey
-        put the result into tError
     end if
 
-    if tError is not empty and tError is not "migration has already been applied" then exit repeat
+    if tError is not empty then exit repeat
   end repeat
 
   return tError

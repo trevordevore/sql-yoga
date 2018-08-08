@@ -492,7 +492,7 @@ private function _ConvertSelectClauseToSelectClauseFieldIndex pKey, pSelectClaus
         put theFieldName into theFieldsA[theTable][theNextIndex]["field name"]
         put theSelectClauseA[i]["as"] into theFieldsA[theTableIndex][theNextIndex]["as"]
       else
-        _ThrowError kErrPropDoesntExist, "field '" & theFieldName & "' was not found in any tables in the query template"
+        sqlyoga__throwError kErrPropDoesntExist, "field '" & theFieldName & "' was not found in any tables in the query template"
       end if
     end if
   end repeat
@@ -1088,7 +1088,7 @@ private function _QueryTableHierarchyStructure @xQueryA, pCursorFields
           ## -- The IF check above misses checking the linking table which is bad. Better to enforce all keys
           ## -- if the user wants to convert to records.
           ## -- If table is in select clause and unique field isn't present then throw error
-          _ThrowError kErrCantFindObject, "unique field '" & item i of theHierarchyA[theTable]["unique fields"] & "' for table '" & theTable & "' is not present in the cursor"
+          sqlyoga__throwError kErrCantFindObject, "unique field '" & item i of theHierarchyA[theTable]["unique fields"] & "' for table '" & theTable & "' is not present in the cursor"
         end if
       end if
     end repeat
@@ -1323,7 +1323,7 @@ private command _ConvertQueryJoinToFlatHierarchy @xHierarchyA, pKey, pJoinA, pPa
             tblrelation_get(theRelationRefA, "cross-reference table key for right table without values") into xHierarchyA[theTable]["unique fields"]
     else
       ## no match
-      _ThrowError kErrInvalidProperty, "relationship is not valid in " & param(0)
+      sqlyoga__throwError kErrInvalidProperty, "relationship is not valid in " & param(0)
     end if
 
     ## put in parent
@@ -1674,7 +1674,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
     ## taint check
     if (theRelationA["type"] is among the items of "n-n,many-to-many" and pRightTable is not theRelationA["cross-reference table"]) and \
           (theRelationA["type"] is not among the items of "n-n,many-to-many" and pRightTable is not theRelationA["right table"])  then
-      _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
+      sqlyoga__throwError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
     end if
 
     ## Get fields
@@ -1687,7 +1687,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
       case "one-to-one"
       case "1-1"
         ## Enforce ownership rules for one-to-one
-        if theRelationA["owner"] is "right" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='right'"
+        if theRelationA["owner"] is "right" then sqlyoga__throwError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='right'"
         put tblrelation_get(pRelationA, "right table key") into theRightFields
         break
       default
@@ -1702,7 +1702,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
     ## taint check
     if (theRelationA["type"] is among the items of "n-n,many-to-many" and pRightTable is not theRelationA["cross-reference table"]) or \
           (theRelationA["type"] is not among the items of "n-n,many-to-many" and pRightTable is not theRelationA["left table"])  then
-      _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' for " & param(0)
+      sqlyoga__throwError kErrInvalidProperty, "invalid right table '" & pRightTable & "' for " & param(0)
     end if
 
     ## Get fields
@@ -1715,7 +1715,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
       case "one-to-one"
       case "1-1"
         ## Enforce ownership rules for one-to-one
-        if theRelationA["owner"] is "left" then _ThrowError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='left'"
+        if theRelationA["owner"] is "left" then sqlyoga__throwError kErrInvalidProperty, "cannot generate key clause from a 1-1 relationship with owner='left'"
         put tblrelation_get(pRelationA, "left table key") into theRightFields
         break
       default
@@ -1727,7 +1727,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
     ## taint check
     if pRightTable is not theRelationA["left table"] and \
           pRightTable is not theRelationA["right table"]  then
-      _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
+      sqlyoga__throwError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
     end if
 
     if pRightTable is theRelationA["left table"] then
@@ -1741,7 +1741,7 @@ private function _ForeignKeyClauseFromRelationship pRelationA, pLeftTable, pLeft
       -- put theRelationA["cross-reference table"]["keys"]["right table field indexes"] into theLeftFieldIndexes
       -- put theRelationA["right table"]["keys"]["key field indexes"] into theRightFieldIndexes
     else
-      _ThrowError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
+      sqlyoga__throwError kErrInvalidProperty, "invalid right table '" & pRightTable & "' in relationship '" & pRelationA["index"] & "' for " & param(0)
     end if
   end if
 
@@ -1831,12 +1831,12 @@ private function _StringToJoins pRootTableA, pString
         put theJoinType into theJoinsA[ theIndex ]["join type"]
         put 0 into theJoinsA[ theIndex ]["relationship index"]
       else
-        _ThrowError kErrInvalidProperty, "no ON clause was provided in the JOIN statement: " & theJoin
+        sqlyoga__throwError kErrInvalidProperty, "no ON clause was provided in the JOIN statement: " & theJoin
       end if
     else
       ## Passing in a root table then look up relationships
       if theTable is not among the keys of sDbsA[ pRootTableA["database"] ]["table objects"]["tables"] then
-        _ThrowError kErrCantFindObject, "table '" & theTable & "' was not found in database '" & pRootTableA["database"] & "'"
+        sqlyoga__throwError kErrCantFindObject, "table '" & theTable & "' was not found in database '" & pRootTableA["database"] & "'"
       end if
 
       put tableobjects_getTable(theTable, pRootTableA["database"]) into theToTableA
@@ -2027,7 +2027,7 @@ private command _VerifyTableJoins pParentTableA, @xJoinsA, pDynamicKeyA
       if theRelationA is an array then
         put theRelationA[1]["index"] into xJoinsA[pDynamicKeyA]["relationship index"]
       else
-        _ThrowError kErrInvalidProperty, "table '" & tableobj_get(theChildTableA, "name") & "' is not related to table '" & tableobj_get(pParentTableA, "name")  & "'"
+        sqlyoga__throwError kErrInvalidProperty, "table '" & tableobj_get(theChildTableA, "name") & "' is not related to table '" & tableobj_get(pParentTableA, "name")  & "'"
       end if
     end if
 
@@ -2265,7 +2265,7 @@ end _FindAnyRelationBetweenTables
 --> Errors (Private)
 
 
-private command _ThrowError pErrNum, pMsg
+command sqlyoga__throwError pErrNum, pMsg
   local theContexts, theContextsA, theCount, theError
 
   ## error number, line number, col number, message
@@ -2289,7 +2289,7 @@ private command _ThrowError pErrNum, pMsg
   end repeat
   delete the last char of theError
   throw theError
-end _ThrowError
+end sqlyoga__throwError
 
 
 private function _ParseExecutionContexts pContexts
@@ -2607,16 +2607,16 @@ end _ValidateKey
 
 
 private command _ValidateDBKeyExistence pKey
-  if pKey is not among the keys of sDbsA then _ThrowError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
+  if pKey is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
   return empty
 end _ValidateDBKeyExistence
 
 
 private command _ValidateConnectionExistence pKey, pConnectionName
-  if pKey is not among the keys of sDbsA then _ThrowError kErrCantFindObject,  format(kDatabaseKeyNotFound, quote, pKey, quote)
+  if pKey is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject,  format(kDatabaseKeyNotFound, quote, pKey, quote)
 
   if pConnectionName is not among the keys of sDbsA[pKey]["connections"] then \
-        _ThrowError kErrCantFindObject, "database connection '" & pConnectionName & "' not found in database '" & pKey & "'"
+        sqlyoga__throwError kErrCantFindObject, "database connection '" & pConnectionName & "' not found in database '" & pKey & "'"
 
   return empty
 end _ValidateConnectionExistence
@@ -2646,31 +2646,31 @@ end _CreateConnectionArray
 
 
 private command _ValidateConnectionArray pConnectionA
-  if pConnectionA["type"] is not kConnectionReference then _ThrowError kErrInvalidProperty, kInvalidType && "connection"-- & cr & the executioncontexts
+  if pConnectionA["type"] is not kConnectionReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "connection"-- & cr & the executioncontexts
   _ValidateConnectionExistence pConnectionA["database"], pConnectionA["name"]
   return empty
 end _ValidateConnectionArray
 
 
 private command _ValidateRelationshipArray pRelationA
-  if pRelationA["type"] is not kRelationshipReference then _ThrowError kErrInvalidProperty, kInvalidType && "relationship" --& cr & the executioncontexts
+  if pRelationA["type"] is not kRelationshipReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "relationship" --& cr & the executioncontexts
   _ValidateRelationshipExistence pRelationA["database"], pRelationA["index"]
 end _ValidateRelationshipArray
 
 
 private command _ValidateRelationshipExistence pKey, pIndex
-  if pKey is not among the keys of sDbsA then _ThrowError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
+  if pKey is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
   if pIndex is not among the keys of sDbsA[pKey]["table objects"]["relationships"] then \
-        _ThrowError kErrCantFindObject, "relationship index '" & pIndex & "' not found in database '" & pKey & "'"
+        sqlyoga__throwError kErrCantFindObject, "relationship index '" & pIndex & "' not found in database '" & pKey & "'"
   return empty
 end _ValidateRelationshipExistence
 
 
 private command _ValidateTableExistence pKey, pTableName
-  if pKey is not among the keys of sDbsA then _ThrowError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
+  if pKey is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
 
   if pTableName is not among the keys of sDbsA[pKey]["table objects"]["tables"] then \
-        _ThrowError kErrCantFindObject, "table '" & pTableName & "' not found in database '" & pKey & "'" --& cr & the executioncontexts
+        sqlyoga__throwError kErrCantFindObject, "table '" & pTableName & "' not found in database '" & pKey & "'" --& cr & the executioncontexts
   return empty
 end _ValidateTableExistence
 
@@ -2719,7 +2719,7 @@ end _CreateRelationshipArray
 
 private command _ValidateTableArray pTableA
   ## If a string then go ahead and fetch for default connection.
-  if pTableA["type"] is not kTableReference then _ThrowError kErrInvalidProperty, kInvalidType && "table" --& cr & the executioncontexts
+  if pTableA["type"] is not kTableReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "table" --& cr & the executioncontexts
   _ValidateTableExistence pTableA["database"], pTableA["name"]
   return empty
 end _ValidateTableArray
@@ -2740,13 +2740,13 @@ private command _ValidateIndexExistence pKey, pTableNameOrIndex, pIndexNameOrInd
 
   _ValidateTableExistence pKey, pTableNameOrIndex
   if pIndexNameOrIndex is not among the keys of sDbsA[pKey]["schema"]["tables"][pTableNameOrIndex]["indexes"] then \
-        _ThrowError kErrCantFindObject, "index '" & pIndexNameOrIndex & "' not found in table index '" & pTableNameOrIndex & "' of database '" & pKey & "'"
+        sqlyoga__throwError kErrCantFindObject, "index '" & pIndexNameOrIndex & "' not found in table index '" & pTableNameOrIndex & "' of database '" & pKey & "'"
   return empty
 end _ValidateIndexExistence
 
 
 private command _ValidateIndexArray pIndexA
-  if pIndexA["type"] is not kIndexReference then _ThrowError kErrInvalidProperty, kInvalidType && "index"
+  if pIndexA["type"] is not kIndexReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "index"
   _ValidateIndexExistence pIndexA["database"], pIndexA["table"], pIndexA["index"]
   return empty
 end _ValidateIndexArray
@@ -2755,14 +2755,14 @@ end _ValidateIndexArray
 private command _ValidateScopeExistence pKey, pTableName, pScopeName
   _ValidateTableExistence pKey, pTableName
   if pScopeName is not among the keys of sDbsA[pKey]["table objects"]["tables"][pTableName]["scopes"] then
-    _ThrowError kErrCantFindObject, "scope '" & pScopeName & "' not found in table '" & pTableName & "' of database '" & pKey & "'"
+    sqlyoga__throwError kErrCantFindObject, "scope '" & pScopeName & "' not found in table '" & pTableName & "' of database '" & pKey & "'"
   end if
   return empty
 end _ValidateScopeExistence
 
 
 private command _ValidateScopeArray pScopeA
-  if pScopeA["type"] is not kScopeReference then _ThrowError kErrInvalidProperty, kInvalidType && "scope" -- & cr & the executioncontexts
+  if pScopeA["type"] is not kScopeReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "scope" -- & cr & the executioncontexts
 
   _ValidateScopeExistence pScopeA["database"], pScopeA["table"], pScopeA["name"]
   return empty
@@ -2770,31 +2770,31 @@ end _ValidateScopeArray
 
 
 private command _ValidateQueryArray pQueryA
-  if pQueryA["type"] is not kQueryReference then _ThrowError kErrInvalidProperty, kInvalidType && "query" --& cr & the executioncontexts
-  if pQueryA["database"] is not among the keys of sDbsA then _ThrowError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pQueryA["database"], quote)
+  if pQueryA["type"] is not kQueryReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "query" --& cr & the executioncontexts
+  if pQueryA["database"] is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pQueryA["database"], quote)
   return empty
 end _ValidateQueryArray
 
 
 private command _ValidateQueryTemplateArray pTemplateA
-  if pTemplateA["type"] is not kQueryTemplateReference then _ThrowError kErrInvalidProperty, kInvalidType && "query template"
+  if pTemplateA["type"] is not kQueryTemplateReference then sqlyoga__throwError kErrInvalidProperty, kInvalidType && "query template"
   _ValidateQueryTemplateExistence pTemplateA["database"], pTemplateA["name"]
   return empty
 end _ValidateQueryTemplateArray
 
 
 private command _ValidateQueryTemplateExistence pKey, pTemplateName
-  if pKey is not among the keys of sDbsA then _ThrowError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
+  if pKey is not among the keys of sDbsA then sqlyoga__throwError kErrCantFindObject, format(kDatabaseKeyNotFound, quote, pKey, quote)
 
   if pTemplateName is not among the keys of sDbsA[pKey]["query templates"] then \
-        _ThrowError kErrCantFindObject, "query template '" & pTemplateName & "' not found in database '" & pKey & "'"
+        sqlyoga__throwError kErrCantFindObject, "query template '" & pTemplateName & "' not found in database '" & pKey & "'"
   return empty
 end _ValidateQueryTemplateExistence
 
 
 private command _ValidateDatabaseObject pButtonRef
   if there is not a pButtonRef then
-    _ThrowError kErrCantFindObject, "database object does not exist"
+    sqlyoga__throwError kErrCantFindObject, "database object does not exist"
   end if
 
   return empty
@@ -3074,7 +3074,7 @@ command dbobject_createFromArray pArray, pDBKey
   _ValidateDatabaseArray pArray
 
   if pArray is not an array then
-    _ThrowError kErrInvalidArray, "invalid array"
+    sqlyoga__throwError kErrInvalidArray, "invalid array"
   end if
 
   _ResetDatabaseKey pDBKey
@@ -3294,7 +3294,7 @@ function dbobject_get pProperty, pDBKey
       if pProperty is among the keys of sDbsA[ pDBKey ] then
         return sDbsA[ pDBKey ][pProperty]  ## update prop we are targeting
       else
-        _ThrowError kErrInvalidProperty, "invalid database property '" & pProperty & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid database property '" & pProperty & "'"
       end if
   end switch
 end dbobject_get
@@ -3345,7 +3345,7 @@ command dbobject_set pProperty, pValue, pDBKey
     case "schema migrations"
       if pValue is not empty then
         if word 1 of pValue is not "group" then
-          _ThrowError kErrInvalidGroupObject, "value must be a reference to a group"
+          sqlyoga__throwError kErrInvalidGroupObject, "value must be a reference to a group"
         end if
         put _CustomControlReference(pValue) into pValue
       end if
@@ -3360,7 +3360,7 @@ command dbobject_set pProperty, pValue, pDBKey
       if pProperty is among the keys of sDbsA[ pDBKey ] then
         put pValue into sDbsA[ pDBKey ][pProperty]  ## update prop we are targeting
       else
-        _ThrowError kErrInvalidProperty, "invalid database property '" & pProperty & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid database property '" & pProperty & "'"
       end if
   end switch
 
@@ -3471,7 +3471,7 @@ command dbobject_createObject pDBKey
   _ValidateKey pDBKey
 
   if pDBKey is among the keys of sDbsA then
-    _ThrowError kErrObjectNameTaken, "database '" & pDBKey & "' already exists"
+    sqlyoga__throwError kErrObjectNameTaken, "database '" & pDBKey & "' already exists"
   end if
 
   ## Create root keys
@@ -3618,13 +3618,13 @@ command dbconn_createObject pName, pAdaptor, pType, pDBKey
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
 
-  if word 1 to -1 of pName is empty then  _ThrowError kErrObjectNameTaken, "connection name cannot be empty"
-  if pName is among the keys of sDbsA[pDBKey]["connections"] then  _ThrowError kErrObjectNameTaken, "connection '" & pName & "' already exists"
+  if word 1 to -1 of pName is empty then  sqlyoga__throwError kErrObjectNameTaken, "connection name cannot be empty"
+  if pName is among the keys of sDbsA[pDBKey]["connections"] then  sqlyoga__throwError kErrObjectNameTaken, "connection '" & pName & "' already exists"
 
-  if pAdaptor is not among the items of "sqlite,mysql,valentina,postgresql,odbc" then _ThrowError kErrInvalidProperty, "invalid connection adaptor"
+  if pAdaptor is not among the items of "sqlite,mysql,valentina,postgresql,odbc" then sqlyoga__throwError kErrInvalidProperty, "invalid connection adaptor"
   if pAdaptor is "odbc" then
     if pType is not among the items of "sqlite,mysql,postgresql,sql server,filemaker" then
-      _ThrowError kErrInvalidProperty, "invalid connection type"
+      sqlyoga__throwError kErrInvalidProperty, "invalid connection type"
     end if
   else if pType is empty then
     put pAdaptor into pType
@@ -3891,7 +3891,7 @@ function dbconn_get pProp, pConnName, pDBKey
         else if pProp is among the keys of sDbsA[ theKeyA ] then
           return sDbsA[ theKeyA ][pProp]  ## update prop we are targeting
         else
-          _ThrowError kErrInvalidProperty, "invalid connection property '" & pProp & "'" -- & cr & the executioncontexts
+          sqlyoga__throwError kErrInvalidProperty, "invalid connection property '" & pProp & "'" -- & cr & the executioncontexts
         end if
       end if
       break
@@ -4013,12 +4013,12 @@ command dbconn_set pProp, pValue, pConnName, pDBKey
   switch pProp
     case "adaptor"
       put toLower(pValue) into pValue
-      if pValue is not among the items of ",sqlite,mysql,valentina,postgresql,odbc" then _ThrowError kErrInvalidProperty, "invalid connection adaptor"
+      if pValue is not among the items of ",sqlite,mysql,valentina,postgresql,odbc" then sqlyoga__throwError kErrInvalidProperty, "invalid connection adaptor"
       break
     case "type"
       put toLower(pValue) into pValue
       if pValue is not among the items of ",sqlite,mysql,postgresql,sql server,filemaker" then
-        _ThrowError kErrInvalidProperty, "invalid connection type"
+        sqlyoga__throwError kErrInvalidProperty, "invalid connection type"
       end if
       break
   end switch
@@ -4206,7 +4206,7 @@ command dbconn_lastInsertedID pConnName, pDBKey
   put sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["connection id"] into theConnectionID
 
   if theConnectionID <= 0 then
-    _ThrowError kErrorSQLConnection, "invalid connection id"
+    sqlyoga__throwError kErrorSQLConnection, "invalid connection id"
   end if
 
   if sDbsA[ theKeyA ]["type"] is "valentina" then
@@ -4224,7 +4224,7 @@ command dbconn_lastInsertedID pConnName, pDBKey
       put "put _" & theType & "_lastInsertIDSQL(pConnectionA) into theSQL" into theDo
       do theDO
     catch e
-      _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
+      sqlyoga__throwError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
     end try
 
     dbconn_set "last executed sql", theSQL, theConnectionA
@@ -4256,7 +4256,7 @@ command dbconn_lastInsertedID pConnName, pDBKey
   end if
 
   if theError is not empty then
-    _ThrowError kErrorSQLExecution, theError && "(" & theSQL & ")"
+    sqlyoga__throwError sqlyoga__errorTypeFromError(theConnectionA, theError), theError && "(" & theSQL & ")"
   end if
 
   return theID for value
@@ -4289,7 +4289,7 @@ function dbconn_getBooleanValue pBoolean, pConnName, pDBKey
     put "put _" & theType & "_getBooleanValue(pBoolean, pConnectionA, pParamsA) into theBoolean" into theDo
     do theDO
   catch e
-    _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
+    sqlyoga__throwError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
   end try
 
   return theBoolean
@@ -4543,7 +4543,7 @@ command dbconn_connect pConnName, pDBKey
   end if
 
   if theError is not empty then
-    _ThrowError kErrorSQLConnection, theError
+    sqlyoga__throwError kErrorSQLConnection, theError
   end if
 
   ## Read in schema if we don't have it
@@ -4625,7 +4625,7 @@ command dbconn_disconnect pConnName, pDBKey
   end if
 
   if theError is not empty then
-    _ThrowError kErrorSQLConnection, theError
+    sqlyoga__throwError kErrorSQLConnection, theError
   end if
 
   return empty
@@ -4753,7 +4753,7 @@ command dbconn_openCursor pSQL, pBindingsA, pVendorParamsA, pConnName, pDBKey
   end if
 
   if theError is not empty then
-    _ThrowError kErrorSQLExecution, theError && "(" & pSQL & ")"
+    sqlyoga__throwError sqlyoga__errorTypeFromError(theConnectionA, theError), theError && "(" & pSQL & ")"
   end if
 
   return theCursor for value
@@ -4792,6 +4792,39 @@ end _TryConnectingAgainBasedOnError
 
 
 /**
+Summary: Determines whether an or is a connection or SQL related error and returns the appropriate error type.
+
+Description:
+When executing a query the error message may be related to a connection error
+rather than a query error. We want to throw the proper error type.
+
+Returns: kErrorSQLConnection or kErrorSQLExecution
+*/
+command sqlyoga__errorTypeFromError pConnectionA, pError
+  local theKeyA
+
+  put _KeyArrayForConnection(pConnectionA) into theKeyA
+
+  switch sDbsA[ theKeyA ]["type"]
+    case "mysql"
+      if pError is "MySQL server has gone away" or pError begins with "Lost connection to MySQL" then
+        return kErrorSQLConnection
+      end if
+      break
+    case "sqlite"
+      ## this is error if network drive db is on disappears
+      if pError contains "the database file is locked" or \
+            pError contains "some kind of disk i/o error occurred" then
+        return kErrorSQLConnection
+      end if
+      break
+  end switch
+
+  return kErrorSQLExecution
+end sqlyoga__errorTypeFromError
+
+
+/**
 Summary: Closes a cursor associated with a connection.
 
 Parameters:
@@ -4825,7 +4858,7 @@ command dbconn_closeCursor pCursor, pConnName, pDBKey
   end switch
 
   if theError is not empty then
-    _ThrowError "sqlyoga_executesql_err", theError
+    sqlyoga__throwError "sqlyoga_executesql_err", theError
   end if
 
   return empty
@@ -4913,7 +4946,7 @@ command dbconn_beginTransaction pParamsA, pConnName, pDBKey
         put "put _" & theType & "_beginTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
         do theDO
       catch e
-        _ThrowError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
+        sqlyoga__throwError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
       end try
 
       dbconn_executeSQL theSQL, theConnectionA
@@ -4934,15 +4967,14 @@ pParamsA: Not implemented. Included for possible future use.
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Error message
+Returns: Empty
 
 References: dbconn_beginTransaction (command)
 */
 command dbconn_commitTransaction pParamsA, pConnName, pDBKey
-  -----
-  local i,theDo,theError,theConnectionA
+  local i, theDo, theConnectionA
   local theKeyA
-  -----
+
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
   put _KeyArrayForConnection(theConnectionA) into theKeyA
 
@@ -4964,27 +4996,18 @@ command dbconn_commitTransaction pParamsA, pConnName, pDBKey
         put "put _" & theType & "_commitTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
         do theDO
       catch e
-        put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
+        sqlyoga__throwError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
       end try
 
-      if theError is empty then
-        try
-          dbconn_executeSQL theSQL, theConnectionA
-          put the result into theError
-        catch e
-          put e into theError
-        end try
-      end if
+      dbconn_executeSQL theSQL, theConnectionA
     end if
   end if
 
-  if theError is empty then
-    ## Decrement counter
-    put max(0, sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"] - 1) \
-          into sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"]
-  end if
+  ## Decrement counter
+  put max(0, sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"] - 1) \
+        into sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"]
 
-  return theError
+  return empty
 end dbconn_commitTransaction
 
 
@@ -4996,12 +5019,12 @@ pParamsA: Not implemented. Included for possible future use.
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Error message
+Returns: Empty
 
 References: dbconn_beginTransaction (command)
 */
 command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
-  local i, theDo, theError, theConnectionA
+  local i, theDo, theConnectionA
   local theKeyA
 
   put _CreateConnectionArray(pConnName, pDBKey) into theConnectionA
@@ -5021,24 +5044,17 @@ command dbconn_rollbackTransaction pParamsA, pConnName, pDBKey
       put "put _" & theType & "_rollbackTransactionSQL(pConnectionA, pParamsA) into theSQL" into theDo
       do theDO
     catch e
-      put param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'" into theError
+      sqlyoga__throwError kErrErrorInFunction, param(0) && "has not been defined for database type '" & sDbsA[ theKeyA ]["type"] & "'"
     end try
 
-    if theError is empty then
-      try
-        dbconn_executeSQL theSQL, theConnectionA
-        put the result into theError
-      catch e
-        put e into theError
-      end try
-    end if
+    dbconn_executeSQL theSQL, theConnectionA
   end if
 
   ## Reset transactions.
   ## Once support for NAMES is added this code will change
   put 0 into sConnectionsA[ theConnectionA["database"] ][ theConnectionA["name"] ]["open transactions"]
 
-  return theError
+  return empty
 end dbconn_rollbackTransaction
 
 
@@ -5142,8 +5158,10 @@ private command _valentinaError pConnID
     put "OS error ("& theErrNum &")" into theError
   end if
 
+  # TODO: Find list of error codes and throw kErrorSQLConnection if error is related to connection.
+  # 2018-08-08: Could not find a public list.
   if theError is not empty then
-    _ThrowError kErrorSQLExecution, theError
+    sqlyoga__throwError kErrorSQLExecution, theError
   end if
   return empty
 end _valentinaError
@@ -5341,6 +5359,8 @@ command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
     end if
     _valentinaError theConnectionID
   else
+    local theErrorType
+
     ##
     ## try reconnecting once
     repeat with queryAttempts = 1 to 2
@@ -5375,7 +5395,7 @@ command dbconn_executeWBindings pSQL, pBindingsA, pConnName, pDBKey
   end if
 
   if theAffectedRows is not an integer then
-    _ThrowError kErrorSQLExecution, theAffectedRows && "(" & pSQL & ")"
+    sqlyoga__throwError sqlyoga__errorTypeFromError(theConnectionA, theAffectedRows), theAffectedRows && "(" & pSQL & ")"
   end if
 
   return theAffectedRows for value
@@ -5466,7 +5486,7 @@ command dbconn_retrieveQueryAsData pSQL, pBindingsA, @xOutData, pColDel, pRowDel
   end if
 
   if theError is not empty then
-    _ThrowError kErrorSQLExecution, theError && "(" & pSQL & ")"
+    sqlyoga__throwError sqlyoga__errorTypeFromError(theConnectionA, theError), theError && "(" & pSQL & ")"
   end if
 
   return empty
@@ -5598,10 +5618,10 @@ command tblscope_createObject pTableA, pName, pDBKey
   put _CreateTableArray(pTableA, pDBKey) into pTableA
   put _KeyArrayForTable(pTableA) into theKeyA
 
-  if pName is empty then _ThrowError kErrObjectNameTaken, "scope name cannot be empty"
+  if pName is empty then sqlyoga__throwError kErrObjectNameTaken, "scope name cannot be empty"
 
   if pName is among the keys of sDbsA[ theKeyA ]["scopes"] then
-    _ThrowError kErrObjectNameTaken, "scope '" & pName & "' already exists for table '" & tableobj_get(pTableA, "name") & "'"
+    sqlyoga__throwError kErrObjectNameTaken, "scope '" & pName & "' already exists for table '" & tableobj_get(pTableA, "name") & "'"
   else
     put pName into theA["name"]
     put empty into theA["related table joins"]
@@ -5690,7 +5710,7 @@ function tblscope_get pScopeA, pProp
       if pProp is among the keys of sDbsA[theKeyA] then
         return sDbsA[theKeyA][pProp]
       else
-        _ThrowError kErrInvalidProperty, "invalid scope property '" & pProp & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid scope property '" & pProp & "'"
       end if
   end switch
 end tblscope_get
@@ -5750,7 +5770,7 @@ command tblscope_set pScopeA, pProp, pValue
 
     end switch
   else
-    _ThrowError kErrInvalidProperty, "invalid scope property '" & pProp & "'"
+    sqlyoga__throwError kErrInvalidProperty, "invalid scope property '" & pProp & "'"
   end if
 
   return empty
@@ -5809,7 +5829,7 @@ function tableobjects_get pProp
     default
       ## Todo: need actual list to compare against in case we add valid props later on
       if pProp is not among the keys of sDbsA[pKey]["schema"]["tables"] then
-        _ThrowError kErrInvalidProperty, "invalid property passed to " & param(0)
+        sqlyoga__throwError kErrInvalidProperty, "invalid property passed to " & param(0)
       else
         return sDbsA[pKey]["schema"]["tables"][pProp]
       end if
@@ -5970,9 +5990,9 @@ command tableobj_createObject pName, pType, pDBKey
 
   if pType is empty then put "table" into pType
 
-  if pName is empty then _ThrowError kErrObjectNameTaken, "table name cannot be empty"
+  if pName is empty then sqlyoga__throwError kErrObjectNameTaken, "table name cannot be empty"
   if pName is among the keys of sDbsA[pDBKey]["table objects"]["tables"] then
-    _ThrowError kErrObjectNameTaken, "table '" & pName & "' already exists"
+    sqlyoga__throwError kErrObjectNameTaken, "table '" & pName & "' already exists"
   end if
 
   ## NOTE: taken out. Don't allow definition of relationships before table
@@ -6228,7 +6248,7 @@ function tableobj_get pTableA, pProp, pDBKey
       if theAliasKeyA is an array then
         return sDbsA[ theAliasKeyA ]["alias for table"]
       else
-        _ThrowError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
+        sqlyoga__throwError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
       end if
       break
 
@@ -6244,7 +6264,7 @@ function tableobj_get pTableA, pProp, pDBKey
         delete the last char of theConditions
         return theConditions
       else
-        _ThrowError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
+        sqlyoga__throwError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
       end if
       break
 
@@ -6252,7 +6272,7 @@ function tableobj_get pTableA, pProp, pDBKey
       if theAliasKeyA is an array then
         return pTableA
       else
-        _ThrowError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
+        sqlyoga__throwError kErrCantFindObject, "invalid target for table alias property '" & pProp & "'"
       end if
       break
 
@@ -6263,7 +6283,7 @@ function tableobj_get pTableA, pProp, pDBKey
         ## todo: update to set list so we can add props in the future
         return sDbsA[ theKeyA ][pProp]
       else
-        _ThrowError kErrInvalidProperty, "invalid table property '" & pProp & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid table property '" & pProp & "'"
       end if
   end switch
 end tableobj_get
@@ -6309,7 +6329,7 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
 
   switch pProp
     case "type"
-      if pValue is not among the items of "alias,table" then _ThrowError kErrInvalidProperty, "invalid value '" & pValue & "' for property '" & pProp & "'"
+      if pValue is not among the items of "alias,table" then sqlyoga__throwError kErrInvalidProperty, "invalid value '" & pValue & "' for property '" & pProp & "'"
       put sDbsA[ theOriginalKeyA ]["name"] into theA["name"]
       _SetDefaultTableProperties pValue, theA
       put theA into sDbsA[ theOriginalKeyA ]
@@ -6320,13 +6340,13 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
       if sDbsA[ theOriginalKeyA ]["type"] is "alias" then
         switch pProp
           case "name"
-            if "." is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain '.'"
-            if "," is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain ','"
-            if " " is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain a space"
+            if "." is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain '.'"
+            if "," is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain ','"
+            if " " is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain a space"
 
             if pValue is not sDbsA[ theAliasKeyA ]["name"] then
               if pValue is among the keys of sDbsA[ theAliasTableA["database"] ]["schema"]["tables lookup"] then \
-                    _ThrowError kErrRenameErrorInDestination, "a table named '" & pValue & "' already exists"
+                    sqlyoga__throwError kErrRenameErrorInDestination, "a table named '" & pValue & "' already exists"
 
               ## update index
               delete local sDbsA[ theAliasTableA["database"] ]["schema"]["tables lookup"][ sDbsA[ theAliasKeyA]["name"] ]
@@ -6351,26 +6371,26 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
               if theConditionsA[i]["field"] is not empty then
                 put theField[2] into theConditionsA[i]["value"]
               else
-                _ThrowError kErrCantFindObject, "invalid field '" & theField[1] & "' in condition"
+                sqlyoga__throwError kErrCantFindObject, "invalid field '" & theField[1] & "' in condition"
               end if
             end repeat
             put theConditionsA into sDbsA[ theAliasKeyA ][pProp]
             break
           default
-            _ThrowError kErrInvalidProperty, "invalid table alias property '" & pProp & "'"
+            sqlyoga__throwError kErrInvalidProperty, "invalid table alias property '" & pProp & "'"
         end switch
       else
 
         ## Set
         switch pProp
           case "name"
-            if "." is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain '.'"
-            if "," is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain ','"
-            if " " is in pValue then _ThrowError kErrRenameErrorInDestination, "table name can not contain a space"
+            if "." is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain '.'"
+            if "," is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain ','"
+            if " " is in pValue then sqlyoga__throwError kErrRenameErrorInDestination, "table name can not contain a space"
 
             if pValue is not sDbsA[ theKeyA ]["name"] then
               if pValue is among the keys of sDbsA[ theKeyA["database"] ]["schema"]["tables lookup"] then \
-                    _ThrowError kErrRenameErrorInDestination, "a table named '" & pValue & "' already exists"
+                    sqlyoga__throwError kErrRenameErrorInDestination, "a table named '" & pValue & "' already exists"
 
               ## update index
               delete local sDbsA[ pTableA["database"] ]["schema"]["tables lookup"][ sDbsA[ theKeyA]["name"] ]
@@ -6393,7 +6413,7 @@ command tableobj_set pTableA, pProp, pValue, pDBKey
             if pProp is among the keys of sDbsA[ theKeyA ] then
               put pValue into sDbsA[ theKeyA ][pProp]
             else
-              _ThrowError kErrInvalidProperty, "invalid table property '" & pProp & "'"
+              sqlyoga__throwError kErrInvalidProperty, "invalid table property '" & pProp & "'"
             end if
         end switch
 
@@ -6500,10 +6520,10 @@ command tblrelation_createObject pName, pDBKey
 
   _ValidateKey pDBKey
 
-  if pName is empty then _ThrowError kErrObjectNameTaken, "relationship name cannot be empty"
+  if pName is empty then sqlyoga__throwError kErrObjectNameTaken, "relationship name cannot be empty"
   put _getRelationshipIndexFromName(pDBKey, pName) into theExistingIndex
   if theExistingIndex > 0 then
-    _ThrowError kErrObjectNameTaken, "relationship '" & pName & "' already exists"
+    sqlyoga__throwError kErrObjectNameTaken, "relationship '" & pName & "' already exists"
   end if
 
   put pName into theA["name"]
@@ -6657,7 +6677,7 @@ function tblrelation_get pRelationA, pProp, pDBKey
           end if
         end if
       else
-        if word 1 of pProp is "cross-reference" then _ThrowError kErrInvalidProperty, "invalid property '" & pProp & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
+        if word 1 of pProp is "cross-reference" then sqlyoga__throwError kErrInvalidProperty, "invalid property '" & pProp & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
         put "left to right" into theJoinType
         put word 1 of pProp into theJoinKey
       end if
@@ -6684,7 +6704,7 @@ function tblrelation_get pRelationA, pProp, pDBKey
 
             ## we could have empty entries that are opposite entries of a field=value key
             if theField[1] is not among the keys of sDbsA[ theSchemaTableKeyA ]["fields"] then
-              _ThrowError kErrCantFindObject, "field '" & theField[1] & "' was not found in table '" & theTable & "'" -- & cr & the executioncontexts
+              sqlyoga__throwError kErrCantFindObject, "field '" & theField[1] & "' was not found in table '" & theTable & "'" -- & cr & the executioncontexts
             end if
 
             put theField[1] into theJoinsA[theJoinIndex][theJoinKey]["field"]
@@ -6718,7 +6738,7 @@ function tblrelation_get pRelationA, pProp, pDBKey
         ## todo: update to fixed list so we can add properties in the future
         return sDbsA[ theKeyA ][pProp]
       else
-        _ThrowError kErrInvalidProperty, "invalid relation property '" & pProp & "' for " & param(0)
+        sqlyoga__throwError kErrInvalidProperty, "invalid relation property '" & pProp & "' for " & param(0)
       end if
       break
   end switch
@@ -6761,7 +6781,7 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
   switch pProp
     case "type"
       if pValue is not among the items of "one-to-many,1-n,one-to-one,1-1,many-to-many,n-n" then \
-            _ThrowError kErrInvalidProperty, "invalid relationship type '" & pValue & "'"
+            sqlyoga__throwError kErrInvalidProperty, "invalid relationship type '" & pValue & "'"
 
       ## Reset joins if no longer valid
       if sDbsA[ theKeyA ]["type"] is not empty and \
@@ -6786,10 +6806,10 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
       break
 
     case "owner"
-      if pValue is not among the items of "left,none,right" then _ThrowError kErrInvalidProperty, "invalid owner type '" & pValue & "'"
+      if pValue is not among the items of "left,none,right" then sqlyoga__throwError kErrInvalidProperty, "invalid owner type '" & pValue & "'"
       if (pValue is not "left" and sDbsA[ theKeyA ]["type"] is among the items of "1-n,one-to-many") \
             or (pValue is not "none" and sDbsA[ theKeyA ]["type"] is among the items of "n-n,many-to-many") then
-        _ThrowError kErrInvalidProperty, "invalid owner '" & pValue & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid owner '" & pValue & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
       end if
       put pValue into sDbsA[ theKeyA ]["owner"]
       break
@@ -6824,12 +6844,12 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
     case "cross-reference table key for left table"
     case "cross-reference table key for right table"
       if sDbsA[ theKeyA ]["type"] is not among the items of "n-n,many-to-many" and \
-            word 1 of pProp is "cross-reference" then _ThrowError kErrInvalidProperty, "invalid property '" & pProp & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
+            word 1 of pProp is "cross-reference" then sqlyoga__throwError kErrInvalidProperty, "invalid property '" & pProp & "' for relationship type '" & sDbsA[ theKeyA ]["type"] & "'"
 
       local theTable, theFieldNames, theIndex, theFieldIndex, theFieldName
 
       put sDbsA[ theKeyA ][word 1 to 2 of pProp] into theTable
-      if theTable is empty then _ThrowError kErrInvalidProperty, "cannot set key field names before setting the table"
+      if theTable is empty then sqlyoga__throwError kErrInvalidProperty, "cannot set key field names before setting the table"
 
       ## Resolve table aliases
       if sDbsA[ pRelationA["database"] ]["table objects"]["tables"][theTable]["type"] is "alias" then
@@ -6885,7 +6905,7 @@ command tblrelation_set pRelationA, pProp, pValue, pDBKey
         ## todo: update to fixed list so we can add properties in the future
         put pValue into sDbsA[ theKeyA ][pProp]
       else
-        _ThrowError kErrInvalidProperty, "invalid relationship property '" & pProp & "' for " & param(0)
+        sqlyoga__throwError kErrInvalidProperty, "invalid relationship property '" & pProp & "' for " & param(0)
       end if
       break
   end switch
@@ -6957,7 +6977,7 @@ function dbschema_get pProp, pDBKey
     default
       ## Todo: need actual list to compare against in case we add valid props later on
       if pProp is not among the keys of sDbsA[pDBKey]["schema"] then
-        _ThrowError kErrInvalidProperty, "invalid property passed to " & param(0) && ":" && pProp
+        sqlyoga__throwError kErrInvalidProperty, "invalid property passed to " & param(0) && ":" && pProp
       else
         return sDbsA[pDBKey]["schema"][pProp]
       end if
@@ -7022,7 +7042,7 @@ function dbschema_tableGet pTable, pProperty, pDBKey
   _ValidateKey pDBKey
 
   if pTable is not among the keys of sDbsA[pDBKey]["schema"]["tables"] then
-    _ThrowError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
+    sqlyoga__throwError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
   else
     switch pProperty
       case ""
@@ -7041,7 +7061,7 @@ command dbschema_tableSet pTable, pProperty, pValue, pDBKey
   _ValidateKey pDBKey
 
   if pTable is not among the keys of sDbsA[pDBKey]["schema"]["tables"] then
-    _ThrowError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
+    sqlyoga__throwError kErrCantFindObject, "table '" & pTable & "' is not in the schema '" & pDBKey & "'"
   else
     switch pProperty
       case ""
@@ -7161,7 +7181,7 @@ function dbindex_get pIndexA, pProp
           ## todo: update to fixed list so we can add properties in the future
           return sDbsA[ theKeyA ][pProp]
         else
-          _ThrowError kErrInvalidProperty, "invalid index property '" & pProp & "' for " & param(0)
+          sqlyoga__throwError kErrInvalidProperty, "invalid index property '" & pProp & "' for " & param(0)
         end if
         break
     end switch
@@ -7186,7 +7206,7 @@ command dbindex_set pIndexA, pProp, pValue
         put pValue into sDbsA[ theKeyA ][pProp]["meta"]
         break
       case "style"
-        if pValue is not among the items of "unique,simple,fulltext,spatial" then _ThrowError kErrInvalidProperty, "invalid value '" & pValue & "' for style"
+        if pValue is not among the items of "unique,simple,fulltext,spatial" then sqlyoga__throwError kErrInvalidProperty, "invalid value '" & pValue & "' for style"
         put pValue into sDbsA[ theKeyA ][pProp]["meta"]
         break
 
@@ -7196,7 +7216,7 @@ command dbindex_set pIndexA, pProp, pValue
           ## todo: update to fixed list so we can add properties in the future
           put pValue into sDbsA[ theKeyA ][pProp]
         else
-          _ThrowError kErrInvalidProperty, "invalid index property '" & pProp & "' for " & param(0)
+          sqlyoga__throwError kErrInvalidProperty, "invalid index property '" & pProp & "' for " & param(0)
         end if
         break
     end switch
@@ -7262,7 +7282,7 @@ command sqlquerytmpl_createObject pName, pDBKey
   _ValidateKey pDBKey
 
   if pName is among the keys of sDbsA[pDBKey]["query templates"] then
-    _ThrowError kErrObjectNameTaken, "query template '" & pName & "' already exists in database object '" & pDBKey & "'"
+    sqlyoga__throwError kErrObjectNameTaken, "query template '" & pName & "' already exists in database object '" & pDBKey & "'"
   else
     repeat for each item theProp in sSQLQuerySetProps
       put empty into theA[theProp]
@@ -7422,7 +7442,7 @@ command sqlquerytmpl_set pTemplateA, pProp, pValue
         ## separate into joins. Otherwise just use the raw string.
         if tableobjects_tableExists(sDbsA[ theKeyA ]["table"]["name"], pTemplateA["database"]) then
           put tableobjects_getTable(sDbsA[ theKeyA ]["table"]["name"], pTemplateA["database"]) into theRootTableA
-          if sDbsA[ theKeyA ]["table"]["name"] is empty then _ThrowError kErrInvalidProperty, "you must set the table property before you can set related table joins in " & param(0)
+          if sDbsA[ theKeyA ]["table"]["name"] is empty then sqlyoga__throwError kErrInvalidProperty, "you must set the table property before you can set related table joins in " & param(0)
 
           ## Can pass in a string i.e. LEFT OUTER JOIN steps, tlk_lessons_servers
           ## In this case we parse string, lookup relationship and create JOINS array
@@ -7483,7 +7503,7 @@ command sqlquerytmpl_set pTemplateA, pProp, pValue
       if pValue is among the items of "long,short,default" then
         put pValue into sDbsA[ theKeyA ][pProp]
       else
-        _ThrowError kErrInvalidProperty, "column names length must be long, short or default in " & param(0)
+        sqlyoga__throwError kErrInvalidProperty, "column names length must be long, short or default in " & param(0)
       end if
       break
 
@@ -7491,7 +7511,7 @@ command sqlquerytmpl_set pTemplateA, pProp, pValue
       if pProp is among the keys of sDbsA[ theKeyA ] then
         put pValue into sDbsA[ theKeyA ][pProp]  ## update prop we are targeting
       else
-        _ThrowError kErrInvalidProperty, "invalid query property '" & pProp & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid query property '" & pProp & "'"
       end if
   end switch
 
@@ -7538,7 +7558,7 @@ function sqlquery_createObject pTemplateOrTableName, pConnName, pDBKey
         pTemplateOrTableName is among the keys of sDbsA[theKey]["schema"]["tables"] then
     return _CreateSQLQueryFromTable(theConnectionA, pTemplateOrTableName)
   else
-    _ThrowError kErrCantFindObject, "no table or sql query template exists with that name:" && pTemplateOrTableName
+    sqlyoga__throwError kErrCantFindObject, "no table or sql query template exists with that name:" && pTemplateOrTableName
   end if
 end sqlquery_createObject
 
@@ -7635,7 +7655,7 @@ command sqlquery_set @xQueryA, pProp, pValue
 
           ## If the user has defined table object for root table then
           ## separate into joins.
-          if xQueryA["table"]["name"] is empty then _ThrowError kErrInvalidProperty, "you must set the table property before you can set related table joins in " & param(0)
+          if xQueryA["table"]["name"] is empty then sqlyoga__throwError kErrInvalidProperty, "you must set the table property before you can set related table joins in " & param(0)
 
           ## Can pass in a string i.e. LEFT OUTER JOIN steps, tlk_lessons_servers
           ## In this case we parse string, lookup relationship and create JOINS array
@@ -7714,7 +7734,7 @@ command sqlquery_set @xQueryA, pProp, pValue
       if pValue is among the items of "long,short,default," then
         put pValue into xQueryA[pProp]
       else
-        _ThrowError kErrInvalidProperty, "column names length must be long, short or default in " & param(0)
+        sqlyoga__throwError kErrInvalidProperty, "column names length must be long, short or default in " & param(0)
       end if
       break
 
@@ -7723,7 +7743,7 @@ command sqlquery_set @xQueryA, pProp, pValue
       if pValue is 0 then put empty into pValue
       if pValue is not empty then
         if not _IsPositiveInteger(pValue)  then
-          _ThrowError kErrInvalidInteger, pProp && "must be an integer > 0 or empty"
+          sqlyoga__throwError kErrInvalidInteger, pProp && "must be an integer > 0 or empty"
         end if
       end if
       put pValue into xQueryA[pProp]
@@ -7732,7 +7752,7 @@ command sqlquery_set @xQueryA, pProp, pValue
       if pProp is among the items of sSQLQuerySetProps then
         put pValue into xQueryA[pProp]  ## update prop we are targeting
       else
-        _ThrowError kErrInvalidProperty, "invalid SQL Query object property '" & pProp & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid SQL Query object property '" & pProp & "'"
       end if
   end switch
 
@@ -8179,10 +8199,10 @@ function sqlquery_get @xQueryA, pProp
           if theOffset > 0 then
             ## Must provide ORDER BY
             if theOrderBy is empty then
-              _ThrowError kErrInvalidProperty, "you must specify an 'order by' value to use ROW_NUMBER with SQL Server"
+              sqlyoga__throwError kErrInvalidProperty, "you must specify an 'order by' value to use ROW_NUMBER with SQL Server"
             end if
             if theLimit < 1 then
-              _ThrowError kErrInvalidProperty, "you must specify a limit when using 'offset' with SQL Server"
+              sqlyoga__throwError kErrInvalidProperty, "you must specify a limit when using 'offset' with SQL Server"
             end if
 
             ## Wrap select in WITH ... AS so we can use ROW_NUMBER
@@ -8236,7 +8256,7 @@ function sqlquery_get @xQueryA, pProp
       if pProp is among the items of sSQLQuerySetProps & comma & sSQLQueryGetProps then
         return xQueryA[pProp]
       else
-        _ThrowError kErrInvalidProperty, "invalid SQL Query objec property '" & pProp & "'"
+        sqlyoga__throwError kErrInvalidProperty, "invalid SQL Query objec property '" & pProp & "'"
       end if
   end switch
 end sqlquery_get
@@ -8424,13 +8444,13 @@ command sqlquery_update pTable, pConditions, pParamsA, pConnName, pDBKey
   if pConditions is not an array then
     if pConditions is empty then
       if thePrimaryKey is not empty then
-        _ThrowError kErrInvalidProperty, "you must provide a search condition for the primary key field (" & thePrimaryKey & ")"
+        sqlyoga__throwError kErrInvalidProperty, "you must provide a search condition for the primary key field (" & thePrimaryKey & ")"
       end if
     else if the number of words of pConditions > 1 then ## passed in full search condition as string.
       sqlquery_set theQueryA, "conditions", pConditions
     else
       if thePrimaryKey is empty or the number of items of thePrimaryKey > 1 then
-        _ThrowError kErrInvalidProperty, "primary key is empty or has more than one field (" & thePrimaryKey & ")"
+        sqlyoga__throwError kErrInvalidProperty, "primary key is empty or has more than one field (" & thePrimaryKey & ")"
       end if
       if sDbsA[ theQueryA["database"] ]["schema"]["tables"][ theQueryA["table"]["name"] ]["fields"][ thePrimaryKey ]["meta type"] \
             is not among the items of kDontQuoteTypes then
@@ -9038,7 +9058,7 @@ command sqlquery_addScope @xQueryA, pScope, pParamsDotDotDot
     put theScopeA into xQueryA["scopes"][theNextIndex]
     return empty
   else
-    _ThrowError kErrCantFindObject, "scope " & quote & pScope & quote & " not found"
+    sqlyoga__throwError kErrCantFindObject, "scope " & quote & pScope & quote & " not found"
   end if
 end sqlquery_addScope
 
@@ -9123,7 +9143,7 @@ command sqlquery_convertToArray pQueryA, @xOutArray
 
   _ValidateQueryArray pQueryA
   if pQueryA["cursor id"] < 1 then
-    _ThrowError kErrorSQLExecution, kInvalidCursor
+    sqlyoga__throwError kErrorSQLExecution, kInvalidCursor
   end if
 
   switch sDbsA[ pQueryA["database"] ]["connections"][ pQueryA["connection"] ]["type"]
@@ -9194,7 +9214,7 @@ Returns: Empty.
 command sqlquery_convertToRecords @xQueryA, @xOutRecordsA
   _ValidateQueryArray xQueryA
   if xQueryA["cursor id"] < 1 then
-    _ThrowError kErrorSQLExecution, kInvalidCursor
+    sqlyoga__throwError kErrorSQLExecution, kInvalidCursor
   end if
 
   _HierarchalCursorToArray xQueryA, xOutRecordsA
@@ -9319,7 +9339,7 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
   ## pRecordA is a SQL Record object or name of a table.
   if pRecordA is an array then
     if "@table" is not among the keys of pRecordA then
-      _ThrowError kErrCantFindObject, "you must assign a valid table to a record"
+      sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record"
     end if
   else
     put pRecordA into pRecordA["@table"]
@@ -9346,7 +9366,7 @@ command sqlrecord_find pRecordA, pParamsA, @xRecordsA
       put sDbsA[ theQueryA["database"] ]["schema"]["tables"][ pRecordA["@table"] ]["primary key"] into theFields
     end if
     if theFields is empty or (the number of items of theFields > 1 and the number of items of pParamsA is not the number of items of theFields) then
-      _ThrowError kErrInvalidProperty, "primary key is empty or has more than one field and not enough items in pParams (" & theFields & ")"
+      sqlyoga__throwError kErrInvalidProperty, "primary key is empty or has more than one field and not enough items in pParams (" & theFields & ")"
     end if
 
     if pParamsA contains ":" and pParamsA contains "," then
@@ -9427,7 +9447,7 @@ function sqlrecord_get pRecordA, pProp
   local thePropIsARelatedTable = false
 
   if "@table" is not among the keys of pRecordA then
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record"
+    sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record"
   end if
 
   if char 1 of pProp is "@" then
@@ -9446,7 +9466,7 @@ function sqlrecord_get pRecordA, pProp
         return pRecordA[pProp]theKey
         break
       default
-        _ThrowError kErrInvalidProperty, pProp && "is not a valid SQL Record property"
+        sqlyoga__throwError kErrInvalidProperty, pProp && "is not a valid SQL Record property"
     end switch
 
   else
@@ -9467,7 +9487,7 @@ function sqlrecord_get pRecordA, pProp
       end if
 
       ## prop doesn't exist
-      _ThrowError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & pRecordA["@table"] & "' table object"
+      sqlyoga__throwError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & pRecordA["@table"] & "' table object"
     end if
   end if
 end sqlrecord_get
@@ -9516,7 +9536,7 @@ command sqlrecord_getRelated @xRecordsA, pTable
   else if "@table" is among the keys of xRecordsA[1] then
     put _CreateConnectionArray(xRecordsA[1]["@connection"], xRecordsA[1]["@database"]) into theConnectionA
   else
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
+    sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record object"
   end if
 
   if "@table" is among the keys of xRecordsA then
@@ -9528,7 +9548,7 @@ command sqlrecord_getRelated @xRecordsA, pTable
     ## todo: Optimize with a single query that then puts results into the array
     repeat with i = 1 to the number of elements of xRecordsA
       if "@table" is not among the keys of xRecordsA[i] then
-        _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
+        sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record object"
       else
         _RetrieveRecordsRelatedtoRecord theConnectionA, xRecordsA[i], pTable
       end if
@@ -9594,13 +9614,13 @@ command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
         put pValue into xRecordA[pProp]
         break
       default
-        _ThrowError kErrInvalidProperty, pProp && "is not a valid SQL Record property"
+        sqlyoga__throwError kErrInvalidProperty, pProp && "is not a valid SQL Record property"
     end switch
 
     return empty
   else
     if "@table" is not among the keys of xRecordA then
-      _ThrowError kErrCantFindObject, "you must assign a valid table to a record"
+      sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record"
     end if
 
     ## If pProp is a column in array then set normally
@@ -9635,7 +9655,7 @@ command sqlrecord_set @xRecordA, pProp, pValue, pPassThru
       end if
 
       ## prop doesn't exist
-      _ThrowError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & xRecordA["@table"] & "' table object"
+      sqlyoga__throwError kErrInvalidProperty, "'" & pProp & "' is not a valid property of the '" & xRecordA["@table"] & "' table object"
     end if
   end if
 end sqlrecord_set
@@ -9676,7 +9696,7 @@ private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePri
       else put theFieldName is among the keys of xRecordsA[pDynamicKeyA] into isValidField
 
       if not isValidField then
-        _ThrowError kErrCantFindObject, "primary key field '" & theFieldName & "' is not in table '" & xRecordsA[pDynamicKeyA] & "' record" --& cr & the executioncontexts
+        sqlyoga__throwError kErrCantFindObject, "primary key field '" & theFieldName & "' is not in table '" & xRecordsA[pDynamicKeyA] & "' record" --& cr & the executioncontexts
       end if
 
       put theFieldName into pDynamicKeyA[theNextIndex]
@@ -9721,7 +9741,7 @@ private command _FillInTableRecordFromDatabase pConnectionA, @xRecordsA, pUsePri
   sqlquery_close theQueryA
 
   if theRecordA is not an array then
-    _ThrowError kErrCantFindObject, "no matching record found"
+    sqlyoga__throwError kErrCantFindObject, "no matching record found"
   end if
 
   put theRecordA[1] into theRecordA
@@ -9769,7 +9789,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
 
   ## Filter could return empty if the record didn't contain a matching field
   if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
-    _ThrowError kErrCantFindObject, "'" & pRelatedTable & "' is not directly related to '" & theRecordTable & "'"
+    sqlyoga__throwError kErrCantFindObject, "'" & pRelatedTable & "' is not directly related to '" & theRecordTable & "'"
   else
     put theRelationA[1] into theRelationA
   end if
@@ -9852,7 +9872,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
       else
         put item i of theRecordKeyFields into tField
         if xRecordA[tField] is empty then
-          _ThrowError kErrCantFindObject, "key field '" & tField & "' was not found in the record"
+          sqlyoga__throwError kErrCantFindObject, "key field '" & tField & "' was not found in the record"
         else
           if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedCrossRefTable ]["fields"][ theField[1] ]["meta type"] \
                 is not among the items of kDontQuoteTypes then
@@ -9888,7 +9908,7 @@ private command _RetrieveRecordsRelatedtoRecord pConnectionA, @xRecordA, pRelate
       else
         put item i of theRecordKeyFields into tField
         if xRecordA[tField] is empty then
-          _ThrowError kErrCantFindObject, "key field '" & item i of theRecordKeyFields & "' was not found in the record"
+          sqlyoga__throwError kErrCantFindObject, "key field '" & item i of theRecordKeyFields & "' was not found in the record"
         else
           if sDbsA[ pConnectionA["database"] ]["schema"]["tables"][ theResolvedRelatedTable ]["fields"][ theField[1] ]["meta type"] \
                 is not among the items of kDontQuoteTypes then
@@ -9965,7 +9985,7 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
   else if "@table" is among the keys of xRecordsA[1] then
     put _CreateConnectionArray(xRecordsA[1]["@connection"], xRecordsA[1]["@database"]) into theConnectionA
   else
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
+    sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record object"
   end if
 
   put dbconn_get("effective quotes", theConnectionA) into theQs
@@ -10002,7 +10022,7 @@ command sqlrecord_update @xRecordsA, pRefreshRecords
       ## multiple records
       repeat with i = 1 to the number of elements of xRecordsA
         if "@table" is not among the keys of xRecordsA[i] then
-          _ThrowError kErrInvalidProperty, kInvalidType && "record"
+          sqlyoga__throwError kErrInvalidProperty, kInvalidType && "record"
         else
           _UpdateRecordInTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
           add it to theAffectedRows
@@ -10049,7 +10069,7 @@ private command _UpdateRecordInTable pConnectionA, pQuotesA, pTablesA, @xRecordA
   ## Error checking
   if the number of items of pTablesA[ theTable ]["primary key"] < 1 \
         and "@where" is not among the keys of xRecordA then
-    _ThrowError kErrInvalidProperty, "cannot update table '" & theTable & "' as no primary key is defined"
+    sqlyoga__throwError kErrInvalidProperty, "cannot update table '" & theTable & "' as no primary key is defined"
   end if
 
   if pSendCallbacks then
@@ -10223,7 +10243,7 @@ private command _dispatchValidationCheck @xRecordA, pEventType
   end if
 
   if tError is not empty then
-    _ThrowError kErrInvalidProperty, tError
+    sqlyoga__throwError kErrInvalidProperty, tError
   end if
 
   return empty
@@ -10326,7 +10346,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
     repeat for each item theFieldName in thePrimaryKey
       if pEnforceKeyPresence and \
             theFieldName is not among the keys of xRecordsA then
-        _ThrowError kErrCantFindObject, "primary key field '" & theFieldName & "' was not found in the record array"
+        sqlyoga__throwError kErrCantFindObject, "primary key field '" & theFieldName & "' was not found in the record array"
       else
         put xRecordsA[theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
       end if
@@ -10342,7 +10362,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
       put i into theLookupKeyA[tLookupIndex]
 
       if theTable is empty then
-        _ThrowError kErrInvalidProperty, kInvalidType && "record"
+        sqlyoga__throwError kErrInvalidProperty, kInvalidType && "record"
       end if
       add 1 to theIndex
 
@@ -10374,7 +10394,7 @@ private command _SplitRecordsIntoTablesIndex pConnectionA, @xRecordsA, @rTablesA
 
       repeat for each item theFieldName in thePrimaryKey
         if pEnforceKeyPresence and theFieldName is not among the keys of xRecordsA[i] then
-          _ThrowError kErrPropDoesntExist, "primary key field '" & theFieldName & "' was not found in the record array"
+          sqlyoga__throwError kErrPropDoesntExist, "primary key field '" & theFieldName & "' was not found in the record array"
         else
           put xRecordsA[i][theFieldName] into rTablesA[ theTable ]["records"][theIndex][theFieldName]
         end if
@@ -10427,7 +10447,7 @@ command sqlrecord_delete @xRecordsA
   else if "@table" is among the keys of xRecordsA[1] then
     put _CreateConnectionArray(xRecordsA[1]["@connection"], xRecordsA[1]["@database"]) into theConnectionA
   else
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
+    sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record object"
   end if
 
   put dbconn_get("effective quotes", theConnectionA) into theQs
@@ -10586,7 +10606,7 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
   else if "@table" is among the keys of xRecordsA[1] then
     put _CreateConnectionArray(xRecordsA[1]["@connection"], xRecordsA[1]["@database"]) into theConnectionA
   else
-    _ThrowError kErrCantFindObject, "you must assign a valid table to a record object"
+    sqlyoga__throwError kErrCantFindObject, "you must assign a valid table to a record object"
   end if
 
   put dbconn_get("effective quotes", theConnectionA) into theQs
@@ -10621,14 +10641,14 @@ command sqlrecord_create @xRecordsA, pRefreshRecords
       if theRecordCount > 0 then
         repeat with i = 1 to the number of elements of xRecordsA
           if "@table" is not among the keys of xRecordsA[i] then
-            _ThrowError kErrInvalidProperty, kInvalidType && "record"
+            sqlyoga__throwError kErrInvalidProperty, kInvalidType && "record"
           else
             _InsertRecordIntoTable theConnectionA, theQs, theTablesA, xRecordsA[i], pRefreshRecords, true
             add it to theAffectedRows
           end if
         end repeat
       else
-        _ThrowError kErrInvalidProperty, kInvalidType && "record"
+        sqlyoga__throwError kErrInvalidProperty, kInvalidType && "record"
       end if
     end if
   catch theError
@@ -10828,7 +10848,7 @@ private command _RetrieveUpdatedRecordAfterDbMod @xOutRecordA, pConnectionA, pRe
   put empty into theWhere
   if not allPrimaryKeysIncluded then
     if the number of items of pTablePrimaryKeys > 1 then
-      _ThrowError kErrCantFindObject, "insert did not include all of the necessary primary keys for table '" & pRecordA["@table"] & "'"
+      sqlyoga__throwError kErrCantFindObject, "insert did not include all of the necessary primary keys for table '" & pRecordA["@table"] & "'"
     else
       ## one primary key, try to fetch
       put dbconn_get("last inserted id", pConnectionA) into theLastID
@@ -10902,7 +10922,7 @@ command sqlrecord_link @xRecord1A, @xRecord2A
     ## single record
     _LinkUnlinkRecords "link", theConnectionA, xRecord1A, xRecord2A, empty
   else
-    _ThrowError kErrInvalidArray, "invalid record arrays passed to " & param(0)
+    sqlyoga__throwError kErrInvalidArray, "invalid record arrays passed to " & param(0)
   end if
 
   return empty
@@ -10947,7 +10967,7 @@ command sqlrecord_unlink @xRecord1A, @xRecord2A
     ## single record
     _LinkUnlinkRecords "unlink", theConnectionA, xRecord1A, xRecord2A, empty
   else
-    _ThrowError kErrInvalidArray, "invalid record arrays passed to " & param(0)
+    sqlyoga__throwError kErrInvalidArray, "invalid record arrays passed to " & param(0)
   end if
 
   return empty
@@ -10973,7 +10993,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
 
   put _FindRelationshipBetweenTables(theTable1A, theTable2A) into theRelationA
   if theRelationA is not an array or the number of elements of theRelationA > 1 then ## we don't support relationships more than 1 away
-    _ThrowError kErrInvalidProperty, "'" & xRecord1A["@table"] & "' is not directly related to '" & xRecord2A["@table"] & "'"
+    sqlyoga__throwError kErrInvalidProperty, "'" & xRecord1A["@table"] & "' is not directly related to '" & xRecord2A["@table"] & "'"
   else
     put theRelationA[1] into theRelationA
   end if
@@ -10985,7 +11005,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
       ## todo: do many-to-many
       if tblrelation_get(theRelationA, "cross-reference table") is among the items of (theTable1A["name"] & comma & theTable2A["name"]) then
         ## todo: add support for this
-        _ThrowError kErrInvalidProperty, "unable to link directly to the cross-reference table"
+        sqlyoga__throwError kErrInvalidProperty, "unable to link directly to the cross-reference table"
       end if
 
       if theTable1A["name"] is tblrelation_get(theRelationA, "left table") then
@@ -11019,7 +11039,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
           if theLeftField[1] is among the keys of theLeftRecordA then
             put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
           else
-            _ThrowError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
+            sqlyoga__throwError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
             exit repeat
           end if
         end if
@@ -11042,7 +11062,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
           if theRightField[1] is among the keys of theRightRecordA then
             put theRightRecordA[ theRightField[1] ] into theRecordA[ theLeftField[1] ]
           else
-            _ThrowError kErrInvalidProperty, "required field '" & theRightField[1] & "' is not present in the record"
+            sqlyoga__throwError kErrInvalidProperty, "required field '" & theRightField[1] & "' is not present in the record"
             exit repeat
           end if
         end if
@@ -11106,7 +11126,7 @@ private command _LinkUnlinkRecords pAction, pConnectionA, @xRecord1A, @xRecord2A
             if theLeftField[1] is among the keys of theLeftRecordA then
               put theLeftRecordA[ theLeftField[1] ] into theRecordA[ theRightField[1] ]
             else
-              _ThrowError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
+              sqlyoga__throwError kErrInvalidProperty, "required field '" & theLeftField[1] & "' is not present in the record"
               exit repeat
             end if
 
