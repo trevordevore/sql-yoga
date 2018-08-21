@@ -527,8 +527,17 @@ end dbschema_createTriggers
 
 --> sql databases
 
-# Makes any changes necessary to database to put it in synch with the current schema.
-# No data will be lost.
+/**
+Summary: Makes any changes necessary to database to put it in synch with the current schema.
+
+Parameters:
+pConnectionA:
+pDBKey:
+
+Description:
+
+Returns: empty
+*/
 command dbsynch_databaseWithSchema pConnectionA, pDBKey
   local theError, i, theDBKey
   local theConnectionID
