@@ -2883,17 +2883,19 @@ Returns: empty
 */
 command dbobject_initialize pDbA, pRootFolder, pDBKey
   local tConnectionsA, tRelationshipsA, tScopesA, tTablesA
-  local tKey, tTable, tField, tProp, tVendor, i
+  local tKey, tTable, tQueryTemplatesA, tField, tProp, tVendor, i
 
   put pDbA["connections"] into tConnectionsA
   put pDbA["relationships"] into tRelationshipsA
   put pDbA["scopes"] into tScopesA
   put pDbA["tables"] into tTablesA
+  put pDbA["query templates"] into tQueryTemplatesA
 
   delete local pDbA["connections"]
   delete local pDbA["relationships"]
   delete local pDbA["scopes"]
   delete local pDbA["tables"]
+  delete local pDbA["query templates"]
 
   # Fill in "name" field for each field. SQL Yoga expects it, YAML shouldn't need to set it twice.
   repeat for each key tTable in pDbA["schema"]["tables"]
@@ -2982,6 +2984,21 @@ command dbobject_initialize pDbA, pRootFolder, pDBKey
       repeat for each item tKey in "related table joins,conditions"
         tblscope_set tScopeA, tKey, tScopesA[tTable][i][tKey]
       end repeat
+    end repeat
+  end repeat
+
+  local tTemplateA
+
+  repeat with i = 1 to the number of elements of tQueryTemplatesA
+    sqlquerytmpl_createObject tQueryTemplatesA[i]["name"], pDBKey
+    put the result into tTemplateA
+
+    repeat for each key tKey in tQueryTemplatesA[i]
+      if tKey is "name" then next repeat
+
+      if tKey is among the items of sSQLQuerySetProps then
+        sqlquerytmpl_set tTemplateA, tQueryTemplatesA[i][tKey]
+      end if
     end repeat
   end repeat
 
@@ -3618,7 +3635,7 @@ command dbconn_createObject pName, pAdaptor, pType, pDBKey
   _ValidateKey pDBKey
   _ValidateDBKeyExistence pDBKey
 
-  if word 1 to -1 of pName is empty then  sqlyoga__throwError kErrObjectNameTaken, "connection name cannot be empty"
+  if word 1 to -1 of pName is empty then sqlyoga__throwError kErrRenameErrorInDestination, "connection name cannot be empty"
   if pName is among the keys of sDbsA[pDBKey]["connections"] then  sqlyoga__throwError kErrObjectNameTaken, "connection '" & pName & "' already exists"
 
   if pAdaptor is not among the items of "sqlite,mysql,valentina,postgresql,odbc" then sqlyoga__throwError kErrInvalidProperty, "invalid connection adaptor"
@@ -7281,7 +7298,9 @@ command sqlquerytmpl_createObject pName, pDBKey
 
   _ValidateKey pDBKey
 
-  if pName is among the keys of sDbsA[pDBKey]["query templates"] then
+  if word 1 to -1 of pName is empty then
+    sqlyoga__throwError kErrRenameErrorInDestination, "query template name cannot be empty"
+  else if pName is among the keys of sDbsA[pDBKey]["query templates"] then
     sqlyoga__throwError kErrObjectNameTaken, "query template '" & pName & "' already exists in database object '" & pDBKey & "'"
   else
     repeat for each item theProp in sSQLQuerySetProps
@@ -7384,7 +7403,7 @@ Summary: Sets a SQL Query Template property.
 
 Parameters:
 TemplateA: Name of SQL Query Template or SQL Query Template reference array.
-pProp: Property to get value for.
+pProp: Property to set value for.
 
 Description:
 | Property | Description |
