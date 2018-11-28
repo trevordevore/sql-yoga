@@ -7,4 +7,4 @@ This repository hosts the source code for the SQL Yoga library for LiveCode. Whi
 
 For an example of a Levure application that uses SQL Yoga check out the [sql-yoga-levure repository](https://github.com/trevordevore/sql-yoga-levure-app).
 
-The documentation can be found in the (repo wiki](https://github.com/trevordevore/sql-yoga/wiki). That is where you will find instructions on getting started.
+The documentation can be found in the [repo wiki](https://github.com/trevordevore/sql-yoga/wiki). That is where you will find instructions on getting started.
