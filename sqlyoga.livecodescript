@@ -8403,7 +8403,7 @@ end sqlquery_create
 Summary: Updates a record in a table.
 
 Parameters:
-pTable": The name of the table to update. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
+pTable: The name of the table to update. If you need to pass in a Database or Connection object that isn't the default then pass in SQL Query object.
 pConditions: The search conditions. This can be an array of search parameters, a primary key value or an exact string to assign to the `WHERE` clause. You can pass in an empty value for `pConditions` if there is no primary key for the table.
 pParamsA: An array of key value pairs used to perform the update.
 
