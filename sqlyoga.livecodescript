@@ -9087,17 +9087,15 @@ Summary: Converts the current row of the SQL Query Object cursor to an array.
 
 Parameters:
 pQueryA: A SQL Query Object array.
-xOutArrayA: Upon completion this will hold row values. The keys are column names and values are column values.
 
-Returns: empty
+Returns: Array of the row's column values
 */
-command sqlquery_currentRowToArray pQueryA, @xOutArrayA
-  -----
-  local theFields
-  -----
+function sqlquery_currentRowToArray pQueryA
+  local tFields, tRowA
+
   ## Let function figure out field names
-  _CursorRowToArray pQueryA, theFields, xOutArrayA, empty
-  return empty
+  _CursorRowToArray pQueryA, tFields, tRowA, empty
+  return tRowA
 end sqlquery_currentRowToArray
 
 
