@@ -935,23 +935,39 @@ end _AddWildcardToSearchString
 
 /**
 Summary: Converts the current row of a cursor to an array keyed by each column name.
-* Assumes the cursor is not at the end.
+
+Parameters:
+pQueryA: A SQL Query object.
+pFieldsInCursor: Pass in a properly ordered list of fields in the cursor if already known. Otherwise `_CursorFieldNames()` is used to fetch them.
+@xArray: The array which will be filled with the results.
+[pDynamicKeyA]: An optional index lookup array.
+[pFieldsToReturn]: Optional list of fields to return. If empty then all fields in cursor are returned.
+
+Description:
+Assumes the cursor is not at the end.
+
+Returns: empty
 */
-private command _CursorRowToArray pQueryA, pFields, @xArray, pDynamicKeyA
+private command _CursorRowToArray pQueryA, pFieldsInCursor, @xArray, pDynamicKeyA, pFieldsToReturn
   local theValue, theNextKeyIndex, i
   local theFldRef
 
-  -- pFields should be the fields as returned by revDatabaseColumnNames. The names
+  set the wholematches to true
+
+  -- pFieldsInCursor should be the fields as returned by revDatabaseColumnNames. The names
   -- need to match up with the revDB index since we access by index below.
   put the number of elements of pDynamicKeyA + 1 into theNextKeyIndex
 
   switch sDbsA[ pQueryA["database"] ]["connections"][ pQueryA["connection"] ]["type"]
     case "valentina"
-      if pFields is empty then put  _ValentinaFieldsFromCursor( pQueryA["cursor id"] ) into pFields
-      replace comma with cr in pFields
+      if pFieldsInCursor is empty then put  _ValentinaFieldsFromCursor( pQueryA["cursor id"] ) into pFieldsInCursor
+      replace comma with cr in pFieldsInCursor
 
-      repeat for each line theField in pFields
+      repeat for each line theField in pFieldsInCursor
         add 1 to i
+
+        if pFieldsToReturn is not empty and theField is not among the items of pFieldsToReturn then next repeat
+
         put VCursor_Field(pQueryA["cursor id"], i) into theFldRef
         put theField into pDynamicKeyA[theNextKeyIndex]
         if pQueryA["report null"] and VField_IsNull(theFldRef) then
@@ -974,11 +990,14 @@ private command _CursorRowToArray pQueryA, pFields, @xArray, pDynamicKeyA
       break
 
     default
-      if pFields is empty then put _CursorFieldNames(pQueryA["cursor id"]) into pFields
-      replace comma with cr in pFields
+      if pFieldsInCursor is empty then put _CursorFieldNames(pQueryA["cursor id"]) into pFieldsInCursor
+      replace comma with cr in pFieldsInCursor
 
-      repeat for each line theField in pFields
+      repeat for each line theField in pFieldsInCursor
         add 1 to i
+
+        if pFieldsToReturn is not empty and theField is not among the items of pFieldsToReturn then next repeat
+
         put theField into pDynamicKeyA[theNextKeyIndex]
         if pQueryA["report null"] and revDatabaseColumnIsNull(pQueryA["cursor id"], i) is true then
           put "NULL" into xArray[ pDynamicKeyA ]
@@ -9078,14 +9097,15 @@ Summary: Converts the current row of the SQL Query Object cursor to an array.
 
 Parameters:
 pQueryA: A SQL Query Object array.
+[pFields]: By default all fields in the row will be returned. Pass in a comma-delimited list of field names to restrict the fields that are returned.
 
 Returns: Array of the row's column values
 */
-function sqlquery_currentRowToArray pQueryA
-  local tFields, tRowA
+function sqlquery_currentRowToArray pQueryA, pFields
+  local tRowA, tFields
 
   ## Let function figure out field names
-  _CursorRowToArray pQueryA, tFields, tRowA, empty
+  _CursorRowToArray pQueryA, tFields, tRowA, empty, pFields
   return tRowA
 end sqlquery_currentRowToArray
 
