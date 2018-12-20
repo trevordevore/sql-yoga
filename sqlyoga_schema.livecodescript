@@ -223,7 +223,7 @@ private function _getCurrentSchemaVersion pConnectionA
 
   if "schema" is among the lines of _listTables(pConnectionA) then
     put "SELECT version FROM schema" into tSQL
-    dbconn_retrieveQueryAsData tSQL, tBindingsA, tVersion, empty, empty, pConnectionA
+    put dbconn_retrieveQueryAsData(tSQL, tBindingsA, empty, empty, pConnectionA) into tVersion
   end if
 
   return tVersion for value
@@ -287,7 +287,7 @@ command dbschema_migrateToVersion pVersion, pConnectionA, pDBKey
 
   put format("SELECT version FROM %sschema%s", theQuotesA["left"], theQuotesA["right"]) into theSQL
   put empty into theBindingsA
-  dbconn_retrieveQueryAsData theSQL, theBindingsA, theInstalledVersion, tab, cr, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, theBindingsA, tab, cr, pConnectionA) into theInstalledVersion
 
   local theControlName, theVersion, theLastInstalledVersion
 
@@ -1312,7 +1312,7 @@ private command _sqlite_dbDeleteFields pTable, pFields, pConnectionA
 
   ## 2) Get Create table SQL
   put "SELECT sql FROM sqlite_master WHERE type = 'table' AND tbl_name=" & theQsA["left"] & pTable & theQsA["right"] into theSQL
-  dbconn_retrieveQueryAsData theSQL,, theCreateTableSQL,,, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, empty, empty, empty, pConnectionA) into theCreateTableSQL
 
   ## 2) Rename existing table.
   put format("ALTER TABLE %s%s%s RENAME TO %s%s%s", theQsA["left"], pTable, theQsA["right"], \
@@ -1395,7 +1395,7 @@ command _sqlite_createSQLFromDB pTable, pCreateAs, pExcludeFields, pConnectionA
   put dbconn_get("quotes", pConnectionA) into theQsA
 
   put "SELECT sql FROM sqlite_master WHERE type = 'table' AND tbl_name=" & theQsA["left"] & pTable & theQsA["right"] into theSQL
-  dbconn_retrieveQueryAsData theCreateSQL,, theCreateTableSQL,, pConnectionA
+  put dbconn_retrieveQueryAsData(theCreateSQL, empty, empty, empty, pConnectionA) into theCreateTableSQL
 
   set the wholeMatches to true
 
@@ -1423,7 +1423,7 @@ command _sqlite_createSQLFromDB pTable, pCreateAs, pExcludeFields, pConnectionA
       ## Note: you might be tempted to check the sqlite_sequence table for an entry but
       ## there will be no entry if no records have been added yet.
       put "SELECT sql FROM sqlite_master WHERE type = 'table' AND tbl_name = " & theQsA["left"] & pTable & theQsA["right"] into theCreateSQL
-      dbconn_retrieveQueryAsData theCreateSQL,, theCreateTableSQL,, pConnectionA
+      put dbconn_retrieveQueryAsData(theCreateSQL, empty, empty, empty, pConnectionA) into theCreateTableSQL
       if theCreateTableSQL contains "autoincrement" then
         put " PRIMARY KEY AUTOINCREMENT" after theSQL
       else
@@ -1573,7 +1573,7 @@ private command _sqlite_dbAlterTable pTable, pTableA, pConnectionA
   put dbconn_get("connection id", pConnectionA) into theConnID
 
   put format("SELECT sql FROM sqlite_master WHERE name = '%s'", pTable) into theSQL
-  dbconn_retrieveQueryAsData theSQL, theBindingsA, theOldCreateSQL, empty, empty, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, theBindingsA, empty, empty, pConnectionA) into theOldCreateSQL
 
   ## Get current and new field names
   put revDatabaseColumnNames(theConnID, pTable) into theOldFields
@@ -2593,11 +2593,11 @@ private command _postgresql_dbTableFields pConnectionA, pTable
         "AND c.TABLE_NAME = pk.TABLE_NAME " & \
         "AND c.CONSTRAINT_NAME = pk.CONSTRAINT_NAME" into theSQL
   put false into pConnectionA["import schema"] ## no recursion, thank you
-  dbconn_retrieveQueryAsData theSQL, empty, thePrimaryKeys, empty, comma, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, empty, empty, comma, pConnectionA) into thePrimaryKeys
 
   ## Get DB encoding to assign to fields
   put "SHOW SERVER_ENCODING" into theSQL
-  dbconn_retrieveQueryAsData theSQL, empty, theEncoding, empty, comma, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, empty, empty, comma, pConnectionA) into theEncoding
 
   put tolower(theEncoding) into theEncoding
 
@@ -2948,7 +2948,7 @@ private command _filemaker_dbTableFields pConnectionA, pTable
         "AND c.TABLE_NAME = pk.TABLE_NAME " & \
         "AND c.CONSTRAINT_NAME = pk.CONSTRAINT_NAME" into theSQL
   put false into pConnectionA["import schema"] ## no recursion, thank you
-  dbconn_retrieveQueryAsData theSQL, empty, thePrimaryKeys, empty, comma, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, empty, empty, comma, pConnectionA) into thePrimaryKeys
 
   repeat with i = 1 to the number of elements of theRowsA
     put theRowsA[i]["COLUMN_NAME"] into theField
@@ -3166,7 +3166,7 @@ private command _sqlserver_dbTableFields pConnectionA, pTable
         "AND c.TABLE_NAME = pk.TABLE_NAME " & \
         "AND c.CONSTRAINT_NAME = pk.CONSTRAINT_NAME" into theSQL
   put false into pConnectionA["import schema"] ## no recursion, thank you
-  dbconn_retrieveQueryAsData theSQL, empty, thePrimaryKeys, empty, comma, pConnectionA
+  put dbconn_retrieveQueryAsData(theSQL, empty, empty, comma, pConnectionA) into thePrimaryKeys
 
   repeat with i = 1 to the number of elements of theRowsA
     put theRowsA[i]["COLUMN_NAME"] into theField

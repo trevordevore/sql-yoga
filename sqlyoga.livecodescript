@@ -3876,12 +3876,8 @@ function dbconn_get pProp, pConnName, pDBKey
       put format("SELECT version FROM %sschema%s", theQuotesA["left"], theQuotesA["right"]) into theSQL
       put empty into theBindingsA
       try
-        dbconn_retrieveQueryAsData theSQL, theBindingsA, theInstalledVersion, tab, cr, theConnectionA
-        if the result is empty then
-          return theInstalledVersion
-        else
-          return empty
-        end if
+        put dbconn_retrieveQueryAsData(theSQL, theBindingsA, tab, cr, theConnectionA) into theInstalledVersion
+        return theInstalledVersion
       catch e
         return empty ## Table doesn't exist
       end try
@@ -5425,16 +5421,15 @@ Summary: Executes a SQL query against a database connection and returns the resu
 Parameters:
 pSQL: SQL query to execute.
 pBindingsA: Array of values to bind to pSQL.  Key `1` will replace `:1` in the query, etc. You can pass empty.
-xOutData: Upon completion the data returned will be in this parameter.
 pColDel: Character to delimit columns in the returned text. Default is the default value for `revDataFromQuery` (tab character).
 pRowDel: Character to delimit rows in the returned text. Default is the default value for `revDataFromQuery` (return character).
 pConnName: The name of a Database Connection. The default is the `default connection` for the Database Object.
 pDBKey: Database Object connection is associated with. Default is name returned by `sqlyoga_getDefaultDatabase()`.
 
-Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
+Returns: Text data. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
-command dbconn_retrieveQueryAsData pSQL, pBindingsA, @xOutData, pColDel, pRowDel, pConnName, pDBKey
-  local theConnectionA, theConnectionID, theKeyA
+function dbconn_retrieveQueryAsData pSQL, pBindingsA, pColDel, pRowDel, pConnName, pDBKey
+  local theConnectionA, theConnectionID, theKeyA, tData
   local theError
   local theExtraError
 
@@ -5458,23 +5453,23 @@ command dbconn_retrieveQueryAsData pSQL, pBindingsA, @xOutData, pColDel, pRowDel
     end if
     if the keys of pBindingsA is not empty then
       put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "pBindingsA", 1, -1, \
-            pColDel, pRowDel, "", "", "", "") into xOutData
+            pColDel, pRowDel, "", "", "", "") into tData
     else
       put VDatabase_SQLSelectRecords( theConnectionID, pSQL, theLocation, "kReadOnly", "", 1, -1, \
-            pColDel, pRowDel, "", "", "", "") into xOutData
+            pColDel, pRowDel, "", "", "", "") into tData
     end if
     _valentinaError theConnectionID
   else
     repeat with queryAttempts = 1 to 2
       if the keys of pBindingsA is not empty then
-        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL, pBindingsA) into xOutData
+        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL, pBindingsA) into tData
       else
-        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL) into xOutData
+        put revDataFromQuery(pColDel, pRowDel, theConnectionID, pSQL) into tData
       end if
-      if char 1 to 9 of xOutData is "revdberr," then
-        delete char 1 to 9 of xOutData
-        put xOutData into theError
-        put empty into xOutData
+      if char 1 to 9 of tData is "revdberr," then
+        delete char 1 to 9 of tData
+        put tData into theError
+        put empty into tData
 
         set the itemDelimiter to ":"
         if item 1 of theError is "Database Error" then
@@ -5506,7 +5501,7 @@ command dbconn_retrieveQueryAsData pSQL, pBindingsA, @xOutData, pColDel, pRowDel
     sqlyoga__throwError sqlyoga__errorTypeFromError(theConnectionA, theError), theError && "(" & pSQL & ")"
   end if
 
-  return empty
+  return tData
 end dbconn_retrieveQueryAsData
 
 
@@ -8593,32 +8588,28 @@ end sqlquery_retrieveAsArray
 
 
 /**
-Summary: Executes a SQL Query Object query and returns the result as data from the selected columns (no cursor).
+Summary: Executes a SQL Query Object query and returns the result as text data from the selected columns (no cursor).
 
 Parameters:
 pQueryA: A SQL Query Object array as created using `sqlquery_createObject()`.
-xOutData: Upon completion the data returned will be in this parameter.
 
 Description:
-The 'column delimter' and 'row delimiter' properties of the SQL Query Object will be used to delimit columns and rows.
+The 'column delimiter' and 'row delimiter' properties of the SQL Query Object will be used to delimit columns and rows.
 
-Returns: Empty. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
+Returns: Text data. Any errors will be thrown: `sqlyoga_executesql_err,ERROR` or `sqlyoga_connection_err,ERROR`.
 */
-command sqlquery_retrieveAsData pQueryA, @xOutData
+function sqlquery_retrieveAsData pQueryA
   local theQuery, theBindingsA, theError
   local theConnectionA
-
-  put empty into xOutData
 
   put sqlquery_get(pQueryA, "connection") into theConnectionA
   _ValidateConnectionArray theConnectionA
 
   put sqlquery_get(pQueryA, "query") into theQuery
   put sqlquery_get(pQueryA, "condition bindings") into theBindingsA
-  dbconn_retrieveQueryAsData theQuery, theBindingsA, xOutData, \
+  return dbconn_retrieveQueryAsData(theQuery, theBindingsA, \
         sqlquery_get(pQueryA, "column delimiter"), sqlquery_get(pQueryA, "row delimiter"), \
-        theConnectionA
-  return empty
+        theConnectionA)
 end sqlquery_retrieveAsData
 
 
