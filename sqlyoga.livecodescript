@@ -9097,7 +9097,7 @@ Summary: Converts the current row of the SQL Query Object cursor to an array.
 
 Parameters:
 pQueryA: A SQL Query Object array.
-[pFields]: By default all fields in the row will be returned. Pass in a comma-delimited list of field names to restrict the fields that are returned.
+pFields: By default all fields in the row will be returned. Pass in a comma-delimited list of field names to restrict the fields that are returned.
 
 Returns: Array of the row's column values
 */
