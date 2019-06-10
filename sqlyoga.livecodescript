@@ -4832,7 +4832,7 @@ rather than a query error. We want to throw the proper error type.
 
 Returns: kErrorSQLConnection or kErrorSQLExecution
 */
-command sqlyoga__errorTypeFromError pConnectionA, pError
+function sqlyoga__errorTypeFromError pConnectionA, pError
   local theKeyA
 
   put _KeyArrayForConnection(pConnectionA) into theKeyA
