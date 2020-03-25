@@ -3977,8 +3977,8 @@ dbconn_set "database name", "sql_yoga_test"
 Example:
 ## ODBC Example
 -- Note: When calling dbconn_createObject you pass in 3 parameters
---                The 2nd is "odbc" and the 3rd is the type of database you are
---                connection too
+--       The 2nd is "odbc" and the 3rd is the type of database you are
+--       connecting to.
 -- dbconn_createObject "development", "odbc", "sql server"
 dbconn_set "dsn", "sqlserver_odbc"
 dbconn_set "username", "odbc_user"
