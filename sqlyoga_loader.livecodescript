@@ -17,11 +17,9 @@ on libraryStack
   end if
 
   send "__removeSQLYogaLoaderFromMemory" to stack "libSQLYoga" in 0 seconds
-
-  stop using me
 end libraryStack
 
 
 command __removeSQLYogaLoaderFromMemory
-  delete me
+  delete stack "SQL Yoga Database Object Loader"
 end __removeSQLYogaLoaderFromMemory
