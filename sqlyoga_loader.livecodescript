@@ -17,6 +17,7 @@ on libraryStack
   end if
 
   send "__removeSQLYogaLoaderFromMemory" to stack "libSQLYoga" in 0 seconds
+  stop using me
 end libraryStack
 
 
